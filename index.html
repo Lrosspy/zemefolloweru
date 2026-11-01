@@ -70,6 +70,8 @@ form.add input{flex:1 1 160px;min-width:0;font:inherit;color:var(--ink);backgrou
 .nick:focus-within{outline:2px solid var(--sun);outline-offset:2px}
 button.ghost{background:transparent;border-color:transparent;color:var(--ink-dim);font-weight:700}
 button.link{background:none;border:0;padding:0;color:var(--sun);font-weight:700;font-size:12px;text-decoration:underline;cursor:pointer}
+.welcome-card .rules{color:var(--ink-dim);font-size:12px;text-decoration:underline}
+.welcome-card .rules:hover{color:var(--sun)}
 .welcome-msg{min-height:1.2em;color:var(--sun)!important;font-weight:700}
 .welcome-msg a{color:var(--sun)}
 .me{position:fixed;left:max(16px,env(safe-area-inset-left,0px));top:calc(env(safe-area-inset-top,0px) + 150px);z-index:5;max-width:min(260px,calc(100% - 32px));font-size:13px}
@@ -128,6 +130,7 @@ button.link{background:none;border:0;padding:0;color:var(--sun);font-weight:700;
     <button class="primary" type="submit">Najít moji postavu</button>
     <button class="ghost" type="button" id="justLook">Jen se rozhlédnout</button>
     <p class="welcome-msg" id="welcomeMsg" role="status"></p>
+    <a class="rules" href="pravidla.html">Pravidla a soukromí</a>
   </form>
 </section>
 
