@@ -107,6 +107,7 @@ button.link{background:none;border:0;padding:0;color:var(--sun);font-weight:700;
     <div class="tier" id="tier">Pustá planeta</div>
     <div class="progress" aria-hidden="true"><i id="prog"></i></div>
     <div class="next" id="next">Do osady chybí 1 follower</div>
+    <div class="next" id="sync" hidden></div>
   </div>
   <div class="card stats">
     <div class="stat"><b id="pop">0</b><span>obyvatel</span></div>
@@ -1394,6 +1395,23 @@ document.getElementById('games').onclick=()=>announceText('Minihry se chystají,
 
 // ---------- data ----------
 // Public website: residents come from followers.json next to the page, refreshed every minute.
+// followers are checked at :02 every hour 10–24 h Prague time, overnight at 4:02 and 8:02
+const CHECK_HOURS=new Set([0,4,8,10,11,12,13,14,15,16,17,18,19,20,21,22,23]);
+const pragueHour=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Prague',hour:'numeric',hourCycle:'h23'});
+function nextCheck(from){
+  let c=Math.floor(from/3600000)*3600000+120000;
+  for(let i=0;i<30;i++,c+=3600000)if(c>from&&CHECK_HOURS.has(+pragueHour.format(c)))return c;
+  return 0;
+}
+const hm=new Intl.DateTimeFormat('cs-CZ',{hour:'numeric',minute:'2-digit'});
+function showSync(updated){
+  const el=document.getElementById('sync');if(!updated){el.hidden=true;return}
+  const now=Date.now(),day=new Date();day.setHours(0,0,0,0);
+  const last=updated>=day.getTime()?hm.format(updated):fmt.format(updated);
+  const nx=nextCheck(now);
+  el.textContent=`Poslední kontrola ${last}`+(nx?` · další v ${hm.format(nx)}`:'');
+  el.hidden=false;
+}
 async function loadFromFile(){
   let sig='',first=true;
   const pull=async()=>{
@@ -1404,6 +1422,7 @@ async function loadFromFile(){
       const list=(data.followers||[]).map(v=>({id:String(v.id),name:String(v.name||v.id),at:Number(v.at)||0,left:v.left===true,leftAt:Number(v.leftAt)||0,role:v.role?String(v.role):''})).sort((a,b)=>a.at-b.at);
       const s=JSON.stringify(list);
       if(s!==sig){sig=s;setResidents(list)}
+      showSync(Number(data.updated)||0);
     }catch(err){if(first){noData=true;applyMe(false);document.querySelector('#status p').textContent='Planetu se teď nepodařilo načíst. Zkus to za chvíli znovu.'}}
     first=false;
   };
