@@ -1,5 +1,5 @@
 {
- "updated": 1793562950000,
+ "updated": 1793565200000,
  "followers": [
   {
    "id": "lubikosuch",
@@ -109,6 +109,42 @@
    "id": "alex_tobias_drazil",
    "name": "@alex_tobias_drazil",
    "at": 1793562770004
+  },
+  {
+   "id": "fvcking.dandyyy",
+   "name": "@fvcking.dandyyy",
+   "at": 1793565100000
+  },
+  {
+   "id": "gkovcik",
+   "name": "@gkovcik",
+   "at": 1793565100001
+  },
+  {
+   "id": "jansavitek",
+   "name": "@jansavitek",
+   "at": 1793565100002
+  },
+  {
+   "id": "igorfiser2",
+   "name": "@igorfiser2",
+   "at": 1793565100003
+  },
+  {
+   "id": "v.horacek",
+   "name": "@v.horacek",
+   "at": 1793565100004
+  },
+  {
+   "id": "tiskarna_napadu1",
+   "name": "@tiskarna_napadu1",
+   "at": 1793565100005,
+   "role": "builder"
+  },
+  {
+   "id": "vojtabouma",
+   "name": "@vojtabouma",
+   "at": 1793565100006
   }
  ]
 }

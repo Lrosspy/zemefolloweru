@@ -199,8 +199,10 @@ const CEM_R = .1;             // angular radius of the cemetery ground
 const SITE_T=tangentOf(START), SITE_B=new THREE.Vector3().crossVectors(START,SITE_T).normalize();
 const SITES={
   doctor:{title:'Nemocnice',dir:START.clone().add(SITE_B.clone().multiplyScalar(.23)).normalize(),r:.1},
-  farmer:{title:'Farma',dir:START.clone().sub(SITE_B.clone().multiplyScalar(.36)).sub(SITE_T.clone().multiplyScalar(.05)).normalize(),r:.15}
+  farmer:{title:'Farma',dir:START.clone().sub(SITE_B.clone().multiplyScalar(.36)).sub(SITE_T.clone().multiplyScalar(.05)).normalize(),r:.15},
+  builder:{title:'Stavební firma',dir:START.clone().sub(SITE_T.clone().multiplyScalar(.27)).add(SITE_B.clone().multiplyScalar(.06)).normalize(),r:.12}
 };
+const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️'};
 (function(){
   const g=Math.PI*(3-Math.sqrt(5));
   for(let i=0;i<SLOTS;i++){
@@ -611,6 +613,7 @@ function makePerson(m,shirtColor,hat){
   const skin=mat(['#f1c9a5','#d9a37c','#a8714d','#7a4d32'][Math.floor(pr()*4)]);
   const head=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),skin);head.position.y=.1;fig.add(head);
   if(hat==='straw'){const brim=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.006,10),mat('#e8c35a'));brim.position.y=.118;fig.add(brim);const top=new THREE.Mesh(new THREE.CylinderGeometry(.018,.022,.022,8),mat('#e8c35a'));top.position.y=.13;fig.add(top)}
+  if(hat==='helmet'){const hm=new THREE.Mesh(new THREE.SphereGeometry(.026,10,6,0,Math.PI*2,0,Math.PI/2),mat('#f2c230'));hm.position.y=.106;fig.add(hm);const brim=new THREE.Mesh(new THREE.CylinderGeometry(.032,.032,.004,10),mat('#f2c230'));brim.position.y=.107;fig.add(brim)}
   if(hat==='doctor'){const steth=new THREE.Mesh(new THREE.TorusGeometry(.018,.003,4,10),mat('#3a6fd8'));steth.position.set(0,.065,.03);fig.add(steth)}
   const armGeo=new THREE.BoxGeometry(.011,.048,.011);
   const left=new THREE.Group();left.position.set(-.029,.074,0);const la=new THREE.Mesh(armGeo,shirt.material);la.position.y=-.022;left.add(la);left.rotation.z=-.25;fig.add(left);
@@ -698,13 +701,55 @@ function buildFarm(owner){
   }
   g.userData.height=.55;return g;
 }
+
+function buildConstruction(owner){
+  const g=new THREE.Group(), alive=owner&&!owner.left;
+  const steel=mat(alive?'#f2b632':'#8a6a3a'),dark=mat('#3a3640'),brick=mat('#b5552f'),concrete=mat('#b9b6ae'),wood=mat('#a8693a');
+  // the builder's own house: sturdy, orange roof, sign on the wall
+  const hb=new THREE.Mesh(new THREE.BoxGeometry(.34,.28,.3),mat('#e9d8b6'));hb.position.set(-.45,.14,.05);g.add(hb);
+  const hr=new THREE.Mesh(new THREE.ConeGeometry(.29,.2,4),mat('#d9772b'));hr.position.set(-.45,.38,.05);hr.rotation.y=Math.PI/4;g.add(hr);
+  const hw=new THREE.Group();windowsOn(hw,.34,.28,.151,1,2,alive,.07);hw.position.set(-.45,0,.05);g.add(hw);
+  const hd=new THREE.Mesh(new THREE.PlaneGeometry(.07,.12),mat('#5a3b2a'));hd.position.set(-.45,.06,.202);g.add(hd);
+  // half-built house wrapped in scaffolding
+  const slab=new THREE.Mesh(new THREE.BoxGeometry(.42,.03,.36),concrete);slab.position.set(.2,.015,-.05);g.add(slab);
+  for(const [x,z] of [[-.19,-.16],[.19,-.16],[-.19,.12],[.19,.12]]){const c=new THREE.Mesh(new THREE.BoxGeometry(.035,.3,.035),concrete);c.position.set(.2+x,.165,-.05+z);g.add(c)}
+  const wall=new THREE.Mesh(new THREE.BoxGeometry(.38,.14,.03),brick);wall.position.set(.2,.1,-.21);g.add(wall);
+  const wall2=new THREE.Mesh(new THREE.BoxGeometry(.03,.09,.26),brick);wall2.position.set(.39,.075,-.05);g.add(wall2);
+  for(let i=0;i<5;i++){const p=new THREE.Mesh(new THREE.BoxGeometry(.012,.36,.012),wood);p.position.set(-.02+i*.11,.18,.17);g.add(p)}
+  for(const y of [.12,.26]){const b=new THREE.Mesh(new THREE.BoxGeometry(.46,.012,.05),wood);b.position.set(.2,y,.17);g.add(b)}
+  // pallets of bricks
+  for(const [x,z] of [[-.12,.3],[.55,.25]]){const pal=new THREE.Mesh(new THREE.BoxGeometry(.1,.02,.08),wood);pal.position.set(x,.01,z);g.add(pal);const st=new THREE.Mesh(new THREE.BoxGeometry(.09,.06,.07),brick);st.position.set(x,.05,z);g.add(st)}
+  // tower crane: lattice mast, slewing top with jib, counter-jib, cab, cable and a load
+  const crane=new THREE.Group();crane.position.set(.62,0,-.25);
+  const base=new THREE.Mesh(new THREE.BoxGeometry(.14,.04,.14),concrete);base.position.y=.02;crane.add(base);
+  const H=1.05;
+  for(const [x,z] of [[-.03,-.03],[.03,-.03],[-.03,.03],[.03,.03]]){const leg=new THREE.Mesh(new THREE.BoxGeometry(.012,H,.012),steel);leg.position.set(x,H/2+.04,z);crane.add(leg)}
+  for(let y=.1;y<H;y+=.09){for(const r of [0,Math.PI/2]){const br=new THREE.Mesh(new THREE.BoxGeometry(.075,.008,.008),steel);br.position.y=y+.04;br.rotation.y=r;br.rotation.z=.6;crane.add(br)}}
+  const top=new THREE.Group();top.position.y=H+.04;crane.add(top);
+  const jib=new THREE.Mesh(new THREE.BoxGeometry(.85,.035,.035),steel);jib.position.x=.36;top.add(jib);
+  const cj=new THREE.Mesh(new THREE.BoxGeometry(.3,.035,.035),steel);cj.position.x=-.18;top.add(cj);
+  const cw=new THREE.Mesh(new THREE.BoxGeometry(.08,.07,.07),concrete);cw.position.set(-.29,-.03,0);top.add(cw);
+  const peak=new THREE.Mesh(new THREE.ConeGeometry(.03,.16,4),steel);peak.position.y=.09;top.add(peak);
+  for(const side of [1,-1]){const tie=new THREE.Mesh(new THREE.BoxGeometry(.006,.006,1),dark);const len=side>0?.62:.3;tie.scale.z=len;tie.position.set(side*len/2,.08,0);tie.rotation.y=Math.PI/2;tie.rotation.x=side*.25;top.add(tie)}
+  const cab=new THREE.Mesh(new THREE.BoxGeometry(.06,.05,.06),mat(alive?'#ffffff':'#777')) ;cab.position.set(.04,-.04,.045);top.add(cab);
+  const trolley=new THREE.Group();trolley.position.x=.55;top.add(trolley);
+  const cable=new THREE.Mesh(new THREE.BoxGeometry(.004,.5,.004),dark);cable.position.y=-.27;trolley.add(cable);
+  const load=new THREE.Group();load.position.y=-.53;trolley.add(load);
+  const lp=new THREE.Mesh(new THREE.BoxGeometry(.09,.015,.07),wood);load.add(lp);
+  const lb=new THREE.Mesh(new THREE.BoxGeometry(.08,.045,.06),brick);lb.position.y=.03;load.add(lb);
+  if(alive){const lamp=new THREE.Mesh(new THREE.SphereGeometry(.012,6,4),new THREE.MeshBasicMaterial({color:'#ff4a3a'}));lamp.position.y=.18;top.add(lamp)}
+  g.add(crane);
+  if(alive){const f=makePerson(owner,'#e8792a','helmet');f.position.set(-.18,0,.36);f.scale.setScalar(1.15);g.add(f)}
+  g.userData.crane={top,trolley,alive};
+  g.userData.height=1.2;return g;
+}
 function syncSites(animate){
   const sig=Object.keys(SITES).map(k=>{const o=siteOwner(k);return k+':'+(o?o.id+(o.left?'x':''):'')}).join('|');
   if(sig===siteSig)return;siteSig=sig;
   siteGroup.clear();siteArms.length=0;
   for(const k of activeSites()){
     const o=siteOwner(k),S=SITES[k];
-    const g=k==='doctor'?buildHospital(o):buildFarm(o);
+    const g=k==='doctor'?buildHospital(o):k==='farmer'?buildFarm(o):buildConstruction(o);
     placeOn(g,S.dir,0,0);faceToward(g,S.dir,START.clone().sub(S.dir));
     g.userData.site=k;siteGroup.add(g);
   }
@@ -719,8 +764,8 @@ function updateSiteLabels(camDir,dist){
     want.add(k);
     let el=siteLabels.get(k);
     if(!el){el=document.createElement('div');el.className='label site';labelsEl.append(el);siteLabels.set(k,el)}
-    const icon=k==='doctor'?'🏥':'🌾';
-    const text=!o||o.left?`${icon} Opuštěná ${S.title.toLowerCase()}`:k==='doctor'?`${icon} Nemocnice · ředitel ${o.name}`:`${icon} Farma · ${o.name}`;
+    const icon=SITE_ICON[k]||'🏠';
+    const text=!o||o.left?`${icon} Opuštěná ${S.title.toLowerCase()}`:k==='doctor'?`${icon} Nemocnice · ředitel ${o.name}`:k==='builder'?`${icon} Stavitel ${o.name}`:`${icon} Farma · ${o.name}`;
     if(el.textContent!==text)el.textContent=text;
     el.classList.toggle('dead',!o||o.left);
     const p=S.dir.clone().multiplyScalar(R+terrain(S.dir)+g.userData.height+.2).project(camera);
@@ -944,6 +989,8 @@ function loop(now){
     for(const [,h] of houses){const arms=h.g.userData.waveArms;if(!arms)continue;
       for(const a of arms)a.arm.rotation.z=-.5+Math.sin(T*a.sp+a.ph)*.45}
     for(const a of siteArms)a.arm.rotation.z=-.5+Math.sin(T*a.sp+a.ph)*.45;
+    siteGroup.children.forEach(g=>{const c=g.userData.crane;if(!c||!c.alive)return;
+      c.top.rotation.y=Math.sin(T*.25)*1.1;c.trolley.position.x=.45+Math.sin(T*.4)*.22;c.trolley.rotation.z=Math.sin(T*1.3)*.04});
   }else{for(const [,h] of houses)(h.g.userData.waveArms||[]).forEach(a=>a.arm.rotation.z=-.5)}
   if(!fly&&!panning)controls.update();
   renderer.render(scene,camera);
@@ -1067,7 +1114,7 @@ function applyMe(flyThere){
     return;
   }
   if(r.home==null&&SITES[r.role]){
-    setMeInfo([r.role==='doctor'?'Jsi ředitel a hlavní lékař nemocnice 🏥.':r.role==='farmer'?'Jsi farmář/ka a patří ti farma s polem 🌾.':`Patří ti stavba: ${SITES[r.role].title}.`]);
+    setMeInfo([r.role==='doctor'?'Jsi ředitel a hlavní lékař nemocnice 🏥.':r.role==='farmer'?'Jsi farmář/ka a patří ti farma s polem 🌾.':r.role==='builder'?'Jsi stavitel planety 🏗️. Patří ti stavební firma s jeřábem.':`Patří ti stavba: ${SITES[r.role].title}.`]);
   }else{
     const home=homes[r.home];
     const others=home?home.members.filter(m=>!m.left&&m.id!==meId).map(m=>m.name):[];
