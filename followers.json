@@ -1,5 +1,5 @@
 {
- "updated": 1793565200000,
+ "updated": 1793566886289,
  "followers": [
   {
    "id": "lubikosuch",
@@ -145,6 +145,18 @@
    "id": "vojtabouma",
    "name": "@vojtabouma",
    "at": 1793565100006
+  },
+  {
+   "id": "dostty_12",
+   "name": "@dostty_12",
+   "at": 1793652900000,
+   "role": "tennis"
+  },
+  {
+   "id": "_.extra.random_amalka_",
+   "name": "@_.extra.random_amalka_",
+   "at": 1793652900001,
+   "role": "gardener"
   }
  ]
 }

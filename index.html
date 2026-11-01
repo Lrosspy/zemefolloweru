@@ -191,7 +191,7 @@ function terrain(v){ // gentle hills, v is unit vector
 const START = new THREE.Vector3(0.35, 0.8, 0.48).normalize();
 const PLOTS = [];
 const PLAZA = 0.075;          // angular radius of the village square
-const FOUNTAIN_AT = 10;       // houses needed before the fountain appears
+const FOUNTAIN_SCALE = 1.15;  // the fountain stands on the square from the first house on
 // cemetery for unfollowers: a little way out of the village, reserved from house plots
 const CEM = START.clone().add(tangentOf(START).multiplyScalar(.34)).normalize();
 const CEM_R = .1;             // angular radius of the cemetery ground
@@ -200,9 +200,12 @@ const SITE_T=tangentOf(START), SITE_B=new THREE.Vector3().crossVectors(START,SIT
 const SITES={
   doctor:{title:'Nemocnice',dir:START.clone().add(SITE_B.clone().multiplyScalar(.23)).normalize(),r:.1},
   farmer:{title:'Farma',dir:START.clone().sub(SITE_B.clone().multiplyScalar(.36)).sub(SITE_T.clone().multiplyScalar(.05)).normalize(),r:.15},
-  builder:{title:'Stavební firma',dir:START.clone().sub(SITE_T.clone().multiplyScalar(.27)).add(SITE_B.clone().multiplyScalar(.06)).normalize(),r:.12}
+  builder:{title:'Stavební firma',dir:START.clone().sub(SITE_T.clone().multiplyScalar(.27)).add(SITE_B.clone().multiplyScalar(.06)).normalize(),r:.12},
+  tennis:{title:'Tenisový kurt',dir:START.clone().sub(SITE_T.clone().multiplyScalar(.2)).add(SITE_B.clone().multiplyScalar(.3)).normalize(),r:.13},
+  gardener:{title:'Zahradnictví',dir:START.clone().add(SITE_T.clone().multiplyScalar(.15)).sub(SITE_B.clone().multiplyScalar(.2)).normalize(),r:.08}
 };
-const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️'};
+const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷'};
+const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví'};
 (function(){
   const g=Math.PI*(3-Math.sqrt(5));
   for(let i=0;i<SLOTS;i++){
@@ -377,8 +380,20 @@ function makeHouse(home){
     g.add(fig);
   });
   const door=new THREE.Mesh(new THREE.PlaneGeometry(.07,.12),mat('#5a3b2a'));door.position.set(0,.06,d/2+.003);if(floors===1)door.position.x=0;else door.position.x=0;g.add(door);
-  if(rr()<.7){const t=makeTree(1);t.position.set((rr()<.5?-1:1)*(w/2+.14),0,(rr()-.5)*.2);g.add(t)}
-  g.userData={id:home.key,height:h+.3,waveArms};
+  if(rr()<.7){const t=makeTree(1);t.position.set(w/2+.14,0,(rr()-.5)*.2);g.add(t)}
+  // flower bed along the left wall; the gardener comes here to water it
+  const bedX=-(w/2+.09), flowers=[];
+  const bed=new THREE.Mesh(new THREE.BoxGeometry(.08,.025,.26),mat('#5b3a22'));bed.position.set(bedX,.012,.02);g.add(bed);
+  const edge=new THREE.Mesh(new THREE.BoxGeometry(.09,.018,.27),mat('#cdbb98'));edge.position.set(bedX,.006,.02);g.add(edge);
+  const FL=['#ff6fa3','#ffd34d','#e8443a','#b07de8','#ffffff','#ff9a3c'];
+  const stemM=mat('#4f8f3a');
+  for(let k=0;k<6;k++){
+    const fl=new THREE.Group();fl.position.set(bedX+(k%2?.018:-.018),.024,-.09+k*.042);
+    const st=new THREE.Mesh(new THREE.CylinderGeometry(.003,.003,.04,4),stemM);st.position.y=.02;fl.add(st);
+    const bl=new THREE.Mesh(new THREE.SphereGeometry(.013,6,4),mat(FL[Math.floor(rr()*FL.length)]));bl.position.y=.045;fl.add(bl);
+    g.add(fl);flowers.push(fl);
+  }
+  g.userData={id:home.key,height:h+.3,waveArms,flowers,bedAt:new THREE.Vector3(bedX,0,.02),standAt:new THREE.Vector3(bedX-.11,0,.1)};
   g.traverse(o=>{if(o.isMesh)o.userData.house=g});
   return g;
 }
@@ -397,8 +412,10 @@ function syncHouses(animate){
     if(h&&h.sig===sig)return;
     const isNew=!h;
     if(h)townGroup.remove(h.g);
-    const g=makeHouse(home);placeOn(g,P.v,0,(hash(home.key)%628)/100);
-    h={g,v:P.v,i:home.i,sig,born:animate&&isNew?now:null,bump:animate&&!isNew?now:null};
+    const g=makeHouse(home);placeOn(g,P.v,0,0);faceToward(g,P.v,START.clone().sub(P.v));g.rotateY(((hash(home.key)%60)-30)/100); // front door toward the square
+    g.updateMatrixWorld(true);
+    const bedDir=g.localToWorld(g.userData.bedAt.clone()).normalize(), standDir=g.localToWorld(g.userData.standAt.clone()).normalize();
+    h={g,v:P.v,i:home.i,sig,bedDir,standDir,born:animate&&isNew?now:null,bump:animate&&!isNew?now:null};
     if(h.born&&!reduce)g.scale.setScalar(.001);
     townGroup.add(g);houses.set(home.key,h);
   });
@@ -489,21 +506,36 @@ const fountain=new THREE.Group();
   const water=new THREE.MeshLambertMaterial({color:'#4fb3e8',emissive:'#1b5f8a',emissiveIntensity:.35,transparent:true,opacity:.9});
   const basin=new THREE.Mesh(new THREE.CylinderGeometry(.42,.46,.12,14),stone);basin.position.y=.06;fountain.add(basin);
   const rim=new THREE.Mesh(new THREE.TorusGeometry(.42,.035,6,18),stoneDark);rim.rotation.x=Math.PI/2;rim.position.y=.125;fountain.add(rim);
-  const pool=new THREE.Mesh(new THREE.CylinderGeometry(.39,.39,.02,18),water);pool.position.y=.11;fountain.add(pool);
+  const pool=new THREE.Mesh(new THREE.CylinderGeometry(.39,.39,.02,18),water);pool.position.y=.117;fountain.add(pool);
   const pillar=new THREE.Mesh(new THREE.CylinderGeometry(.05,.07,.32,8),stone);pillar.position.y=.27;fountain.add(pillar);
   const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.16,.07,.07,12),stone);bowl.position.y=.44;fountain.add(bowl);
   const bowlWater=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.015,12),water);bowlWater.position.y=.47;fountain.add(bowlWater);
   const drops=new THREE.Group();drops.name='drops';
   const dropMat=new THREE.MeshLambertMaterial({color:'#bfe8ff',emissive:'#4fb3e8',emissiveIntensity:.5,transparent:true,opacity:.85});
-  for(let i=0;i<28;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(.018,6,4),dropMat);d.userData={a:i/28*Math.PI*2,ph:(i*0.37)%1};drops.add(d)}
+  const dropGeo=new THREE.SphereGeometry(.012,6,4);
+  for(let i=0;i<48;i++){const d=new THREE.Mesh(dropGeo,dropMat);d.userData={a:i/48*Math.PI*2,ph:(i*0.37)%1};drops.add(d)}
   fountain.add(drops);
-  fountain.userData={pool,bowlWater,drops};
+  // tall jet shooting up from the top bowl
+  const jetMat=new THREE.MeshLambertMaterial({color:'#d8f2ff',emissive:'#6cc4f0',emissiveIntensity:.6,transparent:true,opacity:.55});
+  const jet=new THREE.Mesh(new THREE.CylinderGeometry(.012,.03,.5,8,1,true),jetMat);jet.position.y=.73;fountain.add(jet);
+  const jetDrops=new THREE.Group();
+  for(let i=0;i<40;i++){const d=new THREE.Mesh(dropGeo,dropMat);d.userData={a:i*2.39,ph:(i*0.61)%1,sp:.025+(i%5)*.012};jetDrops.add(d)}
+  fountain.add(jetDrops);
+  // small jets around the rim spraying in toward the middle
+  const rimDrops=new THREE.Group();
+  for(let j=0;j<8;j++)for(let k=0;k<4;k++){const d=new THREE.Mesh(new THREE.SphereGeometry(.009,5,3),dropMat);d.userData={a:j/8*Math.PI*2+.2,ph:k/4};rimDrops.add(d)}
+  fountain.add(rimDrops);
+  // ripples spreading on the pool
+  const ripples=[];
+  for(let i=0;i<3;i++){const rp=new THREE.Mesh(new THREE.RingGeometry(.9,1,24),new THREE.MeshBasicMaterial({color:'#e6f7ff',transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false}));rp.rotation.x=-Math.PI/2;rp.position.y=.131;rp.userData.ph=i/3;fountain.add(rp);ripples.push(rp)}
+  fountain.userData={pool,bowlWater,drops,jet,jetDrops,rimDrops,ripples};
   placeOn(fountain,START,0,0);
+  fountain.scale.setScalar(FOUNTAIN_SCALE);
   fountain.visible=false;scene.add(fountain);
 })();
 let fountainBorn=null;
 function syncFountain(animate){
-  const want=homes.length>=FOUNTAIN_AT;
+  const want=homes.length>0||activeSites().length>0;
   if(want&&!fountain.visible){
     fountain.visible=true;
     if(animate&&!reduce){fountainBorn=performance.now();fountain.scale.setScalar(.001)}
@@ -512,15 +544,27 @@ function syncFountain(animate){
 }
 function animateFountain(now){
   if(!fountain.visible)return;
-  if(fountainBorn){const t=Math.min(1,(now-fountainBorn)/1100);fountain.scale.setScalar(Math.max(.001,1-Math.pow(1-t,3)+Math.sin(t*Math.PI)*.12));if(t>=1){fountainBorn=null;fountain.scale.setScalar(1)}}
+  if(fountainBorn){const t=Math.min(1,(now-fountainBorn)/1100);fountain.scale.setScalar(FOUNTAIN_SCALE*Math.max(.001,1-Math.pow(1-t,3)+Math.sin(t*Math.PI)*.12));if(t>=1){fountainBorn=null;fountain.scale.setScalar(FOUNTAIN_SCALE)}}
   if(reduce)return;
-  const {drops,pool,bowlWater}=fountain.userData;
+  const {drops,pool,bowlWater,jet,jetDrops,rimDrops,ripples}=fountain.userData;
   const T=now/1000;
-  drops.children.forEach(d=>{
+  drops.children.forEach(d=>{ // water spilling over the top bowl into the pool
     const u=(T*.9+d.userData.ph)%1;            // 0..1 along the arc
-    const r=.03+u*.24, h=.5+Math.sin(u*Math.PI)*.22-u*.36;
+    const r=.1+u*.22, h=.47+Math.sin(u*Math.PI)*.12-u*.35;
     d.position.set(Math.cos(d.userData.a)*r,h,Math.sin(d.userData.a)*r);
   });
+  jet.scale.set(1+Math.sin(T*9)*.12,1+Math.sin(T*4.3)*.06,1+Math.cos(T*8)*.12);
+  jetDrops.children.forEach(d=>{ // up the jet, over the top, down into the bowl
+    const u=(T*.75+d.userData.ph)%1;
+    const r=.01+u*d.userData.sp*4, h=.5+2*u*(1-u);
+    d.position.set(Math.cos(d.userData.a+T*.4)*r,h,Math.sin(d.userData.a+T*.4)*r);
+  });
+  rimDrops.children.forEach(d=>{
+    const u=(T*1.1+d.userData.ph)%1;
+    const r=.38-u*.2, h=.14+Math.sin(u*Math.PI)*.2;
+    d.position.set(Math.cos(d.userData.a)*r,h,Math.sin(d.userData.a)*r);
+  });
+  ripples.forEach(rp=>{const u=(T*.45+rp.userData.ph)%1;const s=.06+u*.32;rp.scale.set(s,s,1);rp.material.opacity=.55*(1-u)});
   pool.scale.set(1+Math.sin(T*3)*.01,1,1+Math.cos(T*2.6)*.01);
   bowlWater.position.y=.47+Math.sin(T*5)*.004;
 }
@@ -614,6 +658,7 @@ function makePerson(m,shirtColor,hat){
   const head=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),skin);head.position.y=.1;fig.add(head);
   if(hat==='straw'){const brim=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.006,10),mat('#e8c35a'));brim.position.y=.118;fig.add(brim);const top=new THREE.Mesh(new THREE.CylinderGeometry(.018,.022,.022,8),mat('#e8c35a'));top.position.y=.13;fig.add(top)}
   if(hat==='helmet'){const hm=new THREE.Mesh(new THREE.SphereGeometry(.026,10,6,0,Math.PI*2,0,Math.PI/2),mat('#f2c230'));hm.position.y=.106;fig.add(hm);const brim=new THREE.Mesh(new THREE.CylinderGeometry(.032,.032,.004,10),mat('#f2c230'));brim.position.y=.107;fig.add(brim)}
+  if(hat==='tennis'){const band=new THREE.Mesh(new THREE.TorusGeometry(.022,.004,4,12),mat('#e8443a'));band.rotation.x=Math.PI/2;band.position.y=.108;fig.add(band)}
   if(hat==='doctor'){const steth=new THREE.Mesh(new THREE.TorusGeometry(.018,.003,4,10),mat('#3a6fd8'));steth.position.set(0,.065,.03);fig.add(steth)}
   const armGeo=new THREE.BoxGeometry(.011,.048,.011);
   const left=new THREE.Group();left.position.set(-.029,.074,0);const la=new THREE.Mesh(armGeo,shirt.material);la.position.y=-.022;left.add(la);left.rotation.z=-.25;fig.add(left);
@@ -743,17 +788,202 @@ function buildConstruction(owner){
   g.userData.crane={top,trolley,alive};
   g.userData.height=1.2;return g;
 }
+function buildTennis(owner){
+  const g=new THREE.Group(), alive=owner&&!owner.left;
+  // owner's house next to the court: white walls, green roof
+  const hb=new THREE.Mesh(new THREE.BoxGeometry(.32,.28,.3),mat('#f4efe4'));hb.position.set(-.66,.14,.05);g.add(hb);
+  const hr=new THREE.Mesh(new THREE.ConeGeometry(.28,.2,4),mat('#2f7d5a'));hr.position.set(-.66,.38,.05);hr.rotation.y=Math.PI/4;g.add(hr);
+  const hw=new THREE.Group();windowsOn(hw,.32,.28,.151,1,2,alive,.07);hw.position.set(-.66,0,.05);g.add(hw);
+  const hd=new THREE.Mesh(new THREE.PlaneGeometry(.07,.12),mat('#5a3b2a'));hd.position.set(-.66,.06,.202);g.add(hd);
+  const sign=new THREE.Mesh(new THREE.SphereGeometry(.03,8,6),mat(alive?'#d7f23a':'#9c9f74'));sign.position.set(-.66,.24,.21);g.add(sign);
+  // the court: long axis across, net in the middle
+  const court=new THREE.Group();court.position.set(.27,0,.02);g.add(court);
+  const apron=new THREE.Mesh(new THREE.BoxGeometry(1.24,.014,.72),mat(alive?'#3f8f5a':'#8f8a76'));apron.position.y=.007;court.add(apron);
+  const surf=new THREE.Mesh(new THREE.BoxGeometry(1,.016,.5),mat(alive?'#3d7fc4':'#8d8e8a'));surf.position.y=.009;court.add(surf);
+  const lineM=mat(alive?'#ffffff':'#c9c6bc');
+  const line=(x,z,lx,lz)=>{const l=new THREE.Mesh(new THREE.BoxGeometry(lx,.004,lz),lineM);l.position.set(x,.018,z);court.add(l)};
+  line(-.5,0,.012,.5);line(.5,0,.012,.5);line(0,-.25,1,.012);line(0,.25,1,.012);line(0,-.19,1,.008);line(0,.19,1,.008);
+  line(-.27,0,.008,.38);line(.27,0,.008,.38);line(0,0,.54,.008);
+  for(const z of [-.29,.29]){const p=new THREE.Mesh(new THREE.CylinderGeometry(.007,.007,.075,5),mat('#333'));p.position.set(0,.037,z);court.add(p)}
+  const net=new THREE.Mesh(new THREE.BoxGeometry(.006,.048,.58),new THREE.MeshLambertMaterial({color:'#1f2328',transparent:true,opacity:.75}));
+  net.position.y=alive?.042:.03;if(!alive)net.rotation.x=.12;court.add(net);
+  const tape=new THREE.Mesh(new THREE.BoxGeometry(.009,.008,.58),lineM);tape.position.y=alive?.067:.05;if(!alive)tape.rotation.x=.12;court.add(tape);
+  // fence: corner posts and see-through panels at both ends
+  const fenceM=new THREE.MeshLambertMaterial({color:'#2d5a3c',transparent:true,opacity:.35,side:THREE.DoubleSide});
+  for(const x of [-.62,.62]){
+    const pan=new THREE.Mesh(new THREE.PlaneGeometry(.72,.17),fenceM);pan.rotation.y=Math.PI/2;pan.position.set(x,.085,0);court.add(pan);
+    for(const z of [-.36,0,.36]){const p=new THREE.Mesh(new THREE.BoxGeometry(.012,.18,.012),mat('#2d3a33'));p.position.set(x,.09,z);court.add(p)}
+  }
+  // ball machine on the far side
+  const mach=new THREE.Group();mach.position.set(.46,0,-.04);court.add(mach);
+  const mb=new THREE.Mesh(new THREE.BoxGeometry(.07,.06,.06),mat(alive?'#2b2b2b':'#6d6d6d'));mb.position.y=.04;mach.add(mb);
+  const hop=new THREE.Mesh(new THREE.CylinderGeometry(.04,.028,.04,8),mat(alive?'#d7f23a':'#9c9f74'));hop.position.y=.09;mach.add(hop);
+  const tube=new THREE.Mesh(new THREE.CylinderGeometry(.01,.01,.05,6),mat('#555'));tube.rotation.z=Math.PI/2;tube.position.set(-.05,.05,0);mach.add(tube);
+  if(alive){
+    const f=makePerson(owner,'#ffffff','tennis');siteArms.pop(); // swings a racket instead of waving
+    f.position.set(-.4,0,.04);f.rotation.y=Math.PI/2;f.scale.setScalar(1.15);court.add(f);
+    const arm=f.children.find(c=>c.isGroup&&c.position.x>0);
+    const handle=new THREE.Mesh(new THREE.BoxGeometry(.006,.03,.006),mat('#3a2a20'));handle.position.y=.065;arm.add(handle);
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(.019,.003,4,12),mat('#e8443a'));rim.position.y=.098;arm.add(rim);
+    const str=new THREE.Mesh(new THREE.CircleGeometry(.018,10),new THREE.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:.35,side:THREE.DoubleSide}));str.position.y=.098;arm.add(str);
+    const ball=new THREE.Mesh(new THREE.SphereGeometry(.014,8,6),new THREE.MeshLambertMaterial({color:'#d7f23a',emissive:'#5a6a00',emissiveIntensity:.3}));court.add(ball);
+    g.userData.tennis={ball,arm};
+  }
+  g.userData.height=.55;return g;
+}
+// tennis ball flies between the player and the ball machine, bouncing once on each side
+function animateTennis(t,T){
+  const P=2.6,u=(T/P)%1,out=u<.5,k=(u%.5)*2;
+  const A=[-.36,.09,.04],B=[.41,.07,-.04],from=out?A:B,to=out?B:A;
+  const x=from[0]+(to[0]-from[0])*k, z=from[2]+(to[2]-from[2])*k;
+  let y;if(k<.65){const s=k/.65;y=from[1]*(1-s)+.24*s*(1-s)*4*.5}else{const s=(k-.65)/.35;y=to[1]*s+.09*4*s*(1-s)}
+  t.ball.position.set(x,Math.max(.025,y+.018),z);
+  const d=Math.min(u,1-u); // closeness to the moment of the hit
+  const swing=Math.exp(-(d*d)/.004);
+  t.arm.rotation.z=-1.1+1.3*swing*(u<.5?1:-1)*.8;t.arm.rotation.x=-.3*swing;
+}
+function buildGreenhouse(owner){
+  const g=new THREE.Group(), alive=owner&&!owner.left;
+  const frame=mat(alive?'#f2f2ee':'#8b8a86');
+  const glass=new THREE.MeshLambertMaterial({color:alive?'#bfe6f0':'#8d968f',transparent:true,opacity:alive?.4:.6,side:THREE.DoubleSide,depthWrite:false});
+  const W=.5,D=.32,H=.2;
+  const floor=new THREE.Mesh(new THREE.BoxGeometry(W+.04,.02,D+.04),mat('#8a6a4a'));floor.position.y=.01;g.add(floor);
+  const box=new THREE.Mesh(new THREE.BoxGeometry(W,H,D),glass);box.position.y=H/2+.02;g.add(box);
+  // gabled glass roof: a three-sided prism lying along the length, apex up
+  const rR=D/1.73, rS=.45;
+  const roof=new THREE.Mesh(new THREE.CylinderGeometry(rR,rR,W,3,1,false,Math.PI/2),glass);roof.rotation.z=Math.PI/2;roof.scale.x=rS;roof.position.y=H+.02+rR*.5*rS;g.add(roof);
+  for(const x of [-W/2,0,W/2])for(const z of [-D/2,D/2]){const p=new THREE.Mesh(new THREE.BoxGeometry(.012,H,.012),frame);p.position.set(x,H/2+.02,z);g.add(p)}
+  const rise=rR*1.5*rS, run=D/2, rl=Math.hypot(rise,run), ra=Math.atan2(rise,run);
+  const ridge=new THREE.Mesh(new THREE.BoxGeometry(W,.012,.012),frame);ridge.position.y=H+.02+rise;g.add(ridge);
+  for(const x of [-W/2,0,W/2])for(const s of [-1,1]){const rf=new THREE.Mesh(new THREE.BoxGeometry(.01,.01,rl),frame);rf.position.set(x,H+.02+rise/2,s*run/2);rf.rotation.x=s*ra;g.add(rf)}
+  // plants inside
+  for(let i=0;i<10;i++){const p=new THREE.Mesh(new THREE.ConeGeometry(.025,.07,5),mat(alive?(i%3?'#5aa04a':'#ff6fa3'):'#8a7350'));p.position.set(-.2+(i%5)*.1,.06,i<5?-.07:.07);g.add(p)}
+  const door=new THREE.Mesh(new THREE.PlaneGeometry(.08,.14),new THREE.MeshLambertMaterial({color:'#dff3f8',transparent:true,opacity:.6}));door.position.set(0,.09,D/2+.003);g.add(door);
+  // beds out front and a wheelbarrow
+  const FL=['#ff6fa3','#ffd34d','#e8443a','#b07de8','#ffffff'];
+  for(const s of [-1,1]){
+    const bd=new THREE.Mesh(new THREE.BoxGeometry(.16,.025,.08),mat('#5b3a22'));bd.position.set(s*.17,.012,D/2+.12);g.add(bd);
+    for(let k=0;k<4;k++){const b=new THREE.Mesh(new THREE.SphereGeometry(.014,6,4),mat(alive?FL[(k+(s>0?2:0))%5]:'#8a7350'));b.position.set(s*.17-.055+k*.037,.045,D/2+.12);g.add(b)}
+  }
+  const wb=new THREE.Group();wb.position.set(.34,0,.08);wb.rotation.y=-.6;
+  const tray=new THREE.Mesh(new THREE.BoxGeometry(.09,.035,.06),mat('#3f9a6a'));tray.position.y=.05;wb.add(tray);
+  const wh=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.01,8),mat('#222'));wh.rotation.x=Math.PI/2;wh.position.set(.05,.02,0);wb.add(wh);
+  g.add(wb);
+  g.userData.height=.5;return g;
+}
+// the gardener walks from house to house and waters the flower beds
+function makeGardener(m){
+  const pr=rnd(hash(m.id));
+  const fig=new THREE.Group();fig.userData.memberId=m.id;
+  const body=new THREE.Group();fig.add(body);
+  const dress=new THREE.Mesh(new THREE.CylinderGeometry(.022,.04,.085,8),mat('#d9578f'));dress.position.y=.042;body.add(dress);
+  const apron=new THREE.Mesh(new THREE.BoxGeometry(.034,.05,.004),mat('#7cc04b'));apron.position.set(0,.036,.034);apron.rotation.x=-.17;body.add(apron);
+  const skin=mat(['#f1c9a5','#d9a37c','#a8714d','#7a4d32'][Math.floor(pr()*4)]);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),skin);head.position.y=.1;body.add(head);
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(.023,8,6),mat('#7a4a2a'));hair.position.set(0,.102,-.006);hair.scale.set(1,1,.9);body.add(hair);
+  const brim=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.005,12),mat('#f2d06b'));brim.position.y=.12;body.add(brim);
+  const top=new THREE.Mesh(new THREE.CylinderGeometry(.019,.023,.02,10),mat('#f2d06b'));top.position.y=.131;body.add(top);
+  const band=new THREE.Mesh(new THREE.CylinderGeometry(.0235,.0235,.006,10),mat('#e05a8a'));band.position.y=.125;body.add(band);
+  const armGeo=new THREE.BoxGeometry(.011,.048,.011);
+  const left=new THREE.Group();left.position.set(-.027,.074,0);const la=new THREE.Mesh(armGeo,dress.material);la.position.y=-.022;left.add(la);body.add(left);
+  const right=new THREE.Group();right.position.set(.027,.074,0);const ra=new THREE.Mesh(armGeo,dress.material);ra.position.y=-.022;right.add(ra);body.add(right);
+  const can=new THREE.Group();can.position.set(.008,-.058,0);right.add(can);
+  const cb=new THREE.Mesh(new THREE.CylinderGeometry(.016,.018,.03,10),mat('#3f9a6a'));cb.position.y=-.012;can.add(cb);
+  const sp=new THREE.Mesh(new THREE.CylinderGeometry(.003,.004,.045,5),mat('#3f9a6a'));sp.position.set(0,-.004,.03);sp.rotation.x=1.0;can.add(sp);
+  const rose=new THREE.Object3D();rose.position.set(0,.008,.05);can.add(rose);
+  const hdl=new THREE.Mesh(new THREE.TorusGeometry(.011,.003,4,10,Math.PI),mat('#2f7a52'));hdl.position.y=.004;hdl.rotation.y=Math.PI/2;can.add(hdl);
+  const drops=new THREE.Group();drops.visible=false;fig.add(drops);
+  const dm=new THREE.MeshBasicMaterial({color:'#9fd8ff',transparent:true,opacity:.85});
+  for(let i=0;i<10;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(.004,4,3),dm);d.userData.ph=i/10;d.userData.x=((i*7)%5-2)*.004;drops.add(d)}
+  fig.scale.setScalar(1.15);
+  return {fig,body,left,right,can,rose,drops};
+}
+const walkerGroup=new THREE.Group();scene.add(walkerGroup);
+let walker=null;
+const WALK_SPEED=.028; // radians of planet per second
+function gardenDoor(){const S=SITES.gardener;return slerpDir(S.dir,START,.06/S.dir.angleTo(START))}
+function ringAngle(v){const t=SITE_T,b=SITE_B;return Math.atan2(v.dot(b),v.dot(t))}
+function ringPt(a,r){return START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*r)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*r)).normalize()}
+function routeBetween(a,b){ // out to the edge of the square, round it, then straight to the target
+  const rr=PLAZA*.88,pts=[a.clone()];
+  let a0=ringAngle(a),a1=ringAngle(b),da=a1-a0;
+  while(da>Math.PI)da-=Math.PI*2;while(da<-Math.PI)da+=Math.PI*2;
+  const n=Math.max(1,Math.ceil(Math.abs(da)/.2));
+  for(let i=0;i<=n;i++)pts.push(ringPt(a0+da*i/n,rr));
+  pts.push(b.clone());
+  return pts;
+}
+function syncWalker(){
+  walkerGroup.clear();walker=null;
+  const o=siteOwner('gardener');if(!o||o.left)return;
+  const parts=makeGardener(o);walkerGroup.add(parts.fig);
+  walker={...parts,pos:gardenDoor(),face:START.clone(),mode:'rest',until:performance.now()+1500,queue:[],route:null,seg:0,segT:0,target:null};
+  placeOn(parts.fig,walker.pos,0,0);faceToward(parts.fig,walker.pos,START.clone().sub(walker.pos));
+}
+let lastWalk=0;
+function updateWalker(now){
+  const dt=Math.min(.1,(now-(lastWalk||now))/1000);lastWalk=now;
+  const w=walker;if(!w||reduce)return;
+  const T=now/1000;
+  if(w.mode==='water'){
+    const k=1-(w.until-now)/3600;
+    w.right.rotation.x=-1.15;w.can.rotation.x=.75+Math.sin(T*3)*.08;w.left.rotation.x=0;
+    w.body.position.y=0;
+    // water falls from the can's rose onto the bed
+    const tip=new THREE.Vector3();w.rose.getWorldPosition(tip);w.fig.worldToLocal(tip);
+    w.drops.visible=true;
+    w.drops.children.forEach(d=>{const u=(T*2.2+d.userData.ph)%1;d.position.set(tip.x+d.userData.x,tip.y*(1-u*u),tip.z+.025*u)});
+    const h=houses.get(w.target);
+    if(h)h.g.userData.flowers.forEach((f,i)=>{const s=1+.35*Math.sin(Math.min(1,k)*Math.PI)*(.7+.3*Math.sin(i*1.7+T*4));f.scale.setScalar(s)});
+    if(now>=w.until){w.mode='idle';w.drops.visible=false;w.right.rotation.x=0;w.can.rotation.x=0;if(h)h.g.userData.flowers.forEach(f=>f.scale.setScalar(1))}
+    return;
+  }
+  if(w.mode==='rest'){
+    w.right.rotation.x=0;w.left.rotation.x=0;w.body.position.y=0;
+    if(now>=w.until)w.mode='idle';else return;
+  }
+  if(w.mode==='idle'){
+    if(!w.queue.length){w.queue=[...houses.entries()].filter(([,h])=>h.standDir).sort((a,b)=>a[1].i-b[1].i).map(([k])=>k);w.queue.push('home')}
+    let dest=null;
+    while(w.queue.length&&!dest){const k=w.queue.shift();if(k==='home')dest={k,dir:gardenDoor()};else{const h=houses.get(k);if(h&&h.standDir)dest={k,dir:h.standDir}}}
+    if(!dest){w.mode='rest';w.until=now+3000;return}
+    w.target=dest.k;w.route=routeBetween(w.pos,dest.dir);w.seg=0;w.segT=0;w.mode='walk';
+  }
+  if(w.mode==='walk'){
+    let left=dt*WALK_SPEED;
+    while(left>0&&w.seg<w.route.length-1){
+      const a=w.route[w.seg],b=w.route[w.seg+1],len=Math.max(1e-6,a.angleTo(b));
+      const remain=(1-w.segT)*len;
+      if(left>=remain){left-=remain;w.seg++;w.segT=0}else{w.segT+=left/len;left=0}
+    }
+    if(w.seg>=w.route.length-1){
+      w.pos=w.route[w.route.length-1].clone();
+      placeOn(w.fig,w.pos,0,0);
+      if(w.target==='home'){faceToward(w.fig,w.pos,START.clone().sub(w.pos));w.mode='rest';w.until=now+4000}
+      else{const h=houses.get(w.target);if(h)faceToward(w.fig,w.pos,h.bedDir.clone().sub(w.pos));w.mode='water';w.until=now+3600}
+      return;
+    }
+    const a=w.route[w.seg],b=w.route[w.seg+1];
+    w.pos=slerpDir(a,b,w.segT);
+    placeOn(w.fig,w.pos,0,0);faceToward(w.fig,w.pos,b.clone().sub(w.pos));
+    const step=Math.sin(T*11);
+    w.body.position.y=Math.abs(step)*.008;w.body.rotation.z=step*.05;
+    w.left.rotation.x=step*.5;w.right.rotation.x=-step*.35;w.can.rotation.x=step*.15;
+  }
+}
+const SITE_BUILD={doctor:buildHospital,farmer:buildFarm,builder:buildConstruction,tennis:buildTennis,gardener:buildGreenhouse};
 function syncSites(animate){
   const sig=Object.keys(SITES).map(k=>{const o=siteOwner(k);return k+':'+(o?o.id+(o.left?'x':''):'')}).join('|');
   if(sig===siteSig)return;siteSig=sig;
   siteGroup.clear();siteArms.length=0;
   for(const k of activeSites()){
     const o=siteOwner(k),S=SITES[k];
-    const g=k==='doctor'?buildHospital(o):k==='farmer'?buildFarm(o):buildConstruction(o);
+    const g=SITE_BUILD[k](o);
     placeOn(g,S.dir,0,0);faceToward(g,S.dir,START.clone().sub(S.dir));
     g.userData.site=k;siteGroup.add(g);
   }
   for(const d of decoItems)if(activeSites().some(k=>d.v.angleTo(SITES[k].dir)<SITES[k].r))d.o.visible=false;
+  syncWalker();
 }
 const siteLabels=new Map();
 function updateSiteLabels(camDir,dist){
@@ -765,12 +995,22 @@ function updateSiteLabels(camDir,dist){
     let el=siteLabels.get(k);
     if(!el){el=document.createElement('div');el.className='label site';labelsEl.append(el);siteLabels.set(k,el)}
     const icon=SITE_ICON[k]||'🏠';
-    const text=!o||o.left?`${icon} Opuštěná ${S.title.toLowerCase()}`:k==='doctor'?`${icon} Nemocnice · ředitel ${o.name}`:k==='builder'?`${icon} Stavitel ${o.name}`:`${icon} Farma · ${o.name}`;
+    const text=!o||o.left?`${icon} ${SITE_DEAD[k]}`:k==='doctor'?`${icon} Nemocnice · ředitel ${o.name}`:k==='builder'?`${icon} Stavitel ${o.name}`:`${icon} ${S.title} · ${o.name}`;
     if(el.textContent!==text)el.textContent=text;
     el.classList.toggle('dead',!o||o.left);
     const p=S.dir.clone().multiplyScalar(R+terrain(S.dir)+g.userData.height+.2).project(camera);
     el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(3+Math.round(S.dir.dot(camDir)*100));
   });
+  if(walker){ // name tag that walks with the gardener
+    const w=new THREE.Vector3();walker.fig.getWorldPosition(w);const n=w.clone().normalize();
+    if(n.dot(camDir)>.3&&dist<=R+14){
+      want.add('walker');let el=siteLabels.get('walker');
+      if(!el){el=document.createElement('div');el.className='label site';labelsEl.append(el);siteLabels.set('walker',el)}
+      const o=siteOwner('gardener'),text=`🌷 ${o?o.name:''}`;if(el.textContent!==text)el.textContent=text;
+      const p=w.add(n.multiplyScalar(.2)).project(camera);
+      el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(3+Math.round(n.dot(camDir)*100));
+    }
+  }
   for(const [k,el] of siteLabels)if(!want.has(k)){el.remove();siteLabels.delete(k)}
 }
 
@@ -983,6 +1223,7 @@ function loop(now){
     }
   }
   animateFountain(now);
+  updateWalker(now);
   if(meFig&&!reduce)meMarker.position.y=.25+Math.sin(now/300)*.025, meMarker.rotation.y=now/600;
   if(!reduce){ // residents wave: arm raised to the side, swinging back and forth
     const T=now/1000;
@@ -991,6 +1232,7 @@ function loop(now){
     for(const a of siteArms)a.arm.rotation.z=-.5+Math.sin(T*a.sp+a.ph)*.45;
     siteGroup.children.forEach(g=>{const c=g.userData.crane;if(!c||!c.alive)return;
       c.top.rotation.y=Math.sin(T*.25)*1.1;c.trolley.position.x=.45+Math.sin(T*.4)*.22;c.trolley.rotation.z=Math.sin(T*1.3)*.04});
+    siteGroup.children.forEach(g=>{if(g.userData.tennis)animateTennis(g.userData.tennis,T)});
   }else{for(const [,h] of houses)(h.g.userData.waveArms||[]).forEach(a=>a.arm.rotation.z=-.5)}
   if(!fly&&!panning)controls.update();
   renderer.render(scene,camera);
@@ -1092,7 +1334,7 @@ const meMarker=new THREE.Group();
 })();
 const meTag=document.createElement('div');meTag.className='label me-tag';meTag.textContent='TY';meTag.hidden=true;
 document.getElementById('labels').append(meTag);
-function findFig(id){let f=null;for(const grp of [townGroup,siteGroup])grp.traverse(o=>{if(!f&&o.userData&&o.userData.memberId===id)f=o});return f}
+function findFig(id){let f=null;for(const grp of [townGroup,siteGroup,walkerGroup])grp.traverse(o=>{if(!f&&o.userData&&o.userData.memberId===id)f=o});return f}
 function setMeInfo(nodes){meInfo.textContent='';nodes.forEach(n=>meInfo.append(n))}
 function igLink(){const a=document.createElement('a');a.href='https://www.instagram.com/planetafolloweru/';a.target='_blank';a.rel='noopener';a.textContent='@planetafolloweru';return a}
 function applyMe(flyThere){
@@ -1114,7 +1356,7 @@ function applyMe(flyThere){
     return;
   }
   if(r.home==null&&SITES[r.role]){
-    setMeInfo([r.role==='doctor'?'Jsi ředitel a hlavní lékař nemocnice 🏥.':r.role==='farmer'?'Jsi farmář/ka a patří ti farma s polem 🌾.':r.role==='builder'?'Jsi stavitel planety 🏗️. Patří ti stavební firma s jeřábem.':`Patří ti stavba: ${SITES[r.role].title}.`]);
+    setMeInfo([r.role==='doctor'?'Jsi ředitel a hlavní lékař nemocnice 🏥.':r.role==='farmer'?'Jsi farmář/ka a patří ti farma s polem 🌾.':r.role==='builder'?'Jsi stavitel planety 🏗️. Patří ti stavební firma s jeřábem.':r.role==='tennis'?'Patří ti dům s vlastním tenisovým kurtem 🎾.':r.role==='gardener'?'Jsi zahradník/ice planety 🌷. Chodíš mezi domy a zaléváš kytky.':`Patří ti stavba: ${SITES[r.role].title}.`]);
   }else{
     const home=homes[r.home];
     const others=home?home.members.filter(m=>!m.left&&m.id!==meId).map(m=>m.name):[];
