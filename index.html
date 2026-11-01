@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Každý follower @planetafolloweru dostane na planetě svůj dům. Najdi svoji postavu.">
+<meta property="og:title" content="Planeta followerů">
+<meta property="og:description" content="Každý follower @planetafolloweru dostane na planetě svůj dům. Najdi svoji postavu.">
+<meta property="og:url" content="https://zemefolloweru.cz/">
+<meta name="theme-color" content="#0b0a1a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='34' r='22' fill='%23d9a96f'/%3E%3Cellipse cx='32' cy='16' rx='14' ry='6' fill='%2379b866'/%3E%3Cpath d='M26 14h6v-5l-3-3-3 3z' fill='%23c4523a'/%3E%3C/svg%3E">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Planeta followerů</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito+Sans:opsz,wght@6..12,400;6..12,700;6..12,800&display=swap">
+<style>
+/* Layout: full-bleed 3D planet in deep space; slim HUD floats on top, residents list slides up from below. Single night-space look by choice. */
+:root{
+  --space:#0b0a1a;
+  --panel:rgba(20,18,40,.82); --panel-line:rgba(255,226,180,.18);
+  --ink:#fff4e2; --ink-dim:#c9bfd8; --sun:#ffcc66;
+  --display:"Bungee",ui-rounded,system-ui,sans-serif;
+  --body:"Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--space);color:var(--ink);font-family:var(--body);overflow:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--space)}
+#world{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.hud{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:0;right:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:10px;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:5}
+.card{pointer-events:auto;background:var(--panel);border:1px solid var(--panel-line);border-radius:14px;padding:10px 14px;backdrop-filter:blur(6px)}
+.brand h1{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(18px,4.6vw,26px);letter-spacing:.02em;line-height:1.05;text-wrap:balance}
+.brand .tier{margin-top:4px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--sun);font-weight:800}
+.stats{display:flex;gap:16px;text-align:right}
+.stat b{display:block;font-family:var(--display);font-weight:400;font-size:22px;font-variant-numeric:tabular-nums;line-height:1}
+.stat span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim)}
+.progress{margin-top:8px;height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
+.progress i{display:block;height:100%;background:var(--sun);width:0;transition:width .6s}
+.next{margin-top:4px;font-size:11px;color:var(--ink-dim)}
+.ticker{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 74px);z-index:5;max-width:calc(100% - 32px);text-align:center;font-weight:700;font-size:14px;transition:opacity .4s}
+.ticker em{font-style:normal;color:var(--sun)}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:6;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+button{font:inherit;font-weight:800;color:var(--ink);background:var(--panel);border:1px solid var(--panel-line);border-radius:999px;padding:10px 16px;cursor:pointer}
+button:hover{border-color:var(--sun)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+button.primary{background:var(--sun);color:#2b1d0e;border-color:transparent}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:7;max-height:62vh;display:flex;flex-direction:column;background:var(--panel);border-top:1px solid var(--panel-line);border-radius:18px 18px 0 0;backdrop-filter:blur(10px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px calc(env(safe-area-inset-bottom,0px) + 14px);box-sizing:border-box}
+.sheet header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.sheet h2{margin:0;font-family:var(--display);font-weight:400;font-size:18px}
+.sheet ol{list-style:none;margin:0;padding:0;overflow:auto;min-height:0;display:grid;gap:2px}
+.sheet li{display:grid;grid-template-columns:4.4em 1fr auto;gap:10px;align-items:baseline;padding:6px 4px;border-bottom:1px solid var(--panel-line);cursor:pointer}
+.sheet li:hover{color:var(--sun)}
+.sheet li .no{font-variant-numeric:tabular-nums;color:var(--ink-dim);font-size:12px}
+.sheet li .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.sheet li .dt{font-size:12px;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+.sheet li.empty{display:block;color:var(--ink-dim);cursor:default}
+form.add{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+form.add input{flex:1 1 160px;min-width:0;font:inherit;color:var(--ink);background:rgba(0,0,0,.25);border:1px solid var(--panel-line);border-radius:999px;padding:9px 14px}
+.note{font-size:12px;color:var(--ink-dim);margin:0 0 8px}
+.welcome{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:rgba(8,7,20,.55);backdrop-filter:blur(3px)}
+.welcome-card{width:min(380px,100%);box-sizing:border-box;background:var(--panel);border:1px solid var(--panel-line);border-radius:20px;padding:24px 22px;display:flex;flex-direction:column;gap:12px;text-align:center}
+.welcome-card h2{margin:0;font-family:var(--display);font-weight:400;font-size:24px;line-height:1.1;text-wrap:balance}
+.welcome-card p{margin:0;color:var(--ink-dim);font-size:14px}
+.nick{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.3);border:1px solid var(--panel-line);border-radius:999px;padding:4px 6px 4px 16px}
+.nick span{color:var(--sun);font-weight:800;font-size:18px}
+.nick input{flex:1;min-width:0;font:inherit;font-size:17px;font-weight:700;color:var(--ink);background:transparent;border:0;padding:8px 4px;outline:none}
+.nick:focus-within{outline:2px solid var(--sun);outline-offset:2px}
+button.ghost{background:transparent;border-color:transparent;color:var(--ink-dim);font-weight:700}
+button.link{background:none;border:0;padding:0;color:var(--sun);font-weight:700;font-size:12px;text-decoration:underline;cursor:pointer}
+.welcome-msg{min-height:1.2em;color:var(--sun)!important;font-weight:700}
+.welcome-msg a{color:var(--sun)}
+.me{position:fixed;left:max(16px,env(safe-area-inset-left,0px));top:calc(env(safe-area-inset-top,0px) + 150px);z-index:5;max-width:min(260px,calc(100% - 32px));font-size:13px}
+.me-top{display:flex;gap:10px;align-items:baseline;justify-content:space-between}
+.me-top b{font-size:15px;color:var(--sun);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.me-info{margin-top:4px;color:var(--ink-dim);line-height:1.4}
+.me-info a{color:var(--sun)}
+.label.me-tag{background:var(--sun);color:#2b1d0e;font-family:var(--display);font-weight:400;font-size:12px;padding:3px 10px}
+.status{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 120px);transform:translateX(-50%);z-index:4;text-align:center;width:min(340px,calc(100% - 32px));pointer-events:none}
+.status h3{margin:0 0 6px;font-family:var(--display);font-weight:400;font-size:20px}
+.status p{margin:0;color:var(--ink-dim);font-size:14px}
+#labels{position:fixed;inset:0;z-index:3;pointer-events:none;overflow:hidden}
+.label{position:absolute;left:0;top:0;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:1px;white-space:nowrap;font-weight:800;font-size:11px;line-height:1.25;padding:4px 9px;border-radius:9px;background:rgba(20,18,40,.88);color:var(--ink);border:1px solid var(--panel-line)}
+.label .new{color:var(--sun)}
+.label .gone{color:var(--ink-dim);font-style:italic}
+.label.grave{background:rgba(40,38,48,.9);color:#d9d4cc;font-size:10px;padding:3px 8px}
+.label.gate{background:#2b2733;color:#e8e0d0;font-family:var(--display);font-weight:400;letter-spacing:.04em}
+.sheet li.dead .nm{text-decoration:line-through;color:var(--ink-dim)}
+.label.hl{background:var(--sun);color:#2b1d0e;border-color:transparent}
+.label.hl .new{color:#7a3a10}
+.fallback{position:fixed;inset:0;display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));text-align:center;color:var(--ink-dim)}
+@media (max-width:520px){.stats{gap:10px}.stat b{font-size:18px}}
+</style>
+
+<canvas id="world" aria-label="3D planeta, každý dům patří jednomu followerovi"></canvas>
+<div id="labels"></div>
+
+<div class="hud">
+  <div class="card brand">
+    <h1>Planeta followerů</h1>
+    <div class="tier" id="tier">Pustá planeta</div>
+    <div class="progress" aria-hidden="true"><i id="prog"></i></div>
+    <div class="next" id="next">Do osady chybí 1 follower</div>
+  </div>
+  <div class="card stats">
+    <div class="stat"><b id="pop">0</b><span>obyvatel</span></div>
+    <div class="stat"><b id="homes">0</b><span>domů</span></div>
+    <div class="stat"><b id="today">0</b><span>dnes</span></div>
+  </div>
+</div>
+
+<div class="status" id="status">
+  <h3>Pustá planeta</h3>
+  <p>Zatím tu jsou jen kameny a kaktusy. První follower si tu postaví první dům.</p>
+</div>
+
+<div class="ticker" id="ticker" hidden></div>
+
+<section class="welcome" id="welcome" aria-labelledby="welcomeTitle">
+  <form class="welcome-card" id="welcomeForm">
+    <h2 id="welcomeTitle">Vítej na Planetě followerů</h2>
+    <p>Napiš svůj nick z Instagramu a najdeme tvůj dům.</p>
+    <label class="nick" for="nickInput"><span>@</span><input id="nickInput" name="nickInput" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="30" placeholder="tvuj_nick" required></label>
+    <button class="primary" type="submit">Najít moji postavu</button>
+    <button class="ghost" type="button" id="justLook">Jen se rozhlédnout</button>
+    <p class="welcome-msg" id="welcomeMsg" role="status"></p>
+  </form>
+</section>
+
+<aside class="me card" id="meCard" hidden aria-live="polite">
+  <div class="me-top"><b id="meName"></b><button class="link" type="button" id="meChange">změnit</button></div>
+  <div id="meInfo" class="me-info"></div>
+</aside>
+
+<div class="bar" id="bar">
+  <button id="meBtn" type="button" hidden>Moje postava</button>
+  <button id="games" type="button">Minihry</button>
+  <button id="openList" type="button">Obyvatelé</button>
+  <button id="whole" type="button">Celá planeta</button>
+  <button id="town" type="button">Ke městu</button>
+</div>
+
+<section class="sheet" id="sheet" hidden aria-label="Seznam obyvatel">
+  <header>
+    <h2>Obyvatelé</h2>
+    <button id="closeList" type="button">Zavřít</button>
+  </header>
+  <form class="add" id="addForm" hidden>
+    <input id="addName" name="addName" placeholder="@uživatel z Instagramu" autocomplete="off" maxlength="40" required>
+    <button class="primary" type="submit">Postavit dům</button>
+  </form>
+  <p class="note" id="addNote" hidden></p>
+  <ol id="list"></ol>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(() => {
+if(!window.THREE){document.body.insertAdjacentHTML('beforeend','<div class="fallback">3D zobrazení se nenačetlo. Obnov stránku.</div>');return}
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const R = 10;                 // planet radius
+const SLOTS = 1500;           // house plots on the surface
+let residents = [], homes = [], firstLoad = true, selected = null;
+// each house holds 4–6 people (fixed per house); a new house goes up when the current one is full
+function capOf(i){return 4+hash('cap'+i)%3}
+function groupHomes(){
+  homes=[];let cur=null;
+  residents.forEach(r=>{
+    if(!cur||cur.members.length>=cur.cap){const i=homes.length;cur={key:'h'+i,i,cap:capOf(i),members:[]};homes.push(cur)}
+    cur.members.push(r);r.home=cur.i;
+  });
+}
+
+// ---------- helpers ----------
+function hash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function rnd(seed){let s=seed>>>0;return()=>{s=Math.imul(s^(s>>>15),2246822507);s=Math.imul(s^(s>>>13),3266489909);s^=s>>>16;return(s>>>0)/4294967296}}
+function terrain(v){ // gentle hills, v is unit vector
+  return .35*Math.sin(v.x*3.1+1.3)*Math.sin(v.y*2.7+.4)*Math.cos(v.z*2.3) + .18*Math.sin(v.x*7.3+v.z*5.1) * Math.cos(v.y*6.2);
+}
+
+// ---------- house plots: start at one point, spiral outward over the whole planet ----------
+const START = new THREE.Vector3(0.35, 0.8, 0.48).normalize();
+const PLOTS = [];
+const PLAZA = 0.075;          // angular radius of the village square
+const FOUNTAIN_AT = 10;       // houses needed before the fountain appears
+// cemetery for unfollowers: a little way out of the village, reserved from house plots
+const CEM = START.clone().add(tangentOf(START).multiplyScalar(.34)).normalize();
+const CEM_R = .1;             // angular radius of the cemetery ground
+(function(){
+  const g=Math.PI*(3-Math.sqrt(5));
+  for(let i=0;i<SLOTS;i++){
+    const y=1-(i/(SLOTS-1))*2, r=Math.sqrt(1-y*y), th=g*i;
+    const v=new THREE.Vector3(Math.cos(th)*r,y,Math.sin(th)*r);
+    if(v.angleTo(START)<PLAZA)continue; // keep the village square free for the fountain
+    if(v.angleTo(CEM)<CEM_R*1.25)continue; // and the cemetery
+    PLOTS.push({v, k:v.angleTo(START)+(hash('p'+i)%1000)/90000});
+  }
+  PLOTS.sort((a,b)=>a.k-b.k);
+})();
+
+// ---------- scene ----------
+const canvas=document.getElementById('world');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+const scene=new THREE.Scene();
+scene.background=new THREE.Color('#0b0a1a');
+const camera=new THREE.PerspectiveCamera(45,1,.1,500);
+camera.position.copy(START.clone().multiplyScalar(26));
+let controls=new THREE.OrbitControls(camera,canvas);
+controls.enableDamping=true;controls.dampingFactor=.08;controls.enablePan=false;
+controls.minDistance=R+2.2;controls.maxDistance=70;controls.rotateSpeed=.5;
+controls.autoRotate=!reduce;controls.autoRotateSpeed=.35;
+
+scene.add(new THREE.HemisphereLight('#bcd4ff','#3a2a3a',.55));
+const sun=new THREE.DirectionalLight('#fff0d6',1.05);sun.position.set(30,25,20);scene.add(sun);
+scene.add(new THREE.AmbientLight('#ffffff',.12));
+
+// stars
+(function(){
+  const n=1800,pos=new Float32Array(n*3),r=rnd(7);
+  for(let i=0;i<n;i++){const v=new THREE.Vector3(r()*2-1,r()*2-1,r()*2-1).normalize().multiplyScalar(150+r()*120);pos.set([v.x,v.y,v.z],i*3)}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:'#ffffff',size:.9,sizeAttenuation:true,transparent:true,opacity:.8})));
+})();
+
+// planet: low-poly faces, coloured per face
+const pg=new THREE.IcosahedronGeometry(R,24);
+const pp=pg.attributes.position;
+const faceCenters=[];
+for(let i=0;i<pp.count;i++){
+  const v=new THREE.Vector3().fromBufferAttribute(pp,i).normalize();
+  v.multiplyScalar(R+terrain(v));pp.setXYZ(i,v.x,v.y,v.z);
+}
+for(let f=0;f<pp.count;f+=3){
+  const c=new THREE.Vector3();for(let k=0;k<3;k++)c.add(new THREE.Vector3().fromBufferAttribute(pp,f+k));
+  faceCenters.push(c.normalize());
+}
+pg.computeVertexNormals();
+const colors=new Float32Array(pp.count*3);
+pg.setAttribute('color',new THREE.BufferAttribute(colors,3));
+const planet=new THREE.Mesh(pg,new THREE.MeshLambertMaterial({vertexColors:true,flatShading:true}));
+scene.add(planet);
+// atmosphere glow
+const atm=new THREE.Mesh(new THREE.SphereGeometry(R*1.12,48,32),new THREE.ShaderMaterial({
+  transparent:true,side:THREE.BackSide,depthWrite:false,
+  uniforms:{c:{value:new THREE.Color('#e9a46a')},s:{value:.6}},
+  vertexShader:'varying vec3 n;void main(){n=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader:'uniform vec3 c;uniform float s;varying vec3 n;void main(){float i=pow(.72-dot(n,vec3(0,0,1.)),3.);gl_FragColor=vec4(c,i*s);}'
+}));
+scene.add(atm);
+
+const SAND=[new THREE.Color('#d9a96f'),new THREE.Color('#cf9b62'),new THREE.Color('#dfb37c'),new THREE.Color('#c48d58')];
+const DRY=[new THREE.Color('#b9ad74'),new THREE.Color('#aea36b')];
+const CEMG=[new THREE.Color('#6f7f55'),new THREE.Color('#677650')];
+const GRASS=[new THREE.Color('#79b866'),new THREE.Color('#6eae5c'),new THREE.Color('#84c070')];
+function paintPlanet(){
+  const built=homes.map(h=>PLOTS[h.i]&&PLOTS[h.i].v).filter(Boolean);
+  if(built.length)built.push(START);
+  const greenA=.11, dryA=.2;
+  for(let f=0;f<faceCenters.length;f++){
+    const c=faceCenters[f];let md=9;
+    for(let j=0;j<built.length;j++){const d=c.angleTo(built[j]);if(d<md){md=d;if(md<greenA)break}}
+    const h=hash('f'+f);
+    let col= c.angleTo(CEM)<CEM_R*1.02?CEMG[h%2]: md<greenA?GRASS[h%3]: md<dryA?DRY[h%2]: SAND[h%4];
+    for(let k=0;k<3;k++)colors.set([col.r,col.g,col.b],(f*3+k)*3);
+  }
+  pg.attributes.color.needsUpdate=true;
+  // atmosphere turns from dusty to blue as the planet comes alive
+  const t=Math.min(1,homes.length/40);
+  atm.material.uniforms.c.value.set('#e9a46a').lerp(new THREE.Color('#7fb8ff'),t);
+  atm.material.uniforms.s.value=.6+t*.4;
+}
+
+// ---------- surface objects ----------
+function placeOn(obj,v,lift=0,spin=0){
+  const n=v.clone().normalize();
+  obj.position.copy(n.clone().multiplyScalar(R+terrain(n)+lift));
+  obj.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n);
+  obj.rotateY(spin);
+}
+const deco=new THREE.Group();scene.add(deco);
+const cactusMat=new THREE.MeshLambertMaterial({color:'#5f8b4c',flatShading:true});
+const rockMat=new THREE.MeshLambertMaterial({color:'#9a7b62',flatShading:true});
+const decoItems=[];
+(function(){
+  const r=rnd(42);
+  for(let i=0;i<420;i++){
+    const v=new THREE.Vector3(r()*2-1,r()*2-1,r()*2-1).normalize();
+    let o;
+    if(r()<.4){
+      o=new THREE.Group();
+      const t=new THREE.Mesh(new THREE.CylinderGeometry(.06,.07,.5,6),cactusMat);t.position.y=.25;o.add(t);
+      const a=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.22,5),cactusMat);a.position.set(.1,.3,0);o.add(a);
+    }else{
+      o=new THREE.Mesh(new THREE.DodecahedronGeometry(.1+r()*.18,0),rockMat);o.scale.y=.6;
+    }
+    placeOn(o,v,0,r()*6);deco.add(o);decoItems.push({o,v});
+  }
+})();
+const treeTrunk=new THREE.MeshLambertMaterial({color:'#6b4a2e'});
+const treeLeaf=[new THREE.MeshLambertMaterial({color:'#3f7f4e',flatShading:true}),new THREE.MeshLambertMaterial({color:'#4f9a5c',flatShading:true})];
+function makeTree(s){
+  const g=new THREE.Group();
+  const t=new THREE.Mesh(new THREE.CylinderGeometry(.03*s,.04*s,.2*s,5),treeTrunk);t.position.y=.1*s;g.add(t);
+  const l=new THREE.Mesh(new THREE.ConeGeometry(.16*s,.42*s,6),treeLeaf[Math.random()<.5?0:1]);l.position.y=.38*s;g.add(l);
+  return g;
+}
+
+const ROOFS=['#c4523a','#b5643a','#8a4f7d','#3f6f8f','#4f7a4a','#9b3b3b','#5b5a8a','#a8782f'];
+const WALLS=['#f3e2c3','#e9d1ad','#dcd3c4','#f0d7b8','#cfe0d6','#e7c9c1','#d9d2e6','#f2e6a8'];
+const matCache={};
+const mat=c=>matCache[c]||(matCache[c]=new THREE.MeshLambertMaterial({color:c,flatShading:true}));
+const winMat=new THREE.MeshBasicMaterial({color:'#ffd98a'});
+const darkWin=new THREE.MeshBasicMaterial({color:'#3a3352'});
+function makeHouse(home){
+  const idx=home.i;
+  const rr=rnd(hash(home.key+'|'+home.members[0].id));
+  const floorsMax= idx<3?1: idx<8?2: idx<20?3: idx<50?4:6;
+  const floors=1+Math.floor(rr()*floorsMax);
+  const roof=ROOFS[Math.floor(rr()*ROOFS.length)], wall=WALLS[Math.floor(rr()*WALLS.length)];
+  const w=.32+rr()*.1, d=.3+rr()*.1, fh=.2, h=.12+floors*fh;
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(wall));body.position.y=h/2;g.add(body);
+  if(floors>=3&&rr()<.6){
+    const top=new THREE.Mesh(new THREE.BoxGeometry(w*1.06,.05,d*1.06),mat(roof));top.position.y=h+.025;g.add(top);
+  }else{
+    const rf=new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,d)*.78,.24,4),mat(roof));rf.position.y=h+.12;rf.rotation.y=Math.PI/4;g.add(rf);
+    if(rr()<.45){const ch=new THREE.Mesh(new THREE.BoxGeometry(.05,.14,.05),mat('#6a5048'));ch.position.set(w*.25,h+.14,0);g.add(ch)}
+  }
+  // windows: lit in proportion to how many people live here
+  const living=home.members.filter(m=>!m.left);
+  const waveArms=[];
+  const total=floors*3, lit=living.length?Math.max(1,Math.round(living.length/home.cap*total)):0;
+  let wi=0;
+  for(let f=0;f<floors;f++){
+    const y=.12+f*fh+fh*.5;
+    for(const x of [-w*.25,w*.25]){const m=new THREE.Mesh(new THREE.PlaneGeometry(.06,.07),wi++<lit?winMat:darkWin);m.position.set(x,y,d/2+.002);g.add(m)}
+    const s=new THREE.Mesh(new THREE.PlaneGeometry(.06,.07),wi++<lit?winMat:darkWin);s.position.set(w/2+.002,y,0);s.rotation.y=Math.PI/2;g.add(s);
+  }
+  // one little figure per resident standing in front of the house
+  living.forEach((m,k)=>{
+    const pr=rnd(hash(m.id));
+    const fig=new THREE.Group();fig.userData.memberId=m.id;
+    const shirt=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.08,6),mat(ROOFS[Math.floor(pr()*ROOFS.length)]));shirt.position.y=.04;fig.add(shirt);
+    const skin=mat(['#f1c9a5','#d9a37c','#a8714d','#7a4d32'][Math.floor(pr()*4)]);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),skin);head.position.y=.1;fig.add(head);
+    // arms hang from the shoulders; the right one waves (animated in the loop)
+    const armGeo=new THREE.BoxGeometry(.011,.048,.011);
+    const left=new THREE.Group();left.position.set(-.029,.074,0);
+    const la=new THREE.Mesh(armGeo,shirt.material);la.position.y=-.022;left.add(la);left.rotation.z=-.25;fig.add(left);
+    const right=new THREE.Group();right.position.set(.029,.074,0);
+    const ra=new THREE.Mesh(armGeo,shirt.material);ra.position.y=.022;right.add(ra);
+    const hand=new THREE.Mesh(new THREE.SphereGeometry(.008,6,4),skin);hand.position.y=.048;right.add(hand);
+    fig.add(right);
+    waveArms.push({arm:right,ph:pr()*6.28,sp:6+pr()*3});
+    const n=living.length;
+    fig.position.set((k-(n-1)/2)*.08,0,d/2+.09+(k%2)*.04);
+    g.add(fig);
+  });
+  const door=new THREE.Mesh(new THREE.PlaneGeometry(.07,.12),mat('#5a3b2a'));door.position.set(0,.06,d/2+.003);if(floors===1)door.position.x=0;else door.position.x=0;g.add(door);
+  if(rr()<.7){const t=makeTree(1);t.position.set((rr()<.5?-1:1)*(w/2+.14),0,(rr()-.5)*.2);g.add(t)}
+  g.userData={id:home.key,height:h+.3,waveArms};
+  g.traverse(o=>{if(o.isMesh)o.userData.house=g});
+  return g;
+}
+
+const houses=new Map(); // home key -> {g,v,i,sig,born,bump}
+const townGroup=new THREE.Group();scene.add(townGroup);
+const extraTrees=new THREE.Group();scene.add(extraTrees);
+function syncHouses(animate){
+  const keys=new Set(homes.map(h=>h.key));
+  for(const [k,h] of houses){if(!keys.has(k)){townGroup.remove(h.g);houses.delete(k)}}
+  const now=performance.now();
+  homes.forEach(home=>{
+    const P=PLOTS[home.i];if(!P)return;
+    const sig=home.members.map(m=>m.id+(m.left?'x':'')).join('|');
+    let h=houses.get(home.key);
+    if(h&&h.sig===sig)return;
+    const isNew=!h;
+    if(h)townGroup.remove(h.g);
+    const g=makeHouse(home);placeOn(g,P.v,0,(hash(home.key)%628)/100);
+    h={g,v:P.v,i:home.i,sig,born:animate&&isNew?now:null,bump:animate&&!isNew?now:null};
+    if(h.born&&!reduce)g.scale.setScalar(.001);
+    townGroup.add(g);houses.set(home.key,h);
+  });
+  // hide desert props inside the green, sprinkle trees between houses
+  const built=homes.map(h=>PLOTS[h.i]&&PLOTS[h.i].v).filter(Boolean);
+  if(built.length)built.push(START);
+  for(const d of decoItems){d.o.visible=!built.some(b=>b.angleTo(d.v)<.16)&&d.v.angleTo(CEM)>CEM_R*1.15}
+  const pathPts=buildPaths();
+  extraTrees.clear();
+  const rr=rnd(99);
+  built.forEach((b,i)=>{
+    if(i%2)return;
+    const off=new THREE.Vector3(rr()-.5,rr()-.5,rr()-.5).multiplyScalar(.09);
+    const v=b.clone().add(off).normalize();
+    if(built.some(x=>x.angleTo(v)<.035))return;
+    if(v.angleTo(START)<PLAZA*1.1||v.angleTo(CEM)<CEM_R*1.1||pathPts.some(p=>p.angleTo(v)<.018))return;
+    const t=makeTree(.9+rr()*.4);placeOn(t,v,0,rr()*6);extraTrees.add(t);
+  });
+  syncFountain(animate);
+}
+
+// ---------- cobblestone paths and the village square ----------
+// Each house is linked to its nearest neighbour that sits closer to the square
+// (or to the square itself), so the paths grow like a little road network.
+const PATH_MAX=40000;
+const pathMesh=new THREE.InstancedMesh(new THREE.BoxGeometry(.12,.025,.12),new THREE.MeshLambertMaterial({color:'#ffffff',flatShading:true}),PATH_MAX);
+pathMesh.count=0;scene.add(pathMesh);
+const STONES=[new THREE.Color('#d8c7a2'),new THREE.Color('#cbb891'),new THREE.Color('#e2d4b2'),new THREE.Color('#bfae8a')];
+const _m=new THREE.Matrix4(),_q=new THREE.Quaternion(),_s=new THREE.Vector3(1,1,1),_up=new THREE.Vector3(0,1,0);
+function slerpDir(a,b,t){const ang=a.angleTo(b);if(ang<1e-6)return a.clone();const s=Math.sin(ang);return a.clone().multiplyScalar(Math.sin((1-t)*ang)/s).add(b.clone().multiplyScalar(Math.sin(t*ang)/s)).normalize()}
+function buildPaths(){
+  const pts=[];
+  if(!homes.length){pathMesh.count=0;pathMesh.instanceMatrix.needsUpdate=true;return pts}
+  const hv=homes.map(h=>PLOTS[h.i]&&PLOTS[h.i].v).filter(Boolean);
+  const houseClear=.026, step=.0095;
+  const nearHouse=p=>hv.some(v=>v.angleTo(p)<houseClear);
+  // village square: a disc of paving
+  for(let r=0;r<PLAZA*.82;r+=step){
+    const ring=Math.max(1,Math.round(2*Math.PI*r/step));
+    for(let k=0;k<ring;k++){
+      const a=k/ring*Math.PI*2+(r*37);
+      const tng=tangentOf(START),bit=new THREE.Vector3().crossVectors(START,tng);
+      const p=START.clone().add(tng.multiplyScalar(Math.cos(a)*r)).add(bit.multiplyScalar(Math.sin(a)*r)).normalize();
+      pts.push(p);
+    }
+  }
+  // one path per house
+  hv.forEach(v=>{
+    const myAng=v.angleTo(START);
+    let target=START.clone(),best=myAng;
+    hv.forEach(w=>{if(w!==v&&w.angleTo(START)<myAng-.01){const d=v.angleTo(w);if(d<best){best=d;target=w}}});
+    const len=v.angleTo(target),n=Math.ceil(len/step);
+    for(let s=1;s<n;s++){
+      const p=slerpDir(v,target,s/n);
+      if(nearHouse(p)||p.angleTo(START)<PLAZA*.8)continue;
+      pts.push(p);
+    }
+  });
+  { // road out of the village to the cemetery gate
+    const len=START.angleTo(CEM_GATE),n=Math.ceil(len/step);
+    for(let s=1;s<n;s++){const p=slerpDir(START,CEM_GATE,s/n);if(nearHouse(p)||p.angleTo(START)<PLAZA*.8)continue;pts.push(p)}
+    for(let s=1;s<6;s++)pts.push(slerpDir(CEM_GATE,CEM,s*.12)); // a few stones inside the gate
+  }
+  const count=Math.min(PATH_MAX,pts.length);
+  for(let i=0;i<count;i++){
+    const n=pts[i];
+    const pos=n.clone().multiplyScalar(R+terrain(n)+.008);
+    _q.setFromUnitVectors(_up,n);
+    _q.multiply(new THREE.Quaternion().setFromAxisAngle(_up,(hash('s'+i)%628)/100));
+    const sc=.8+(hash('z'+i)%40)/100;_s.set(sc,1,sc);
+    _m.compose(pos,_q,_s);pathMesh.setMatrixAt(i,_m);
+    pathMesh.setColorAt(i,STONES[hash('c'+i)%4]);
+  }
+  pathMesh.count=count;pathMesh.instanceMatrix.needsUpdate=true;
+  if(pathMesh.instanceColor)pathMesh.instanceColor.needsUpdate=true;
+  return pts;
+}
+
+// ---------- fountain on the square, appears with the 10th house ----------
+const fountain=new THREE.Group();
+(function(){
+  const stone=new THREE.MeshLambertMaterial({color:'#bdb3a3',flatShading:true});
+  const stoneDark=new THREE.MeshLambertMaterial({color:'#9c9284',flatShading:true});
+  const water=new THREE.MeshLambertMaterial({color:'#4fb3e8',emissive:'#1b5f8a',emissiveIntensity:.35,transparent:true,opacity:.9});
+  const basin=new THREE.Mesh(new THREE.CylinderGeometry(.42,.46,.12,14),stone);basin.position.y=.06;fountain.add(basin);
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(.42,.035,6,18),stoneDark);rim.rotation.x=Math.PI/2;rim.position.y=.125;fountain.add(rim);
+  const pool=new THREE.Mesh(new THREE.CylinderGeometry(.39,.39,.02,18),water);pool.position.y=.11;fountain.add(pool);
+  const pillar=new THREE.Mesh(new THREE.CylinderGeometry(.05,.07,.32,8),stone);pillar.position.y=.27;fountain.add(pillar);
+  const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.16,.07,.07,12),stone);bowl.position.y=.44;fountain.add(bowl);
+  const bowlWater=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.015,12),water);bowlWater.position.y=.47;fountain.add(bowlWater);
+  const drops=new THREE.Group();drops.name='drops';
+  const dropMat=new THREE.MeshLambertMaterial({color:'#bfe8ff',emissive:'#4fb3e8',emissiveIntensity:.5,transparent:true,opacity:.85});
+  for(let i=0;i<28;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(.018,6,4),dropMat);d.userData={a:i/28*Math.PI*2,ph:(i*0.37)%1};drops.add(d)}
+  fountain.add(drops);
+  fountain.userData={pool,bowlWater,drops};
+  placeOn(fountain,START,0,0);
+  fountain.visible=false;scene.add(fountain);
+})();
+let fountainBorn=null;
+function syncFountain(animate){
+  const want=homes.length>=FOUNTAIN_AT;
+  if(want&&!fountain.visible){
+    fountain.visible=true;
+    if(animate&&!reduce){fountainBorn=performance.now();fountain.scale.setScalar(.001)}
+    if(animate)setTimeout(()=>announceText('Ve vesnici vyrostla fontána! 💧'),5300);
+  }else if(!want)fountain.visible=false;
+}
+function animateFountain(now){
+  if(!fountain.visible)return;
+  if(fountainBorn){const t=Math.min(1,(now-fountainBorn)/1100);fountain.scale.setScalar(Math.max(.001,1-Math.pow(1-t,3)+Math.sin(t*Math.PI)*.12));if(t>=1){fountainBorn=null;fountain.scale.setScalar(1)}}
+  if(reduce)return;
+  const {drops,pool,bowlWater}=fountain.userData;
+  const T=now/1000;
+  drops.children.forEach(d=>{
+    const u=(T*.9+d.userData.ph)%1;            // 0..1 along the arc
+    const r=.03+u*.24, h=.5+Math.sin(u*Math.PI)*.22-u*.36;
+    d.position.set(Math.cos(d.userData.a)*r,h,Math.sin(d.userData.a)*r);
+  });
+  pool.scale.set(1+Math.sin(T*3)*.01,1,1+Math.cos(T*2.6)*.01);
+  bowlWater.position.y=.47+Math.sin(T*5)*.004;
+}
+
+// ---------- cemetery for unfollowers ----------
+// Local frame at the cemetery: t1 points back toward the village (the gate side), t2 across.
+const cemT1=START.clone().sub(CEM.clone().multiplyScalar(CEM.dot(START))).normalize();
+const cemT2=new THREE.Vector3().crossVectors(CEM,cemT1).normalize();
+function cemAt(a,b){return CEM.clone().add(cemT1.clone().multiplyScalar(a)).add(cemT2.clone().multiplyScalar(b)).normalize()}
+const CEM_GATE=cemAt(CEM_R*.97,0);
+function faceToward(obj,n,dir){ // turn an object standing on n so its +z looks along dir
+  const z=new THREE.Vector3(0,0,1).applyQuaternion(obj.quaternion);
+  const d=dir.clone().sub(n.clone().multiplyScalar(dir.dot(n))).normalize();
+  obj.rotateY(Math.atan2(new THREE.Vector3().crossVectors(z,d).dot(n),z.dot(d)));
+}
+const cemetery=new THREE.Group();scene.add(cemetery);
+const graveGroup=new THREE.Group();scene.add(graveGroup);
+(function(){
+  const iron=new THREE.MeshLambertMaterial({color:'#2f2c33',flatShading:true});
+  const pillarMat=new THREE.MeshLambertMaterial({color:'#8d8790',flatShading:true});
+  // fence of iron posts with a gap for the gate
+  for(let a=0;a<Math.PI*2;a+=.11){
+    if(Math.abs(Math.atan2(Math.sin(a),Math.cos(a)))<.22)continue; // gate gap facing the village
+    const v=cemAt(Math.cos(a)*CEM_R*.95,Math.sin(a)*CEM_R*.95);
+    const post=new THREE.Mesh(new THREE.BoxGeometry(.035,.2,.035),iron);post.position.y=.1;
+    const g=new THREE.Group();g.add(post);placeOn(g,v,0,a);cemetery.add(g);
+  }
+  // gate pillars
+  for(const side of [-1,1]){
+    const v=cemAt(CEM_R*.95,side*CEM_R*.2);
+    const g=new THREE.Group();const p=new THREE.Mesh(new THREE.BoxGeometry(.09,.32,.09),pillarMat);p.position.y=.16;g.add(p);
+    const cap=new THREE.Mesh(new THREE.ConeGeometry(.08,.08,4),pillarMat);cap.position.y=.36;cap.rotation.y=Math.PI/4;g.add(cap);
+    placeOn(g,v,0,0);cemetery.add(g);
+  }
+  // little chapel (the gravedigger's house) on the far side
+  const ch=new THREE.Group();
+  const wallMat=new THREE.MeshLambertMaterial({color:'#7a7480',flatShading:true});
+  const roofMat=new THREE.MeshLambertMaterial({color:'#3d3846',flatShading:true});
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.34,.36,.46),wallMat);body.position.y=.18;ch.add(body);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(.32,.3,4),roofMat);roof.position.y=.51;roof.rotation.y=Math.PI/4;roof.scale.z=1.3;ch.add(roof);
+  const cv=new THREE.Mesh(new THREE.BoxGeometry(.025,.16,.025),pillarMat);cv.position.y=.73;ch.add(cv);
+  const chh=new THREE.Mesh(new THREE.BoxGeometry(.1,.025,.025),pillarMat);chh.position.y=.75;ch.add(chh);
+  const door=new THREE.Mesh(new THREE.PlaneGeometry(.1,.17),new THREE.MeshLambertMaterial({color:'#2a1d18'}));door.position.set(0,.085,.231);ch.add(door);
+  const win=new THREE.Mesh(new THREE.CircleGeometry(.04,10),new THREE.MeshBasicMaterial({color:'#ffcf7a'}));win.position.set(0,.27,.231);ch.add(win);
+  const chV=cemAt(-CEM_R*.55,CEM_R*.55);placeOn(ch,chV,0,0);faceToward(ch,chV,cemT1);cemetery.add(ch);
+  // a couple of dark trees
+  for(const [a,b] of [[-.07,-.06],[.02,.075],[-.08,.02]]){const v=cemAt(a,b);const t=makeTree(1.15);t.traverse(o=>{if(o.isMesh&&o.geometry.type==='ConeGeometry')o.material=new THREE.MeshLambertMaterial({color:'#2f5a3e',flatShading:true})});placeOn(t,v,0,a*40);cemetery.add(t)}
+})();
+const graves=[]; // {v,id,name}
+const moundMat=new THREE.MeshLambertMaterial({color:'#6b5338',flatShading:true});
+const stoneMats=['#9a9aa2','#8b8a93','#a7a3a0'].map(c=>new THREE.MeshLambertMaterial({color:c,flatShading:true}));
+function graveSpot(i){ // 5 columns, rows from the gate inward
+  const cols=5,col=i%cols,row=Math.floor(i/cols);
+  return cemAt(CEM_R*.62-row*.024,(col-2)*.024-CEM_R*.12);
+}
+let graveSig='';
+function syncGraves(animate){
+  const dead=residents.filter(r=>r.left).sort((a,b)=>(a.leftAt||0)-(b.leftAt||0));
+  const sig=dead.map(r=>r.id).join('|');
+  if(sig===graveSig)return;graveSig=sig;
+  graveGroup.clear();graves.length=0;
+  dead.forEach((r,i)=>{
+    const v=graveSpot(i), rr=rnd(hash('g'+r.id));
+    const g=new THREE.Group();
+    const mound=new THREE.Mesh(new THREE.BoxGeometry(.13,.04,.22),moundMat);mound.position.set(0,.02,-.02);g.add(mound);
+    const stone=new THREE.Mesh(new THREE.BoxGeometry(.12,.14,.035),stoneMats[Math.floor(rr()*3)]);stone.position.set(0,.07,.1);g.add(stone);
+    const cap=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.035,10,1,false,0,Math.PI),stone.material);cap.rotation.set(Math.PI/2,0,Math.PI/2);cap.position.set(0,.14,.1);g.add(cap);
+    const crossV=new THREE.Mesh(new THREE.BoxGeometry(.012,.05,.008),new THREE.MeshLambertMaterial({color:'#4a4650'}));crossV.position.set(0,.085,.119);g.add(crossV);
+    const crossH=new THREE.Mesh(new THREE.BoxGeometry(.034,.012,.008),crossV.material);crossH.position.set(0,.095,.119);g.add(crossH);
+    placeOn(g,v,0,0);faceToward(g,v,cemT1);g.rotateY((rr()-.5)*.15);
+    graveGroup.add(g);graves.push({v,id:r.id,name:r.name,g});
+  });
+}
+
+// ---------- labels ----------
+const labelsEl=document.getElementById('labels');
+const labelPool=new Map(); // home key -> {el,sig}
+// every house nearby shows a sign with the names of everyone living in it
+function updateLabels(){
+  const camDir=camera.position.clone().normalize();
+  const dist=camera.position.length();
+  const newestId=residents.length?residents[residents.length-1].id:null;
+  const newestHome=residents.length?'h'+residents[residents.length-1].home:null;
+  const maxSigns=dist<R+6?24:dist<R+14?14:dist<R+24?8:0;
+  const cand=[];
+  for(const [k,h] of houses){
+    const facing=h.v.dot(camDir);
+    if(facing<.3)continue;
+    const always=k===selected||k===newestHome;
+    cand.push({k,h,score:(always?-10:0)-facing});
+  }
+  cand.sort((a,b)=>a.score-b.score);
+  const show=cand.filter((c,i)=>i<maxSigns||c.k===selected||(c.k===newestHome&&dist<45));
+  const keep=new Set(show.map(c=>c.k));
+  for(const [k,l] of labelPool){if(!keep.has(k)){l.el.remove();labelPool.delete(k)}}
+  for(const {k,h} of show){
+    const home=homes[h.i];if(!home)continue;
+    const sig=home.members.map(m=>m.id+(m.left?'x':'')).join('|')+'#'+newestId;
+    let l=labelPool.get(k);
+    if(!l){l={el:document.createElement('div'),sig:''};l.el.className='label';labelsEl.append(l.el);labelPool.set(k,l)}
+    if(l.sig!==sig){
+      l.el.textContent='';
+      const alive=home.members.filter(m=>!m.left);
+      if(!alive.length){const s=document.createElement('span');s.textContent='opuštěný dům';s.className='gone';l.el.append(s)}
+      alive.forEach(m=>{const s=document.createElement('span');s.textContent=m.name;if(m.id===newestId)s.className='new';l.el.append(s)});
+      l.sig=sig;
+    }
+    l.el.classList.toggle('hl',k===selected);
+    const p=h.v.clone().multiplyScalar(R+terrain(h.v)+h.g.userData.height+.15).project(camera);
+    l.el.style.left=((p.x+1)/2*innerWidth)+'px';l.el.style.top=((1-p.y)/2*innerHeight)+'px';
+    l.el.style.zIndex=String(3+Math.round(h.v.dot(camDir)*100));
+  }
+  updateCemLabels(camDir,dist);
+  updateMeTag(camDir);
+}
+const cemLabels=new Map();
+function cemLabel(key,cls,text){
+  let el=cemLabels.get(key);
+  if(!el){el=document.createElement('div');el.className='label '+cls;labelsEl.append(el);cemLabels.set(key,el)}
+  if(el.textContent!==text)el.textContent=text;
+  return el;
+}
+function placeLabel(el,v,h,camDir){
+  const p=v.clone().multiplyScalar(R+terrain(v)+h).project(camera);
+  el.hidden=false;el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';
+  el.style.zIndex=String(3+Math.round(v.dot(camDir)*100));
+}
+function updateCemLabels(camDir,dist){
+  const want=new Set();
+  const facing=CEM.dot(camDir);
+  if(facing>.3&&dist<R+22){want.add('gate');placeLabel(cemLabel('gate','gate','Hřbitov unfollowerů'),CEM_GATE,.5,camDir)}
+  if(facing>.5&&dist<R+7){
+    graves.slice(0,40).forEach(g=>{want.add(g.id);placeLabel(cemLabel(g.id,'grave','✝ '+g.name),g.v,.26,camDir)});
+  }
+  for(const [k,el] of cemLabels){if(!want.has(k)){el.remove();cemLabels.delete(k)}}
+}
+
+// ---------- camera moves ----------
+// Two modes: 'globe' orbits the planet centre; 'surface' orbits a point on the ground
+// with "up" along the surface normal, so the camera looks at houses at a tilt, not straight down.
+let fly=null, mode='globe', focusUp=new THREE.Vector3(0,1,0);
+const TILT=0.95; // radians from the surface normal (~55°)
+function surfacePoint(n){return n.clone().normalize().multiplyScalar(R+terrain(n.clone().normalize())+0.15)}
+function tangentOf(n){
+  let t=new THREE.Vector3(0,-1,0).sub(n.clone().multiplyScalar(-n.y));
+  if(t.lengthSq()<1e-4)t=new THREE.Vector3(1,0,0).sub(n.clone().multiplyScalar(n.x));
+  return t.normalize();
+}
+function setControls(target,up,m){
+  const autoWas=controls.autoRotate;
+  controls.dispose();
+  camera.up.copy(up);
+  controls=new THREE.OrbitControls(camera,canvas);
+  controls.enableDamping=true;controls.dampingFactor=.08;controls.enablePan=false;controls.rotateSpeed=.5;
+  controls.target.copy(target);
+  if(m==='surface'){controls.minDistance=1.2;controls.maxDistance=22;controls.maxPolarAngle=1.3;controls.autoRotateSpeed=.6}
+  else{controls.minDistance=R+2.2;controls.maxDistance=70;controls.autoRotateSpeed=.35}
+  controls.autoRotate=autoWas;
+  if(!fly)controls.update();
+  mode=m;
+}
+// focus a place on the surface with a tilted view; height = distance above ground
+function flyToSurface(dir,height){
+  const n=dir.clone().normalize(), target=surfacePoint(n);
+  const off=n.clone().multiplyScalar(Math.cos(TILT)).add(tangentOf(n).multiplyScalar(Math.sin(TILT)));
+  const pos=target.clone().add(off.multiplyScalar(height));
+  startFly(pos,target,n,'surface');
+}
+function flyToGlobe(dist){
+  const d=camera.position.clone().normalize();
+  startFly(d.multiplyScalar(dist),new THREE.Vector3(),new THREE.Vector3(0,1,0),'globe');
+}
+function startFly(pos,target,up,m){
+  fly={fromPos:camera.position.clone(),toPos:pos,fromT:controls.target.clone(),toT:target,
+       fromUp:camera.up.clone(),toUp:up.clone(),m,t0:performance.now(),dur:reduce?1:1400};
+  controls.autoRotate=false;
+}
+function flyTo(dir,dist){flyToSurface(dir,Math.max(1.6,dist-R))}
+function townCenter(){
+  if(!homes.length)return START.clone();
+  const c=new THREE.Vector3();homes.forEach(h=>PLOTS[h.i]&&c.add(PLOTS[h.i].v));
+  return c.lengthSq()<1e-6?START.clone():c.normalize();
+}
+function townDist(){
+  const n=homes.length;
+  return n<3?R+4.5: n<15?R+7: n<60?R+11: n<250?R+18: R+28;
+}
+document.getElementById('whole').onclick=()=>{flyToGlobe(42);setTimeout(()=>controls.autoRotate=!reduce,1500)};
+document.getElementById('town').onclick=()=>flyTo(townCenter(),townDist());
+
+// ---------- picking ----------
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let downAt=null;
+canvas.addEventListener('pointerdown',e=>{downAt={x:e.clientX,y:e.clientY};if(fly){const f=fly;fly=null;camera.position.copy(f.toPos);setControls(f.toT,f.toUp,f.m)}controls.autoRotate=false});
+canvas.addEventListener('pointerup',e=>{
+  if(e.button!==0||!downAt||Math.hypot(e.clientX-downAt.x,e.clientY-downAt.y)>5)return;
+  mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
+  ray.setFromCamera(mouse,camera);
+  const hit=ray.intersectObjects([planet,townGroup],true)[0];
+  selected=hit&&hit.object.userData.house?hit.object.userData.house.userData.id:null;
+});
+
+// ---------- right-drag: slide across the planet surface ----------
+// Grab the ground: camera and its target rotate together around the planet centre,
+// so the tilt stays the same and the view glides over the surface.
+let panning=null;
+function finishFly(){if(fly){const f=fly;fly=null;camera.position.copy(f.toPos);setControls(f.toT,f.toUp,f.m)}}
+function panBy(dx,dy){
+  const tgt=controls.target;
+  const dist=camera.position.distanceTo(tgt);
+  const wpp=2*dist*Math.tan(camera.fov*Math.PI/360)/innerHeight; // world units per pixel at the target
+  const n=(mode==='surface'?tgt:camera.position).clone().normalize();
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0);
+  right.sub(n.clone().multiplyScalar(right.dot(n)));
+  if(right.lengthSq()<1e-8)return; right.normalize();
+  const fwd=new THREE.Vector3().crossVectors(n,right).normalize();
+  const move=right.multiplyScalar(-dx*wpp).add(fwd.multiplyScalar(dy*wpp));
+  const len=move.length(); if(len<1e-6)return;
+  const radius=mode==='surface'?tgt.length():R;
+  const axis=new THREE.Vector3().crossVectors(n,move).normalize();
+  const q=new THREE.Quaternion().setFromAxisAngle(axis,len/radius);
+  camera.position.applyQuaternion(q);tgt.applyQuaternion(q);camera.up.applyQuaternion(q);
+  if(mode==='surface'){ // keep the focus point sitting on the hills
+    const snap=surfacePoint(tgt.clone().normalize()).sub(tgt);
+    tgt.add(snap);camera.position.add(snap);
+  }
+  camera.lookAt(tgt);
+}
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('pointerdown',e=>{
+  if(e.button!==2||e.target!==canvas)return;
+  e.stopPropagation();e.preventDefault();
+  finishFly();controls.autoRotate=false;
+  panning={x:e.clientX,y:e.clientY,id:e.pointerId};
+  try{canvas.setPointerCapture(e.pointerId)}catch(_){}
+  canvas.style.cursor='grabbing';
+},true);
+addEventListener('pointermove',e=>{
+  if(!panning||e.pointerId!==panning.id)return;
+  e.stopPropagation();
+  panBy(e.clientX-panning.x,e.clientY-panning.y);
+  panning.x=e.clientX;panning.y=e.clientY;
+},true);
+const endPan=e=>{
+  if(!panning||e.pointerId!==panning.id)return;
+  e.stopPropagation();
+  panning=null;canvas.style.cursor='';
+  try{canvas.releasePointerCapture(e.pointerId)}catch(_){}
+  setControls(controls.target.clone(),camera.up.clone(),mode); // rebuild orbit around the new spot
+};
+addEventListener('pointerup',endPan,true);
+addEventListener('pointercancel',endPan,true);
+
+// ---------- loop ----------
+function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
+addEventListener('resize',resize);resize();
+function loop(now){
+  if(fly){
+    const t=Math.min(1,(now-fly.t0)/fly.dur),e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    // travel around the sphere, never through it
+    const a=fly.fromPos.clone().normalize(),b=fly.toPos.clone().normalize();
+    const dir=a.clone().lerp(b,e);if(dir.lengthSq()<1e-6)dir.copy(b);dir.normalize();
+    const len=fly.fromPos.length()+(fly.toPos.length()-fly.fromPos.length())*e;
+    const lift=Math.sin(e*Math.PI)*Math.min(6,a.angleTo(b)*6);
+    camera.position.copy(dir.multiplyScalar(Math.max(len+lift,R+0.8)));
+    const tgt=fly.fromT.clone().lerp(fly.toT,e);
+    camera.up.copy(fly.fromUp.clone().lerp(fly.toUp,e).normalize());
+    camera.lookAt(tgt);
+    if(t>=1){const f=fly;fly=null;camera.position.copy(f.toPos);setControls(f.toT,f.toUp,f.m)}
+  }
+  for(const [,h] of houses){
+    if(h.born){
+      const t=Math.min(1,(now-h.born)/900);
+      const s=t<1?1+Math.sin(t*Math.PI)*.25*(1-t)+0*(t)-(1-t)*(1-t):1;
+      h.g.scale.setScalar(Math.max(.001,s));
+      if(t>=1){h.born=null;h.g.scale.setScalar(1)}
+    }else if(h.bump&&!reduce){
+      const t=Math.min(1,(now-h.bump)/600);
+      h.g.scale.setScalar(1+Math.sin(t*Math.PI)*.18);
+      if(t>=1){h.bump=null;h.g.scale.setScalar(1)}
+    }
+  }
+  animateFountain(now);
+  if(meFig&&!reduce)meMarker.position.y=.25+Math.sin(now/300)*.025, meMarker.rotation.y=now/600;
+  if(!reduce){ // residents wave: arm raised to the side, swinging back and forth
+    const T=now/1000;
+    for(const [,h] of houses){const arms=h.g.userData.waveArms;if(!arms)continue;
+      for(const a of arms)a.arm.rotation.z=-.5+Math.sin(T*a.sp+a.ph)*.45}
+  }else{for(const [,h] of houses)(h.g.userData.waveArms||[]).forEach(a=>a.arm.rotation.z=-.5)}
+  if(!fly&&!panning)controls.update();
+  renderer.render(scene,camera);
+  updateLabels();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ---------- HUD ----------
+const TIERS=[{min:0,name:'Pustá planeta'},{min:1,name:'Osada'},{min:10,name:'Vesnice'},{min:30,name:'Městys'},{min:75,name:'Město'},{min:200,name:'Velkoměsto'},{min:500,name:'Metropole'},{min:1000,name:'Obydlená planeta'}];
+const cz=new Intl.PluralRules('cs');
+const followersWord=n=>{const c=cz.select(n);return c==='one'?'follower':c==='few'?'followeři':'followerů'};
+function updateHud(){
+  const n=residents.filter(r=>!r.left).length;
+  document.getElementById('pop').textContent=n.toLocaleString('cs-CZ');
+  document.getElementById('homes').textContent=homes.length.toLocaleString('cs-CZ');
+  const day=new Date();day.setHours(0,0,0,0);
+  document.getElementById('today').textContent=residents.filter(r=>r.at>=day.getTime()).length;
+  let t=TIERS[0],nx=null;TIERS.forEach((x,i)=>{if(n>=x.min){t=x;nx=TIERS[i+1]||null}});
+  document.getElementById('tier').textContent=t.name;
+  const prog=document.getElementById('prog'),next=document.getElementById('next');
+  if(nx){prog.style.width=((n-t.min)/(nx.min-t.min)*100)+'%';const left=nx.min-n;next.textContent=`Do stupně ${nx.name} chybí ${left} ${followersWord(left)}`}
+  else{prog.style.width='100%';next.textContent='Celá planeta je obydlená'}
+  document.getElementById('status').hidden=n>0;
+  renderList();
+}
+const fmt=new Intl.DateTimeFormat('cs-CZ',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
+function renderList(){
+  const ol=document.getElementById('list');ol.textContent='';
+  if(!residents.length){const li=document.createElement('li');li.className='empty';li.textContent='Zatím nikdo. První follower dostane první dům.';ol.append(li);return}
+  [...residents].reverse().forEach((r,ri)=>{
+    const i=residents.length-ri;
+    const li=document.createElement('li');
+    const a=document.createElement('span');a.className='no';a.textContent=r.left?'hřbitov':'dům '+(r.home+1);
+    if(r.left)li.classList.add('dead');
+    const b=document.createElement('span');b.className='nm';b.textContent=r.name;
+    const c=document.createElement('span');c.className='dt';c.textContent=r.at?fmt.format(new Date(r.at)):'';
+    li.append(a,b,c);
+    li.onclick=()=>{if(r.left){flyToSurface(CEM,3.2)}else{selected='h'+r.home;const P=PLOTS[r.home];if(P)flyTo(P.v,R+3.2)}closeSheet()};
+    ol.append(li);
+  });
+}
+const sheet=document.getElementById('sheet'),bar=document.getElementById('bar');
+const closeSheet=()=>{sheet.hidden=true;bar.hidden=false};
+document.getElementById('openList').onclick=()=>{sheet.hidden=false;bar.hidden=true};
+document.getElementById('closeList').onclick=closeSheet;
+let tickTimer=null;
+function announceText(text){
+  const el=document.getElementById('ticker');el.textContent=text;el.hidden=false;el.style.opacity=1;
+  clearTimeout(tickTimer);tickTimer=setTimeout(()=>{el.style.opacity=0;setTimeout(()=>el.hidden=true,400)},5000);
+}
+function announce(r){
+  const el=document.getElementById('ticker');el.textContent='';
+  const em=document.createElement('em');em.textContent=r.name;
+  el.append(em,` se právě nastěhoval do domu č. ${r.home+1}`);el.hidden=false;el.style.opacity=1;
+  clearTimeout(tickTimer);tickTimer=setTimeout(()=>{el.style.opacity=0;setTimeout(()=>el.hidden=true,400)},5000);
+}
+
+function announceDeath(r,back){
+  const el=document.getElementById('ticker');el.textContent='';
+  const em=document.createElement('em');em.textContent=r.name;
+  el.append(em,back?' vstal z hrobu a vrátil se domů':' dal unfollow a skončil na hřbitově ✝');el.hidden=false;el.style.opacity=1;
+  clearTimeout(tickTimer);tickTimer=setTimeout(()=>{el.style.opacity=0;setTimeout(()=>el.hidden=true,400)},5000);
+}
+function setResidents(list){
+  dataLoaded=true;
+  const prevLeft=new Map(residents.map(r=>[r.id,r.left]));
+  const prev=new Set(residents.map(r=>r.id));
+  residents=list;groupHomes();
+  const fresh=new Set(firstLoad?[]:list.filter(r=>!prev.has(r.id)).map(r=>r.id));
+  syncHouses(!firstLoad);syncGraves(!firstLoad);paintPlanet();updateHud();applyMe(firstLoad&&!!meId);
+  const died=firstLoad?[]:list.filter(r=>r.left&&prevLeft.get(r.id)===false);
+  const revived=firstLoad?[]:list.filter(r=>!r.left&&prevLeft.get(r.id)===true);
+  if(firstLoad){
+    const c=townCenter();camera.position.copy(c.multiplyScalar(townDist()+6));if(!meId)flyTo(townCenter(),townDist());
+    setTimeout(()=>controls.autoRotate=!reduce,1600);
+  }else if(fresh.size){
+    const last=list.filter(r=>fresh.has(r.id)).pop();
+    announce(last);const P=PLOTS[last.home];if(P)flyTo(P.v,R+3.6);
+  }else if(died.length){announceDeath(died[died.length-1],false);flyToSurface(CEM,3)}
+  else if(revived.length){const r=revived[revived.length-1];announceDeath(r,true);const P=PLOTS[r.home];if(P)flyTo(P.v,R+3.6)}
+  firstLoad=false;
+}
+paintPlanet();updateHud();
+
+// ---------- the player: find "me" by Instagram nick ----------
+const nickId=v=>String(v||'').trim().replace(/^@+/,'').toLowerCase().replace(/[^a-z0-9._]/g,'_');
+let meId=null, meNick='', dataLoaded=false, noData=false, meFig=null;
+try{const saved=localStorage.getItem('planeta-nick');if(saved){meNick=saved;meId=nickId(saved)}}catch(_){}
+const welcome=document.getElementById('welcome'),welcomeMsg=document.getElementById('welcomeMsg');
+const meCard=document.getElementById('meCard'),meInfo=document.getElementById('meInfo'),meBtn=document.getElementById('meBtn');
+welcome.hidden=!!meId;
+// gold marker that floats above your figure
+const meMarker=new THREE.Group();
+(function(){
+  const gold=new THREE.MeshLambertMaterial({color:'#ffcc66',emissive:'#a8701a',emissiveIntensity:.6,flatShading:true});
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(.035,.07,4),gold);tip.rotation.x=Math.PI;meMarker.add(tip);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.05,.008,6,16),gold);ring.rotation.x=Math.PI/2;ring.position.y=-.16;meMarker.add(ring);
+})();
+const meTag=document.createElement('div');meTag.className='label me-tag';meTag.textContent='TY';meTag.hidden=true;
+document.getElementById('labels').append(meTag);
+function findFig(id){let f=null;townGroup.traverse(o=>{if(!f&&o.userData&&o.userData.memberId===id)f=o});return f}
+function setMeInfo(nodes){meInfo.textContent='';nodes.forEach(n=>meInfo.append(n))}
+function igLink(){const a=document.createElement('a');a.href='https://www.instagram.com/planetafolloweru/';a.target='_blank';a.rel='noopener';a.textContent='@planetafolloweru';return a}
+function applyMe(flyThere){
+  if(meFig){meFig.scale.setScalar(1);meFig.remove(meMarker);meFig=null}
+  meTag.hidden=true;
+  if(!meId){meCard.hidden=true;meBtn.hidden=true;return}
+  meCard.hidden=false;document.getElementById('meName').textContent='@'+meNick.replace(/^@+/,'');
+  if(!dataLoaded){setMeInfo([noData?'Planetu se teď nepodařilo načíst.':'Hledám tvůj dům…']);meBtn.hidden=true;return}
+  const r=residents.find(x=>x.id===meId);
+  if(!r){
+    meBtn.hidden=true;
+    setMeInfo(['Zatím tu nebydlíš. Dej follow ',igLink(),' a do hodiny tu budeš mít vlastní dům.']);
+    return;
+  }
+  meBtn.hidden=false;
+  if(r.left){
+    setMeInfo(['Dal jsi unfollow, a tak ležíš na hřbitově ✝. Dej znovu follow ',igLink(),' a vstaneš z hrobu.']);
+    if(flyThere)flyToSurface(CEM,2.6);
+    return;
+  }
+  const home=homes[r.home];
+  const others=home?home.members.filter(m=>!m.left&&m.id!==meId).map(m=>m.name):[];
+  setMeInfo([`Bydlíš v domě č. ${r.home+1}. `,others.length?`Sousedé: ${others.join(', ')}.`:'Zatím tu bydlíš sám, pozvi kámoše.']);
+  meFig=findFig(meId);
+  if(meFig){
+    meFig.scale.setScalar(1.35);meMarker.position.y=.25;meFig.add(meMarker);
+    if(flyThere){const w=new THREE.Vector3();meFig.getWorldPosition(w);flyToSurface(w,1.5);selected='h'+r.home}
+  }
+}
+function updateMeTag(camDir){
+  if(!meFig||!meFig.parent){meTag.hidden=true;return}
+  const w=new THREE.Vector3();meMarker.getWorldPosition(w);
+  if(w.clone().normalize().dot(camDir)<.3||camera.position.length()>R+12){meTag.hidden=true;return}
+  const p=w.add(w.clone().normalize().multiplyScalar(.1)).project(camera);
+  meTag.hidden=false;meTag.style.left=((p.x+1)/2*innerWidth)+'px';meTag.style.top=((1-p.y)/2*innerHeight)+'px';meTag.style.zIndex='999';
+}
+document.getElementById('welcomeForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const raw=document.getElementById('nickInput').value.trim().replace(/^@+/,'');
+  if(!/^[A-Za-z0-9._]{1,30}$/.test(raw)){welcomeMsg.textContent='Nick z Instagramu může mít jen písmena, čísla, tečky a podtržítka.';return}
+  meNick=raw;meId=nickId(raw);
+  try{localStorage.setItem('planeta-nick',raw)}catch(_){}
+  welcome.hidden=true;welcomeMsg.textContent='';
+  applyMe(true);
+});
+document.getElementById('justLook').onclick=()=>{welcome.hidden=true;if(!meId)flyTo(townCenter(),townDist())};
+document.getElementById('meChange').onclick=()=>{
+  meId=null;meNick='';try{localStorage.removeItem('planeta-nick')}catch(_){}
+  applyMe(false);document.getElementById('nickInput').value='';welcome.hidden=false;document.getElementById('nickInput').focus();
+};
+meBtn.onclick=()=>applyMe(true);
+document.getElementById('games').onclick=()=>announceText('Minihry se chystají, už brzy 🎮');
+
+// ---------- data ----------
+// Public website: residents come from followers.json next to the page, refreshed every minute.
+async function loadFromFile(){
+  let sig='',first=true;
+  const pull=async()=>{
+    try{
+      const res=await fetch('followers.json?t='+Date.now(),{cache:'no-store'});
+      if(!res.ok)throw new Error(res.status);
+      const data=await res.json();
+      const list=(data.followers||[]).map(v=>({id:String(v.id),name:String(v.name||v.id),at:Number(v.at)||0,left:v.left===true,leftAt:Number(v.leftAt)||0})).sort((a,b)=>a.at-b.at);
+      const s=JSON.stringify(list);
+      if(s!==sig){sig=s;setResidents(list)}
+    }catch(err){if(first){noData=true;applyMe(false);document.querySelector('#status p').textContent='Planetu se teď nepodařilo načíst. Zkus to za chvíli znovu.'}}
+    first=false;
+  };
+  await pull();setInterval(pull,60000);
+}
+(async()=>{
+  const db=window.claude?.use?await window.claude.use('db'):null;
+  if(!db){loadFromFile();return}
+  const user=await window.claude.use('user');
+  const col=db.collection('followers');
+  let loaded=false;
+  const timer=setTimeout(()=>{if(!loaded)document.querySelector('#status p').textContent='Planeta se zatím nenačetla. Zkus to za chvíli znovu.'},10000);
+  col.orderBy('at').limit(1000).onSnapshot(snap=>{
+    if(!snap.metadata?.fromCache){loaded=true;clearTimeout(timer)}
+    setResidents(snap.docs.map(d=>{const v=d.data()||{};return{id:d.id,name:String(v.name||d.id),at:Number(v.at)||0,left:v.left===true,leftAt:Number(v.leftAt)||0}}));
+  },()=>{loaded=true;clearTimeout(timer)});
+
+  if(user&&await user.canEdit()){
+    const form=document.getElementById('addForm'),note=document.getElementById('addNote');
+    form.hidden=false;note.hidden=false;
+    note.textContent='Ruční přidání pro tebe jako majitele.';
+    form.addEventListener('submit',async e=>{
+      e.preventDefault();
+      const inp=document.getElementById('addName');
+      const name=inp.value.trim().replace(/^@+/,'');if(!name)return;
+      const id=name.toLowerCase().replace(/[^a-z0-9._]/g,'_').slice(0,60)||('f'+Date.now());
+      if(residents.some(r=>r.id===id)){note.textContent=`@${name} už na planetě bydlí.`;return}
+      try{await col.doc(id).set({name:'@'+name,at:Date.now()});inp.value='';note.textContent=`Dům pro @${name} stojí.`;closeSheet()}
+      catch(err){note.textContent='Dům se nepodařilo postavit. Zkontroluj připojení a zkus to znovu.'}
+    });
+  }
+})();
+})();
+</script>
+
+</body>
+</html>
