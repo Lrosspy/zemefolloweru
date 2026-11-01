@@ -77,6 +77,8 @@ button.link{background:none;border:0;padding:0;color:var(--sun);font-weight:700;
 .me-top b{font-size:15px;color:var(--sun);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .me-info{margin-top:4px;color:var(--ink-dim);line-height:1.4}
 .me-info a{color:var(--sun)}
+.label.site{background:#f4efe4;color:#2b1d0e;font-weight:800;font-size:12px}
+.label.site.dead{background:#3a3644;color:#bdb6c8;font-style:italic}
 .label.me-tag{background:var(--sun);color:#2b1d0e;font-family:var(--display);font-weight:400;font-size:12px;padding:3px 10px}
 .status{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 120px);transform:translateX(-50%);z-index:4;text-align:center;width:min(340px,calc(100% - 32px));pointer-events:none}
 .status h3{margin:0 0 6px;font-family:var(--display);font-weight:400;font-size:20px}
@@ -169,6 +171,7 @@ function capOf(i){return 4+hash('cap'+i)%3}
 function groupHomes(){
   homes=[];let cur=null;
   residents.forEach(r=>{
+    if(r.role&&SITES[r.role]){r.home=null;return}
     if(!cur||cur.members.length>=cur.cap){const i=homes.length;cur={key:'h'+i,i,cap:capOf(i),members:[]};homes.push(cur)}
     cur.members.push(r);r.home=cur.i;
   });
@@ -189,6 +192,12 @@ const FOUNTAIN_AT = 10;       // houses needed before the fountain appears
 // cemetery for unfollowers: a little way out of the village, reserved from house plots
 const CEM = START.clone().add(tangentOf(START).multiplyScalar(.34)).normalize();
 const CEM_R = .1;             // angular radius of the cemetery ground
+// special buildings for residents with a job; each gets its own spot just outside the village
+const SITE_T=tangentOf(START), SITE_B=new THREE.Vector3().crossVectors(START,SITE_T).normalize();
+const SITES={
+  doctor:{title:'Nemocnice',dir:START.clone().add(SITE_B.clone().multiplyScalar(.23)).normalize(),r:.1},
+  farmer:{title:'Farma',dir:START.clone().sub(SITE_B.clone().multiplyScalar(.36)).sub(SITE_T.clone().multiplyScalar(.05)).normalize(),r:.15}
+};
 (function(){
   const g=Math.PI*(3-Math.sqrt(5));
   for(let i=0;i<SLOTS;i++){
@@ -196,6 +205,7 @@ const CEM_R = .1;             // angular radius of the cemetery ground
     const v=new THREE.Vector3(Math.cos(th)*r,y,Math.sin(th)*r);
     if(v.angleTo(START)<PLAZA)continue; // keep the village square free for the fountain
     if(v.angleTo(CEM)<CEM_R*1.25)continue; // and the cemetery
+    if(Object.values(SITES).some(S=>v.angleTo(S.dir)<S.r))continue; // and the job buildings
     PLOTS.push({v, k:v.angleTo(START)+(hash('p'+i)%1000)/90000});
   }
   PLOTS.sort((a,b)=>a.k-b.k);
@@ -259,6 +269,7 @@ const GRASS=[new THREE.Color('#79b866'),new THREE.Color('#6eae5c'),new THREE.Col
 function paintPlanet(){
   const built=homes.map(h=>PLOTS[h.i]&&PLOTS[h.i].v).filter(Boolean);
   if(built.length)built.push(START);
+  activeSites().forEach(k=>built.push(SITES[k].dir));
   const greenA=.11, dryA=.2;
   for(let f=0;f<faceCenters.length;f++){
     const c=faceCenters[f];let md=9;
@@ -398,7 +409,7 @@ function syncHouses(animate){
     const off=new THREE.Vector3(rr()-.5,rr()-.5,rr()-.5).multiplyScalar(.09);
     const v=b.clone().add(off).normalize();
     if(built.some(x=>x.angleTo(v)<.035))return;
-    if(v.angleTo(START)<PLAZA*1.1||v.angleTo(CEM)<CEM_R*1.1||pathPts.some(p=>p.angleTo(v)<.018))return;
+    if(v.angleTo(START)<PLAZA*1.1||v.angleTo(CEM)<CEM_R*1.1||activeSites().some(k=>v.angleTo(SITES[k].dir)<SITES[k].r*.9)||pathPts.some(p=>p.angleTo(v)<.018))return;
     const t=makeTree(.9+rr()*.4);placeOn(t,v,0,rr()*6);extraTrees.add(t);
   });
   syncFountain(animate);
@@ -440,6 +451,10 @@ function buildPaths(){
       if(nearHouse(p)||p.angleTo(START)<PLAZA*.8)continue;
       pts.push(p);
     }
+  });
+  activeSites().forEach(k=>{ // road to each job building's door
+    const door=slerpDir(SITES[k].dir,START,.06/SITES[k].dir.angleTo(START)),len=START.angleTo(door),n=Math.ceil(len/step);
+    for(let s=1;s<n;s++){const p=slerpDir(START,door,s/n);if(nearHouse(p)||p.angleTo(START)<PLAZA*.8)continue;pts.push(p)}
   });
   { // road out of the village to the cemetery gate
     const len=START.angleTo(CEM_GATE),n=Math.ceil(len/step);
@@ -575,6 +590,142 @@ function syncGraves(animate){
   });
 }
 
+// ---------- job buildings: hospital and farm ----------
+const siteGroup=new THREE.Group();scene.add(siteGroup);
+const siteArms=[];
+let siteSig='';
+function activeSites(){return Object.keys(SITES).filter(k=>residents.some(r=>r.role===k))}
+function siteOwner(k){return residents.filter(r=>r.role===k).sort((a,b)=>a.at-b.at)[0]}
+function flyToResident(r,h){
+  if(r.left){flyToSurface(CEM,h);return}
+  if(r.home==null&&SITES[r.role]){flyToSurface(SITES[r.role].dir,h+.6);return}
+  selected='h'+r.home;const P=PLOTS[r.home];if(P)flyTo(P.v,R+h);
+}
+function makePerson(m,shirtColor,hat){
+  const pr=rnd(hash(m.id));
+  const fig=new THREE.Group();fig.userData.memberId=m.id;
+  const shirt=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.08,6),mat(shirtColor));shirt.position.y=.04;fig.add(shirt);
+  const skin=mat(['#f1c9a5','#d9a37c','#a8714d','#7a4d32'][Math.floor(pr()*4)]);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),skin);head.position.y=.1;fig.add(head);
+  if(hat==='straw'){const brim=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.006,10),mat('#e8c35a'));brim.position.y=.118;fig.add(brim);const top=new THREE.Mesh(new THREE.CylinderGeometry(.018,.022,.022,8),mat('#e8c35a'));top.position.y=.13;fig.add(top)}
+  if(hat==='doctor'){const steth=new THREE.Mesh(new THREE.TorusGeometry(.018,.003,4,10),mat('#3a6fd8'));steth.position.set(0,.065,.03);fig.add(steth)}
+  const armGeo=new THREE.BoxGeometry(.011,.048,.011);
+  const left=new THREE.Group();left.position.set(-.029,.074,0);const la=new THREE.Mesh(armGeo,shirt.material);la.position.y=-.022;left.add(la);left.rotation.z=-.25;fig.add(left);
+  const right=new THREE.Group();right.position.set(.029,.074,0);const ra=new THREE.Mesh(armGeo,shirt.material);ra.position.y=.022;right.add(ra);
+  const hand=new THREE.Mesh(new THREE.SphereGeometry(.008,6,4),skin);hand.position.y=.048;right.add(hand);fig.add(right);
+  siteArms.push({arm:right,ph:pr()*6.28,sp:6+pr()*3});
+  return fig;
+}
+function windowsOn(g,w,h,z,rows,cols,lit,y0=.1){
+  const on=new THREE.MeshBasicMaterial({color:'#ffe3a0'}),off=new THREE.MeshBasicMaterial({color:'#3a3352'});
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(.055,.06),lit?on:off);
+    m.position.set(-w/2+(c+.5)*w/cols,y0+r*(h-y0)/rows+.03,z);g.add(m);
+  }
+}
+function buildHospital(owner){
+  const g=new THREE.Group(), alive=owner&&!owner.left;
+  const white=mat('#f1f1ec'),grey=mat('#c9ccd2'),red=mat('#d6332f'),blue=mat('#3a7bd5');
+  const main=new THREE.Mesh(new THREE.BoxGeometry(.9,.46,.5),white);main.position.y=.23;g.add(main);
+  const wing=new THREE.Mesh(new THREE.BoxGeometry(.42,.3,.42),white);wing.position.set(.62,.15,-.05);g.add(wing);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(.94,.03,.54),grey);roof.position.y=.475;g.add(roof);
+  const pad=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.012,20),mat('#4a4f58'));pad.position.set(-.15,.495,0);g.add(pad);
+  const h1=new THREE.Mesh(new THREE.BoxGeometry(.025,.004,.14),white);h1.position.set(-.2,.503,0);g.add(h1);
+  const h2=h1.clone();h2.position.x=-.1;g.add(h2);
+  const h3=new THREE.Mesh(new THREE.BoxGeometry(.1,.004,.025),white);h3.position.set(-.15,.503,0);g.add(h3);
+  // big red cross on the front
+  const cv=new THREE.Mesh(new THREE.BoxGeometry(.05,.15,.012),red);cv.position.set(.22,.33,.256);g.add(cv);
+  const ch=new THREE.Mesh(new THREE.BoxGeometry(.15,.05,.012),red);ch.position.set(.22,.33,.256);g.add(ch);
+  windowsOn(g,.9,.46,.252,2,6,alive);
+  // entrance with a blue canopy
+  const door=new THREE.Mesh(new THREE.PlaneGeometry(.12,.14),mat('#9fd0f0'));door.position.set(-.22,.07,.253);g.add(door);
+  const can=new THREE.Mesh(new THREE.BoxGeometry(.24,.02,.12),blue);can.position.set(-.22,.17,.31);g.add(can);
+  // ambulance parked out front
+  const amb=new THREE.Group();
+  const ab=new THREE.Mesh(new THREE.BoxGeometry(.2,.1,.1),white);ab.position.y=.065;amb.add(ab);
+  const stripe=new THREE.Mesh(new THREE.BoxGeometry(.202,.02,.102),red);stripe.position.y=.065;amb.add(stripe);
+  const light=new THREE.Mesh(new THREE.BoxGeometry(.04,.02,.04),alive?new THREE.MeshBasicMaterial({color:'#4aa3ff'}):grey);light.position.set(.04,.125,0);amb.add(light);
+  for(const [x,z] of [[-.06,.05],[.06,.05],[-.06,-.05],[.06,-.05]]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,.012,8),mat('#222')) ;w.rotation.x=Math.PI/2;w.position.set(x,.022,z);amb.add(w)}
+  amb.position.set(.62,0,.4);amb.rotation.y=-.3;g.add(amb);
+  if(alive){const f=makePerson(owner,'#ffffff','doctor');f.position.set(-.05,0,.4);f.scale.setScalar(1.15);g.add(f)}
+  g.userData.height=.62;return g;
+}
+function buildFarm(owner){
+  const g=new THREE.Group(), alive=owner&&!owner.left;
+  const wood=mat('#a8693a'),roofM=mat('#b5452f'),barnM=mat('#a33a2a'),trim=mat('#efe6d6');
+  // farmhouse
+  const house=new THREE.Mesh(new THREE.BoxGeometry(.34,.26,.3),wood);house.position.set(-.35,.13,0);g.add(house);
+  const hr=new THREE.Mesh(new THREE.ConeGeometry(.29,.2,4),roofM);hr.position.set(-.35,.36,0);hr.rotation.y=Math.PI/4;g.add(hr);
+  const chim=new THREE.Mesh(new THREE.BoxGeometry(.04,.12,.04),mat('#6a5048'));chim.position.set(-.27,.4,-.06);g.add(chim);
+  const hg=new THREE.Group();windowsOn(hg,.34,.26,.151,1,2,alive,.06);hg.position.x=-.35;g.add(hg);
+  const hd=new THREE.Mesh(new THREE.PlaneGeometry(.07,.12),mat('#5a3b2a'));hd.position.set(-.35,.06,.152);g.add(hd);
+  // barn
+  const barn=new THREE.Mesh(new THREE.BoxGeometry(.36,.3,.44),barnM);barn.position.set(.05,.15,-.12);g.add(barn);
+  // rounded barn roof: half cylinder lying along the barn's depth
+  const br=new THREE.Mesh(new THREE.CylinderGeometry(.21,.21,.44,8,1,false,0,Math.PI),mat('#4a3b34'));
+  br.rotation.order='ZYX';br.rotation.set(Math.PI/2,0,Math.PI/2);br.position.set(.05,.3,-.12);g.add(br);
+  const bdoor=new THREE.Mesh(new THREE.PlaneGeometry(.14,.18),trim);bdoor.position.set(.05,.09,.101);g.add(bdoor);
+  const bx1=new THREE.Mesh(new THREE.PlaneGeometry(.17,.012),barnM);bx1.position.set(.05,.09,.102);bx1.rotation.z=.9;g.add(bx1);
+  const bx2=bx1.clone();bx2.rotation.z=-.9;g.add(bx2);
+  // field with crop rows, fenced
+  const field=new THREE.Group();field.position.set(.65,0,.05);
+  const soil=new THREE.Mesh(new THREE.BoxGeometry(.7,.02,.6),mat(alive?'#6b4a2b':'#8a6a45'));soil.position.y=.01;field.add(soil);
+  const crop=mat(alive?'#7cc04b':'#c9b26a'),wheat=mat(alive?'#e2c556':'#a89870');
+  for(let r=0;r<6;r++){
+    const furrow=new THREE.Mesh(new THREE.BoxGeometry(.66,.012,.03),mat('#4f3520'));furrow.position.set(0,.022,-.25+r*.1);field.add(furrow);
+    for(let c=0;c<8;c++){
+      if(!alive&&(r*8+c)%3)continue; // an abandoned field has only dry tufts left
+      const pl=new THREE.Mesh(new THREE.ConeGeometry(.022,alive?.07:.035,5),r<3?crop:wheat);pl.position.set(-.29+c*.083,.05,-.25+r*.1);field.add(pl);
+    }
+  }
+  for(let i=0;i<=12;i++){ // fence posts around the field
+    for(const side of [-1,1]){
+      const a=new THREE.Mesh(new THREE.BoxGeometry(.015,.07,.015),wood);a.position.set(-.36+i*.06,.035,side*.32);field.add(a);
+    }
+  }
+  for(let i=0;i<=10;i++)for(const side of [-1,1]){const a=new THREE.Mesh(new THREE.BoxGeometry(.015,.07,.015),wood);a.position.set(side*.37,.035,-.3+i*.06);field.add(a)}
+  g.add(field);
+  if(alive){
+    const f=makePerson(owner,'#4f7a4a','straw');f.position.set(-.12,0,.32);f.scale.setScalar(1.15);g.add(f);
+    // a little scarecrow guarding the crops
+    const sc=new THREE.Group();const pole=new THREE.Mesh(new THREE.BoxGeometry(.012,.16,.012),wood);pole.position.y=.08;sc.add(pole);
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(.11,.012,.012),wood);arm.position.y=.12;sc.add(arm);
+    const sh=new THREE.Mesh(new THREE.SphereGeometry(.02,6,4),mat('#e8c35a'));sh.position.y=.17;sc.add(sh);
+    sc.position.set(.65,0,.05);g.add(sc);
+  }
+  g.userData.height=.55;return g;
+}
+function syncSites(animate){
+  const sig=Object.keys(SITES).map(k=>{const o=siteOwner(k);return k+':'+(o?o.id+(o.left?'x':''):'')}).join('|');
+  if(sig===siteSig)return;siteSig=sig;
+  siteGroup.clear();siteArms.length=0;
+  for(const k of activeSites()){
+    const o=siteOwner(k),S=SITES[k];
+    const g=k==='doctor'?buildHospital(o):buildFarm(o);
+    placeOn(g,S.dir,0,0);faceToward(g,S.dir,START.clone().sub(S.dir));
+    g.userData.site=k;siteGroup.add(g);
+  }
+  for(const d of decoItems)if(activeSites().some(k=>d.v.angleTo(SITES[k].dir)<SITES[k].r))d.o.visible=false;
+}
+const siteLabels=new Map();
+function updateSiteLabels(camDir,dist){
+  const want=new Set();
+  siteGroup.children.forEach(g=>{
+    const k=g.userData.site,S=SITES[k],o=siteOwner(k);
+    if(S.dir.dot(camDir)<.3||dist>R+22)return;
+    want.add(k);
+    let el=siteLabels.get(k);
+    if(!el){el=document.createElement('div');el.className='label site';labelsEl.append(el);siteLabels.set(k,el)}
+    const icon=k==='doctor'?'🏥':'🌾';
+    const text=!o||o.left?`${icon} Opuštěná ${S.title.toLowerCase()}`:k==='doctor'?`${icon} Nemocnice · ředitel ${o.name}`:`${icon} Farma · ${o.name}`;
+    if(el.textContent!==text)el.textContent=text;
+    el.classList.toggle('dead',!o||o.left);
+    const p=S.dir.clone().multiplyScalar(R+terrain(S.dir)+g.userData.height+.2).project(camera);
+    el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(3+Math.round(S.dir.dot(camDir)*100));
+  });
+  for(const [k,el] of siteLabels)if(!want.has(k)){el.remove();siteLabels.delete(k)}
+}
+
 // ---------- labels ----------
 const labelsEl=document.getElementById('labels');
 const labelPool=new Map(); // home key -> {el,sig}
@@ -614,6 +765,7 @@ function updateLabels(){
     l.el.style.zIndex=String(3+Math.round(h.v.dot(camDir)*100));
   }
   updateCemLabels(camDir,dist);
+  updateSiteLabels(camDir,dist);
   updateMeTag(camDir);
 }
 const cemLabels=new Map();
@@ -788,6 +940,7 @@ function loop(now){
     const T=now/1000;
     for(const [,h] of houses){const arms=h.g.userData.waveArms;if(!arms)continue;
       for(const a of arms)a.arm.rotation.z=-.5+Math.sin(T*a.sp+a.ph)*.45}
+    for(const a of siteArms)a.arm.rotation.z=-.5+Math.sin(T*a.sp+a.ph)*.45;
   }else{for(const [,h] of houses)(h.g.userData.waveArms||[]).forEach(a=>a.arm.rotation.z=-.5)}
   if(!fly&&!panning)controls.update();
   renderer.render(scene,camera);
@@ -821,12 +974,12 @@ function renderList(){
   [...residents].reverse().forEach((r,ri)=>{
     const i=residents.length-ri;
     const li=document.createElement('li');
-    const a=document.createElement('span');a.className='no';a.textContent=r.left?'hřbitov':'dům '+(r.home+1);
+    const a=document.createElement('span');a.className='no';a.textContent=r.left?'hřbitov':(r.home==null&&SITES[r.role])?SITES[r.role].title.toLowerCase():'dům '+(r.home+1);
     if(r.left)li.classList.add('dead');
     const b=document.createElement('span');b.className='nm';b.textContent=r.name;
     const c=document.createElement('span');c.className='dt';c.textContent=r.at?fmt.format(new Date(r.at)):'';
     li.append(a,b,c);
-    li.onclick=()=>{if(r.left){flyToSurface(CEM,3.2)}else{selected='h'+r.home;const P=PLOTS[r.home];if(P)flyTo(P.v,R+3.2)}closeSheet()};
+    li.onclick=()=>{flyToResident(r,3.2);closeSheet()};
     ol.append(li);
   });
 }
@@ -842,7 +995,7 @@ function announceText(text){
 function announce(r){
   const el=document.getElementById('ticker');el.textContent='';
   const em=document.createElement('em');em.textContent=r.name;
-  el.append(em,` se právě nastěhoval do domu č. ${r.home+1}`);el.hidden=false;el.style.opacity=1;
+  el.append(em,r.home==null&&SITES[r.role]?` se ujal stavby: ${SITES[r.role].title}`:` se právě nastěhoval do domu č. ${r.home+1}`);el.hidden=false;el.style.opacity=1;
   clearTimeout(tickTimer);tickTimer=setTimeout(()=>{el.style.opacity=0;setTimeout(()=>el.hidden=true,400)},5000);
 }
 
@@ -858,7 +1011,7 @@ function setResidents(list){
   const prev=new Set(residents.map(r=>r.id));
   residents=list;groupHomes();
   const fresh=new Set(firstLoad?[]:list.filter(r=>!prev.has(r.id)).map(r=>r.id));
-  syncHouses(!firstLoad);syncGraves(!firstLoad);paintPlanet();updateHud();applyMe(firstLoad&&!!meId);
+  syncHouses(!firstLoad);syncSites(!firstLoad);syncGraves(!firstLoad);paintPlanet();updateHud();applyMe(firstLoad&&!!meId);
   const died=firstLoad?[]:list.filter(r=>r.left&&prevLeft.get(r.id)===false);
   const revived=firstLoad?[]:list.filter(r=>!r.left&&prevLeft.get(r.id)===true);
   if(firstLoad){
@@ -866,9 +1019,9 @@ function setResidents(list){
     setTimeout(()=>controls.autoRotate=!reduce,1600);
   }else if(fresh.size){
     const last=list.filter(r=>fresh.has(r.id)).pop();
-    announce(last);const P=PLOTS[last.home];if(P)flyTo(P.v,R+3.6);
+    announce(last);flyToResident(last,3.6);
   }else if(died.length){announceDeath(died[died.length-1],false);flyToSurface(CEM,3)}
-  else if(revived.length){const r=revived[revived.length-1];announceDeath(r,true);const P=PLOTS[r.home];if(P)flyTo(P.v,R+3.6)}
+  else if(revived.length){const r=revived[revived.length-1];announceDeath(r,true);flyToResident(r,3.6)}
   firstLoad=false;
 }
 paintPlanet();updateHud();
@@ -889,7 +1042,7 @@ const meMarker=new THREE.Group();
 })();
 const meTag=document.createElement('div');meTag.className='label me-tag';meTag.textContent='TY';meTag.hidden=true;
 document.getElementById('labels').append(meTag);
-function findFig(id){let f=null;townGroup.traverse(o=>{if(!f&&o.userData&&o.userData.memberId===id)f=o});return f}
+function findFig(id){let f=null;for(const grp of [townGroup,siteGroup])grp.traverse(o=>{if(!f&&o.userData&&o.userData.memberId===id)f=o});return f}
 function setMeInfo(nodes){meInfo.textContent='';nodes.forEach(n=>meInfo.append(n))}
 function igLink(){const a=document.createElement('a');a.href='https://www.instagram.com/planetafolloweru/';a.target='_blank';a.rel='noopener';a.textContent='@planetafolloweru';return a}
 function applyMe(flyThere){
@@ -910,13 +1063,17 @@ function applyMe(flyThere){
     if(flyThere)flyToSurface(CEM,2.6);
     return;
   }
-  const home=homes[r.home];
-  const others=home?home.members.filter(m=>!m.left&&m.id!==meId).map(m=>m.name):[];
-  setMeInfo([`Bydlíš v domě č. ${r.home+1}. `,others.length?`Sousedé: ${others.join(', ')}.`:'Zatím tu bydlíš sám, pozvi kámoše.']);
+  if(r.home==null&&SITES[r.role]){
+    setMeInfo([r.role==='doctor'?'Jsi ředitel a hlavní lékař nemocnice 🏥.':r.role==='farmer'?'Jsi farmář/ka a patří ti farma s polem 🌾.':`Patří ti stavba: ${SITES[r.role].title}.`]);
+  }else{
+    const home=homes[r.home];
+    const others=home?home.members.filter(m=>!m.left&&m.id!==meId).map(m=>m.name):[];
+    setMeInfo([`Bydlíš v domě č. ${r.home+1}. `,others.length?`Sousedé: ${others.join(', ')}.`:'Zatím tu bydlíš sám, pozvi kámoše.']);
+  }
   meFig=findFig(meId);
   if(meFig){
     meFig.scale.setScalar(1.35);meMarker.position.y=.25;meFig.add(meMarker);
-    if(flyThere){const w=new THREE.Vector3();meFig.getWorldPosition(w);flyToSurface(w,1.5);selected='h'+r.home}
+    if(flyThere){const w=new THREE.Vector3();meFig.getWorldPosition(w);flyToSurface(w,1.5);if(r.home!=null)selected='h'+r.home}
   }
 }
 function updateMeTag(camDir){
@@ -952,7 +1109,7 @@ async function loadFromFile(){
       const res=await fetch('followers.json?t='+Date.now(),{cache:'no-store'});
       if(!res.ok)throw new Error(res.status);
       const data=await res.json();
-      const list=(data.followers||[]).map(v=>({id:String(v.id),name:String(v.name||v.id),at:Number(v.at)||0,left:v.left===true,leftAt:Number(v.leftAt)||0})).sort((a,b)=>a.at-b.at);
+      const list=(data.followers||[]).map(v=>({id:String(v.id),name:String(v.name||v.id),at:Number(v.at)||0,left:v.left===true,leftAt:Number(v.leftAt)||0,role:v.role?String(v.role):''})).sort((a,b)=>a.at-b.at);
       const s=JSON.stringify(list);
       if(s!==sig){sig=s;setResidents(list)}
     }catch(err){if(first){noData=true;applyMe(false);document.querySelector('#status p').textContent='Planetu se teď nepodařilo načíst. Zkus to za chvíli znovu.'}}
@@ -969,7 +1126,7 @@ async function loadFromFile(){
   const timer=setTimeout(()=>{if(!loaded)document.querySelector('#status p').textContent='Planeta se zatím nenačetla. Zkus to za chvíli znovu.'},10000);
   col.orderBy('at').limit(1000).onSnapshot(snap=>{
     if(!snap.metadata?.fromCache){loaded=true;clearTimeout(timer)}
-    setResidents(snap.docs.map(d=>{const v=d.data()||{};return{id:d.id,name:String(v.name||d.id),at:Number(v.at)||0,left:v.left===true,leftAt:Number(v.leftAt)||0}}));
+    setResidents(snap.docs.map(d=>{const v=d.data()||{};return{id:d.id,name:String(v.name||d.id),at:Number(v.at)||0,left:v.left===true,leftAt:Number(v.leftAt)||0,role:v.role?String(v.role):''}}));
   },()=>{loaded=true;clearTimeout(timer)});
 
   if(user&&await user.canEdit()){

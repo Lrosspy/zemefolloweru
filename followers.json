@@ -1,5 +1,5 @@
 {
- "updated": 1793560000000,
+ "updated": 1793562950000,
  "followers": [
   {
    "id": "lubikosuch",
@@ -82,6 +82,33 @@
    "id": "daniel.magera",
    "at": 1793559438040,
    "name": "@daniel.magera"
+  },
+  {
+   "id": "turtle.9884488",
+   "name": "@turtle.9884488",
+   "at": 1793562770000,
+   "role": "doctor"
+  },
+  {
+   "id": "_anqq.__",
+   "name": "@_anqq.__",
+   "at": 1793562770001,
+   "role": "farmer"
+  },
+  {
+   "id": "kasparek.oliver",
+   "name": "@kasparek.oliver",
+   "at": 1793562770002
+  },
+  {
+   "id": "_zuzana.rendekova_",
+   "name": "@_zuzana.rendekova_",
+   "at": 1793562770003
+  },
+  {
+   "id": "alex_tobias_drazil",
+   "name": "@alex_tobias_drazil",
+   "at": 1793562770004
   }
  ]
 }
