@@ -214,6 +214,8 @@ const SITES={
   mechanic:{title:'Autodílna',dir:ringDir(292,.68),r:.12},
   sheriff:{title:'Šerifova stanice',dir:ringDir(334,.64),r:.11}
 };
+// a mystery building site a little outside the town: bricks around, a big yellow question mark in the middle
+const MYSTERY={dir:ringDir(312,.48),r:.08};
 function ringDir(deg,c){const a=deg*Math.PI/180;return START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*c)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*c)).normalize()}
 // jobs that work in someone else's building
 const WORKER_OF={paramedic:'doctor'};
@@ -229,6 +231,7 @@ const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',build
     if(v.angleTo(START)<PLAZA)continue; // keep the village square free for the fountain
     if(v.angleTo(CEM)<CEM_R*1.25)continue; // and the cemetery
     if(Object.values(SITES).some(S=>v.angleTo(S.dir)<S.r))continue; // and the job buildings
+    if(v.angleTo(MYSTERY.dir)<MYSTERY.r)continue; // and the mystery site
     PLOTS.push({v, k:v.angleTo(START)+(hash('p'+i)%1000)/90000});
   }
   PLOTS.sort((a,b)=>a.k-b.k);
@@ -493,6 +496,10 @@ function buildPaths(){
     const door=slerpDir(SITES[k].dir,START,.06/SITES[k].dir.angleTo(START)),len=START.angleTo(door),n=Math.ceil(len/step);
     for(let s=1;s<n;s++){const p=slerpDir(START,door,s/n);if(nearHouse(p)||p.angleTo(START)<PLAZA*.8)continue;pts.push(p)}
   });
+  if(homes.length){ // road to the mystery building site
+    const door=slerpDir(MYSTERY.dir,START,.055/MYSTERY.dir.angleTo(START)),len=START.angleTo(door),n=Math.ceil(len/step);
+    for(let s=1;s<n;s++){const p=slerpDir(START,door,s/n);if(nearHouse(p)||p.angleTo(START)<PLAZA*.8)continue;pts.push(p)}
+  }
   { // road out of the village to the cemetery gate
     const len=START.angleTo(CEM_GATE),n=Math.ceil(len/step);
     for(let s=1;s<n;s++){const p=slerpDir(START,CEM_GATE,s/n);if(nearHouse(p)||p.angleTo(START)<PLAZA*.8)continue;pts.push(p)}
@@ -656,6 +663,47 @@ function syncGraves(animate){
 
 // ---------- job buildings: hospital and farm ----------
 const siteGroup=new THREE.Group();scene.add(siteGroup);
+const mystery=new THREE.Group();scene.add(mystery);
+(function(){
+  const dirt=mat('#8a6440'),brick=mat('#b5552f'),brick2=mat('#9e4528'),wood=mat('#a8693a'),orange=mat('#f28a1e'),white=mat('#f4f1ea');
+  const pad=new THREE.Mesh(new THREE.CylinderGeometry(.62,.66,.03,24),dirt);pad.position.y=.012;mystery.add(pad);
+  // fence of barrier posts with orange/white rails, gap at the front for the road
+  for(let i=0;i<20;i++){const a=i/20*Math.PI*2;if(Math.abs(Math.atan2(Math.sin(a),Math.cos(a))-Math.PI/2)<.3)continue;
+    const p=new THREE.Mesh(new THREE.BoxGeometry(.025,.16,.025),white);p.position.set(Math.cos(a)*.6,.08,Math.sin(a)*.6);mystery.add(p);
+    const a2=(i+1)/20*Math.PI*2;if(Math.abs(Math.atan2(Math.sin(a2),Math.cos(a2))-Math.PI/2)<.3)continue;
+    const mid=(a+a2)/2,len=2*.6*Math.sin(Math.PI/20);
+    for(const [y,m] of [[.13,orange],[.07,white]]){const r=new THREE.Mesh(new THREE.BoxGeometry(len,.03,.012),m);r.position.set(Math.cos(mid)*.6,y,Math.sin(mid)*.6);r.rotation.y=-mid+Math.PI/2;mystery.add(r)}}
+  // pallets of bricks all around the middle
+  const rr=rnd(77);
+  for(let i=0;i<9;i++){
+    const a=i/9*Math.PI*2+.3,d=.36+rr()*.1,pal=new THREE.Group();pal.position.set(Math.cos(a)*d,0,Math.sin(a)*d);pal.rotation.y=rr()*3;
+    const base=new THREE.Mesh(new THREE.BoxGeometry(.14,.02,.11),wood);base.position.y=.035;pal.add(base);
+    const rows=1+Math.floor(rr()*3);
+    for(let y=0;y<rows;y++)for(let x=0;x<3;x++)for(let z=0;z<2;z++){const b=new THREE.Mesh(new THREE.BoxGeometry(.042,.026,.05),(x+y+z)%2?brick:brick2);b.position.set(-.045+x*.045,.06+y*.028,-.026+z*.052);pal.add(b)}
+    mystery.add(pal);
+  }
+  for(let i=0;i<12;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(.042,.026,.05),brick);const a=rr()*6.28,d=.2+rr()*.33;b.position.set(Math.cos(a)*d,.04,Math.sin(a)*d);b.rotation.set(0,rr()*3,rr()<.3?.4:0);mystery.add(b)}
+  // a wheelbarrow and a shovel
+  const wb=new THREE.Group();wb.position.set(.2,.03,.3);wb.rotation.y=.7;
+  const tray=new THREE.Mesh(new THREE.BoxGeometry(.11,.04,.07),mat('#2f7d5a'));tray.position.y=.05;wb.add(tray);
+  const wh=new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,.012,8),mat('#222'));wh.rotation.x=Math.PI/2;wh.position.set(.06,.022,0);wb.add(wh);mystery.add(wb);
+  const sh=new THREE.Mesh(new THREE.BoxGeometry(.008,.2,.008),wood);sh.position.set(-.18,.1,.32);sh.rotation.z=.25;mystery.add(sh);
+  // the big yellow question mark, floating and turning
+  const q=new THREE.Group();q.position.y=.62;mystery.add(q);
+  const gold=new THREE.MeshLambertMaterial({color:'#ffd23a',emissive:'#a87a00',emissiveIntensity:.45,flatShading:true});
+  const hook=new THREE.Mesh(new THREE.TorusGeometry(.13,.05,10,24,Math.PI*1.35),gold);hook.rotation.z=-Math.PI*.42;hook.position.y=.14;q.add(hook);
+  const stem=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.13,12),gold);stem.position.set(0,-.04,0);q.add(stem);
+  const cap=new THREE.Mesh(new THREE.SphereGeometry(.05,12,8),gold);cap.position.set(0,.025,0);q.add(cap);
+  const dot=new THREE.Mesh(new THREE.SphereGeometry(.062,14,10),gold);dot.position.y=-.2;q.add(dot);
+  const glow=new THREE.Mesh(new THREE.CircleGeometry(.3,24),new THREE.MeshBasicMaterial({color:'#ffd23a',transparent:true,opacity:.25,depthWrite:false}));glow.rotation.x=-Math.PI/2;glow.position.y=.035;mystery.add(glow);
+  mystery.userData={q,glow,height:1.0};
+  placeOn(mystery,MYSTERY.dir,0,0);faceToward(mystery,MYSTERY.dir,START.clone().sub(MYSTERY.dir));
+})();
+function animateMystery(T){
+  const {q,glow}=mystery.userData;
+  q.rotation.y=T*1.2;q.position.y=.62+Math.sin(T*2)*.05;
+  glow.material.opacity=.18+Math.sin(T*2)*.08;
+}
 const siteArms=[];
 let siteSig='';
 function activeSites(){return Object.keys(SITES).filter(k=>residents.some(r=>siteKeyOf(r.role)===k))}
@@ -1264,7 +1312,7 @@ function syncSites(animate){
     placeOn(g,S.dir,0,0);faceToward(g,S.dir,START.clone().sub(S.dir));
     g.userData.site=k;siteGroup.add(g);
   }
-  for(const d of decoItems)if(activeSites().some(k=>d.v.angleTo(SITES[k].dir)<SITES[k].r))d.o.visible=false;
+  for(const d of decoItems)if(activeSites().some(k=>d.v.angleTo(SITES[k].dir)<SITES[k].r)||d.v.angleTo(MYSTERY.dir)<MYSTERY.r*1.2)d.o.visible=false;
   syncWalker();
 }
 const siteLabels=new Map();
@@ -1293,6 +1341,12 @@ function updateSiteLabels(camDir,dist){
     const p=S.dir.clone().multiplyScalar(R+terrain(S.dir)+g.userData.height+.2).project(camera);
     el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(3+Math.round(S.dir.dot(camDir)*100));
   });
+  if(MYSTERY.dir.dot(camDir)>.3&&dist<=R+22){ // label over the mystery site
+    want.add('mystery');let el=siteLabels.get('mystery');
+    if(!el){el=document.createElement('div');el.className='label site';el.textContent='❓ Tajná stavba · co tu bude?';labelsEl.append(el);siteLabels.set('mystery',el)}
+    const p=MYSTERY.dir.clone().multiplyScalar(R+terrain(MYSTERY.dir)+1.05).project(camera);
+    el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(3+Math.round(MYSTERY.dir.dot(camDir)*100));
+  }
   if(walker){ // name tag that walks with the gardener
     const w=new THREE.Vector3();walker.fig.getWorldPosition(w);const n=w.clone().normalize();
     if(n.dot(camDir)>.3&&dist<=R+14){
@@ -1516,6 +1570,7 @@ function loop(now){
   }
   animateFountain(now);
   updateWalker(now);
+  if(!reduce)animateMystery(now/1000);
   if(meFig&&!reduce)meMarker.position.y=.25+Math.sin(now/300)*.025, meMarker.rotation.y=now/600;
   if(!reduce){ // residents wave: arm raised to the side, swinging back and forth
     const T=now/1000;
