@@ -1213,7 +1213,8 @@ function buildGarage(owner,members=[]){
   const tires=new THREE.Mesh(new THREE.TorusGeometry(.035,.016,6,12),mat('#1e1e1e'));tires.rotation.x=Math.PI/2;tires.position.set(-.3,.016,.12);g.add(tires);
   const tires2=tires.clone();tires2.position.y=.048;g.add(tires2);
   const people=members.filter(m=>m.role==='mechanic'&&!m.left);
-  people.forEach((m,i)=>ownerFig(g,m,'#2f5d9e','cap',i?-.24:.3,i?.5:.55,i?.8:-.6));
+  const spots=[[.3,.55,-.6],[-.24,.5,.8],[.04,.62,0],[.42,.3,-1.1]];
+  people.forEach((m,i)=>{const [x,z,r]=spots[i%spots.length];ownerFig(g,m,'#2f5d9e','cap',x,z,r)});
   g.userData.anim=T=>{if(alive)plat.position.y=.05+(Math.sin(T*.5)*.5+.5)*.17};
   g.userData.height=.6;return g;
 }
