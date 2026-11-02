@@ -1754,8 +1754,8 @@ document.getElementById('games').onclick=()=>announceText('Minihry se chystají,
 
 // ---------- data ----------
 // Public website: residents come from followers.json next to the page, refreshed every minute.
-// followers are checked at :02 every hour 10–24 h Prague time, overnight at 4:02 and 8:02
-const CHECK_HOURS=new Set([0,4,8,10,11,12,13,14,15,16,17,18,19,20,21,22,23]);
+// followers are checked at 10, 13, 16, 19 and 22 h Prague time, overnight at 0, 4 and 8 h; the map updates 5 minutes later
+const CHECK_HOURS=new Set([0,4,8,10,13,16,19,22]);
 const pragueHour=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Prague',hour:'numeric',hourCycle:'h23'});
 function nextCheck(from){
   let c=Math.floor(from/3600000)*3600000+120000;
