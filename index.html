@@ -215,7 +215,7 @@ const SITES={
   sheriff:{title:'Šerifova stanice',dir:ringDir(334,.64),r:.11}
 };
 // a mystery building site a little outside the town: bricks around, a big yellow question mark in the middle
-const MYSTERY={dir:ringDir(312,.48),r:.08};
+const MYSTERY={dir:ringDir(200,1.08),r:.16,scale:2};
 function ringDir(deg,c){const a=deg*Math.PI/180;return START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*c)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*c)).normalize()}
 // jobs that work in someone else's building
 const WORKER_OF={paramedic:'doctor'};
@@ -497,7 +497,7 @@ function buildPaths(){
     for(let s=1;s<n;s++){const p=slerpDir(START,door,s/n);if(nearHouse(p)||p.angleTo(START)<PLAZA*.8)continue;pts.push(p)}
   });
   if(homes.length){ // road to the mystery building site
-    const door=slerpDir(MYSTERY.dir,START,.055/MYSTERY.dir.angleTo(START)),len=START.angleTo(door),n=Math.ceil(len/step);
+    const door=slerpDir(MYSTERY.dir,START,.11/MYSTERY.dir.angleTo(START)),len=START.angleTo(door),n=Math.ceil(len/step);
     for(let s=1;s<n;s++){const p=slerpDir(START,door,s/n);if(nearHouse(p)||p.angleTo(START)<PLAZA*.8)continue;pts.push(p)}
   }
   { // road out of the village to the cemetery gate
@@ -697,7 +697,7 @@ const mystery=new THREE.Group();scene.add(mystery);
   const dot=new THREE.Mesh(new THREE.SphereGeometry(.062,14,10),gold);dot.position.y=-.2;q.add(dot);
   const glow=new THREE.Mesh(new THREE.CircleGeometry(.3,24),new THREE.MeshBasicMaterial({color:'#ffd23a',transparent:true,opacity:.25,depthWrite:false}));glow.rotation.x=-Math.PI/2;glow.position.y=.035;mystery.add(glow);
   mystery.userData={q,glow,height:1.0};
-  placeOn(mystery,MYSTERY.dir,0,0);faceToward(mystery,MYSTERY.dir,START.clone().sub(MYSTERY.dir));
+  placeOn(mystery,MYSTERY.dir,0,0);faceToward(mystery,MYSTERY.dir,START.clone().sub(MYSTERY.dir));mystery.scale.setScalar(MYSTERY.scale);
 })();
 function animateMystery(T){
   const {q,glow}=mystery.userData;
@@ -1344,7 +1344,7 @@ function updateSiteLabels(camDir,dist){
   if(MYSTERY.dir.dot(camDir)>.3&&dist<=R+22){ // label over the mystery site
     want.add('mystery');let el=siteLabels.get('mystery');
     if(!el){el=document.createElement('div');el.className='label site';el.textContent='❓ Tajná stavba · co tu bude?';labelsEl.append(el);siteLabels.set('mystery',el)}
-    const p=MYSTERY.dir.clone().multiplyScalar(R+terrain(MYSTERY.dir)+1.05).project(camera);
+    const p=MYSTERY.dir.clone().multiplyScalar(R+terrain(MYSTERY.dir)+2.0).project(camera);
     el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(3+Math.round(MYSTERY.dir.dot(camDir)*100));
   }
   if(walker){ // name tag that walks with the gardener
