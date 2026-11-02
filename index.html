@@ -96,6 +96,17 @@ button.link{background:none;border:0;padding:0;color:var(--sun);font-weight:700;
 .label.hl .new{color:#7a3a10}
 .fallback{position:fixed;inset:0;display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));text-align:center;color:var(--ink-dim)}
 @media (max-width:520px){.stats{gap:10px}.stat b{font-size:18px}}
+body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.playing .sheet{display:none!important}
+.play-ui{position:fixed;inset:0;z-index:8;pointer-events:none}
+.play-top{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:8px;justify-content:space-between;align-items:center}
+.play-top>*{pointer-events:auto}
+.live-chip{font-size:13px;font-weight:800;padding:8px 14px;border-radius:999px}
+.live-chip::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#5fd38a;margin-right:7px;vertical-align:1px}
+.live-chip.off::before{background:#8a8496}
+.play-help{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 64px);transform:translateX(-50%);font-size:12px;font-weight:700;color:var(--ink);background:var(--panel);border:1px solid var(--panel-line);border-radius:12px;padding:8px 14px;text-align:center;width:max-content;max-width:calc(100% - 32px);transition:opacity .6s}
+.joy{position:fixed;left:max(24px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 28px);width:136px;height:136px;border-radius:50%;background:rgba(20,18,40,.45);border:2px solid rgba(255,226,180,.4);pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none}
+.joy i{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(255,204,102,.9);box-shadow:0 2px 10px rgba(0,0,0,.45);pointer-events:none}
+.label.player{background:rgba(20,18,40,.9);font-size:11px;padding:3px 8px}
 </style>
 
 <canvas id="world" aria-label="3D planeta, každý dům patří jednomu followerovi"></canvas>
@@ -141,11 +152,18 @@ button.link{background:none;border:0;padding:0;color:var(--sun);font-weight:700;
 </aside>
 
 <div class="bar" id="bar">
+  <button id="playBtn" class="primary" type="button" hidden>Hrát za postavu 🎮</button>
   <button id="meBtn" type="button" hidden>Moje postava</button>
   <button id="games" type="button">Minihry</button>
   <button id="openList" type="button">Obyvatelé</button>
   <button id="whole" type="button">Celá planeta</button>
   <button id="town" type="button">Ke městu</button>
+</div>
+
+<div class="play-ui" id="playUi" hidden>
+  <div class="play-top"><span class="card live-chip" id="liveChip">Hraješ</span><button id="playExit" type="button">Konec hry</button></div>
+  <div class="play-help" id="playHelp"></div>
+  <div class="joy" id="joy" hidden aria-label="Joystick pro chůzi"><i id="joyKnob"></i></div>
 </div>
 
 <section class="sheet" id="sheet" hidden aria-label="Seznam obyvatel">
@@ -170,6 +188,7 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R = 10;                 // planet radius
 const SLOTS = 1500;           // house plots on the surface
 let residents = [], homes = [], firstLoad = true, selected = null;
+let play = null, figDirty = true, residentById = new Map();
 // each house holds 4–6 people (fixed per house); a new house goes up when the current one is full
 function capOf(i){return 4+hash('cap'+i)%3}
 function groupHomes(){
@@ -351,6 +370,26 @@ const WALLS=['#f3e2c3','#e9d1ad','#dcd3c4','#f0d7b8','#cfe0d6','#e7c9c1','#d9d2e
 const matCache={};
 const mat=c=>matCache[c]||(matCache[c]=new THREE.MeshLambertMaterial({color:c,flatShading:true}));
 const winMat=new THREE.MeshBasicMaterial({color:'#ffd98a'});
+// shared parts for people: eyes, smile, legs with shoes, hands
+const FIG={eye:new THREE.SphereGeometry(.0042,6,4),smile:new THREE.TorusGeometry(.0065,.0016,4,10,Math.PI),
+  leg:new THREE.BoxGeometry(.013,.036,.014),shoe:new THREE.BoxGeometry(.015,.008,.022),hand:new THREE.SphereGeometry(.008,6,4),
+  torso:new THREE.CylinderGeometry(.025,.031,.05,6)};
+const eyeMat=new THREE.MeshBasicMaterial({color:'#1b1420'}),mouthMat=new THREE.MeshBasicMaterial({color:'#7a2a2a'}),shoeMat=new THREE.MeshLambertMaterial({color:'#2a2026'});
+const PANTS=['#2f3550','#3b3f46','#4a3a2c','#24406b','#3e4a2e'];
+function addFace(parent){
+  for(const x of [-.008,.008]){const e=new THREE.Mesh(FIG.eye,eyeMat);e.position.set(x,.104,.0195);parent.add(e)}
+  const m=new THREE.Mesh(FIG.smile,mouthMat);m.rotation.z=Math.PI;m.position.set(0,.097,.0198);parent.add(m);
+}
+function addLegs(fig,id){ // shorter shirt on top of two legs
+  const pants=mat(PANTS[hash(id+'|pants')%PANTS.length]);
+  for(const s of [-1,1]){
+    const g=new THREE.Group();g.name=s<0?'legL':'legR';g.position.set(s*.012,.038,0);
+    const l=new THREE.Mesh(FIG.leg,pants);l.position.y=-.018;g.add(l);
+    const sh=new THREE.Mesh(FIG.shoe,shoeMat);sh.position.set(0,-.034,.004);g.add(sh);
+    fig.add(g);
+  }
+}
+function shapeTorso(shirt){shirt.geometry=FIG.torso;shirt.position.y=.06}
 const darkWin=new THREE.MeshBasicMaterial({color:'#3a3352'});
 function makeHouse(home){
   const idx=home.i;
@@ -384,11 +423,13 @@ function makeHouse(home){
     const shirt=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.08,6),mat(ROOFS[Math.floor(pr()*ROOFS.length)]));shirt.position.y=.04;fig.add(shirt);
     const skin=mat(['#f1c9a5','#d9a37c','#a8714d','#7a4d32'][Math.floor(pr()*4)]);
     const head=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),skin);head.position.y=.1;fig.add(head);
+    shapeTorso(shirt);addLegs(fig,m.id);addFace(fig);
     // arms hang from the shoulders; the right one waves (animated in the loop)
     const armGeo=new THREE.BoxGeometry(.011,.048,.011);
-    const left=new THREE.Group();left.position.set(-.029,.074,0);
+    const left=new THREE.Group();left.name='armL';left.position.set(-.029,.074,0);
     const la=new THREE.Mesh(armGeo,shirt.material);la.position.y=-.022;left.add(la);left.rotation.z=-.25;fig.add(left);
-    const right=new THREE.Group();right.position.set(.029,.074,0);
+    const lh=new THREE.Mesh(FIG.hand,skin);lh.position.y=-.048;left.add(lh);
+    const right=new THREE.Group();right.name='armR';right.position.set(.029,.074,0);
     const ra=new THREE.Mesh(armGeo,shirt.material);ra.position.y=.022;right.add(ra);
     const hand=new THREE.Mesh(new THREE.SphereGeometry(.008,6,4),skin);hand.position.y=.048;right.add(hand);
     fig.add(right);
@@ -713,12 +754,14 @@ function flyToResident(r,h){
   if(r.home==null&&siteKeyOf(r.role)){flyToSurface(SITES[siteKeyOf(r.role)].dir,h+.6);return}
   selected='h'+r.home;const P=PLOTS[r.home];if(P)flyTo(P.v,R+h);
 }
-function makePerson(m,shirtColor,hat){
+function makePerson(m,shirtColor,hat,skinColor){
   const pr=rnd(hash(m.id));
   const fig=new THREE.Group();fig.userData.memberId=m.id;
   const shirt=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.08,6),mat(shirtColor));shirt.position.y=.04;fig.add(shirt);
-  const skin=mat(['#f1c9a5','#d9a37c','#a8714d','#7a4d32'][Math.floor(pr()*4)]);
+  const skinPick=['#f1c9a5','#d9a37c','#a8714d','#7a4d32'][Math.floor(pr()*4)];
+  const skin=mat(skinColor||skinPick);
   const head=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),skin);head.position.y=.1;fig.add(head);
+  shapeTorso(shirt);addLegs(fig,m.id);addFace(fig);
   if(hat==='straw'){const brim=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.006,10),mat('#e8c35a'));brim.position.y=.118;fig.add(brim);const top=new THREE.Mesh(new THREE.CylinderGeometry(.018,.022,.022,8),mat('#e8c35a'));top.position.y=.13;fig.add(top)}
   if(hat==='helmet'){const hm=new THREE.Mesh(new THREE.SphereGeometry(.026,10,6,0,Math.PI*2,0,Math.PI/2),mat('#f2c230'));hm.position.y=.106;fig.add(hm);const brim=new THREE.Mesh(new THREE.CylinderGeometry(.032,.032,.004,10),mat('#f2c230'));brim.position.y=.107;fig.add(brim)}
   if(hat==='fire'){const hm=new THREE.Mesh(new THREE.SphereGeometry(.027,10,6,0,Math.PI*2,0,Math.PI/2),mat('#d6332f'));hm.position.y=.106;fig.add(hm);const brim=new THREE.Mesh(new THREE.CylinderGeometry(.036,.036,.004,10),mat('#d6332f'));brim.position.y=.107;fig.add(brim)}
@@ -732,8 +775,9 @@ function makePerson(m,shirtColor,hat){
   if(hat==='tennis'){const band=new THREE.Mesh(new THREE.TorusGeometry(.022,.004,4,12),mat('#e8443a'));band.rotation.x=Math.PI/2;band.position.y=.108;fig.add(band)}
   if(hat==='doctor'){const steth=new THREE.Mesh(new THREE.TorusGeometry(.018,.003,4,10),mat('#3a6fd8'));steth.position.set(0,.065,.03);fig.add(steth)}
   const armGeo=new THREE.BoxGeometry(.011,.048,.011);
-  const left=new THREE.Group();left.position.set(-.029,.074,0);const la=new THREE.Mesh(armGeo,shirt.material);la.position.y=-.022;left.add(la);left.rotation.z=-.25;fig.add(left);
-  const right=new THREE.Group();right.position.set(.029,.074,0);const ra=new THREE.Mesh(armGeo,shirt.material);ra.position.y=.022;right.add(ra);
+  const left=new THREE.Group();left.name='armL';left.position.set(-.029,.074,0);const la=new THREE.Mesh(armGeo,shirt.material);la.position.y=-.022;left.add(la);left.rotation.z=-.25;fig.add(left);
+  const lh=new THREE.Mesh(FIG.hand,skin);lh.position.y=-.048;left.add(lh);
+  const right=new THREE.Group();right.name='armR';right.position.set(.029,.074,0);const ra=new THREE.Mesh(armGeo,shirt.material);ra.position.y=.022;right.add(ra);
   const hand=new THREE.Mesh(new THREE.SphereGeometry(.008,6,4),skin);hand.position.y=.048;right.add(hand);fig.add(right);
   siteArms.push({arm:right,ph:pr()*6.28,sp:6+pr()*3});
   return fig;
@@ -954,13 +998,16 @@ function makeGardener(m){
   const apron=new THREE.Mesh(new THREE.BoxGeometry(.034,.05,.004),mat('#7cc04b'));apron.position.set(0,.036,.034);apron.rotation.x=-.17;body.add(apron);
   const skin=mat(['#f1c9a5','#d9a37c','#a8714d','#7a4d32'][Math.floor(pr()*4)]);
   const head=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),skin);head.position.y=.1;body.add(head);
+  addFace(body);
+  for(const x of [-.012,.012]){const sh=new THREE.Mesh(FIG.shoe,shoeMat);sh.position.set(x,.004,.012);body.add(sh)}
   const hair=new THREE.Mesh(new THREE.SphereGeometry(.023,8,6),mat('#7a4a2a'));hair.position.set(0,.102,-.006);hair.scale.set(1,1,.9);body.add(hair);
   const brim=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.005,12),mat('#f2d06b'));brim.position.y=.12;body.add(brim);
   const top=new THREE.Mesh(new THREE.CylinderGeometry(.019,.023,.02,10),mat('#f2d06b'));top.position.y=.131;body.add(top);
   const band=new THREE.Mesh(new THREE.CylinderGeometry(.0235,.0235,.006,10),mat('#e05a8a'));band.position.y=.125;body.add(band);
   const armGeo=new THREE.BoxGeometry(.011,.048,.011);
-  const left=new THREE.Group();left.position.set(-.027,.074,0);const la=new THREE.Mesh(armGeo,dress.material);la.position.y=-.022;left.add(la);body.add(left);
-  const right=new THREE.Group();right.position.set(.027,.074,0);const ra=new THREE.Mesh(armGeo,dress.material);ra.position.y=-.022;right.add(ra);body.add(right);
+  const left=new THREE.Group();left.name='armL';left.position.set(-.027,.074,0);const la=new THREE.Mesh(armGeo,dress.material);la.position.y=-.022;left.add(la);body.add(left);
+  const lh=new THREE.Mesh(FIG.hand,skin);lh.position.y=-.048;left.add(lh);
+  const right=new THREE.Group();right.name='armR';right.position.set(.027,.074,0);const ra=new THREE.Mesh(armGeo,dress.material);ra.position.y=-.022;right.add(ra);body.add(right);
   const can=new THREE.Group();can.position.set(.008,-.058,0);right.add(can);
   const cb=new THREE.Mesh(new THREE.CylinderGeometry(.016,.018,.03,10),mat('#3f9a6a'));cb.position.y=-.012;can.add(cb);
   const sp=new THREE.Mesh(new THREE.CylinderGeometry(.003,.004,.045,5),mat('#3f9a6a'));sp.position.set(0,-.004,.03);sp.rotation.x=1.0;can.add(sp);
@@ -1350,7 +1397,7 @@ function updateSiteLabels(camDir,dist){
   }
   if(walker){ // name tag that walks with the gardener
     const w=new THREE.Vector3();walker.fig.getWorldPosition(w);const n=w.clone().normalize();
-    if(n.dot(camDir)>.3&&dist<=R+14){
+    if(walker.fig.visible&&n.dot(camDir)>.3&&dist<=R+14){
       want.add('walker');let el=siteLabels.get('walker');
       if(!el){el=document.createElement('div');el.className='label site';labelsEl.append(el);siteLabels.set('walker',el)}
       const o=siteOwner('gardener'),text=`🌷 ${o?o.name:''}`;if(el.textContent!==text)el.textContent=text;
@@ -1401,6 +1448,7 @@ function updateLabels(){
   }
   updateCemLabels(camDir,dist);
   updateSiteLabels(camDir,dist);
+  updatePlayerLabels(camDir,dist);
   updateMeTag(camDir);
 }
 const cemLabels=new Map();
@@ -1461,6 +1509,7 @@ function flyToGlobe(dist){
   startFly(d.multiplyScalar(dist),new THREE.Vector3(),new THREE.Vector3(0,1,0),'globe');
 }
 function startFly(pos,target,up,m){
+  if(play)return; // the camera follows your character while you play
   fly={fromPos:camera.position.clone(),toPos:pos,fromT:controls.target.clone(),toT:target,
        fromUp:camera.up.clone(),toUp:up.clone(),m,t0:performance.now(),dur:reduce?1:1400};
   controls.autoRotate=false;
@@ -1517,7 +1566,7 @@ function panBy(dx,dy){
 }
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('pointerdown',e=>{
-  if(e.button!==2||e.target!==canvas)return;
+  if(play||e.button!==2||e.target!==canvas)return;
   e.stopPropagation();e.preventDefault();
   finishFly();controls.autoRotate=false;
   panning={x:e.clientX,y:e.clientY,id:e.pointerId};
@@ -1571,6 +1620,9 @@ function loop(now){
   }
   animateFountain(now);
   updateWalker(now);
+  updatePlay(now);
+  updateRemotes(now);
+  updateHidden();
   if(!reduce)animateMystery(now/1000);
   if(meFig&&!reduce)meMarker.position.y=.25+Math.sin(now/300)*.025, meMarker.rotation.y=now/600;
   if(!reduce){ // residents wave: arm raised to the side, swinging back and forth
@@ -1583,7 +1635,7 @@ function loop(now){
     siteGroup.children.forEach(g=>{if(g.userData.tennis)animateTennis(g.userData.tennis,T)});
     siteGroup.children.forEach(g=>{if(g.userData.anim)g.userData.anim(T)});
   }else{for(const [,h] of houses)(h.g.userData.waveArms||[]).forEach(a=>a.arm.rotation.z=-.5)}
-  if(!fly&&!panning)controls.update();
+  if(!fly&&!panning&&!play)controls.update();
   renderer.render(scene,camera);
   updateLabels();
   requestAnimationFrame(loop);
@@ -1650,7 +1702,7 @@ function setResidents(list){
   dataLoaded=true;
   const prevLeft=new Map(residents.map(r=>[r.id,r.left]));
   const prev=new Set(residents.map(r=>r.id));
-  residents=list;groupHomes();
+  residents=list;groupHomes();figDirty=true;residentById=new Map(list.map(r=>[r.id,r]));
   const fresh=new Set(firstLoad?[]:list.filter(r=>!prev.has(r.id)).map(r=>r.id));
   syncHouses(!firstLoad);syncSites(!firstLoad);syncGraves(!firstLoad);paintPlanet();updateHud();applyMe(firstLoad&&!!meId);
   const died=firstLoad?[]:list.filter(r=>r.left&&prevLeft.get(r.id)===false);
@@ -1664,6 +1716,7 @@ function setResidents(list){
   }else if(died.length){announceDeath(died[died.length-1],false);flyToSurface(CEM,3)}
   else if(revived.length){const r=revived[revived.length-1];announceDeath(r,true);flyToResident(r,3.6)}
   firstLoad=false;
+  if(play){const me=residentById.get(meId);if(!me||me.left)stopPlay()}
 }
 paintPlanet();updateHud();
 
@@ -1699,7 +1752,7 @@ const ROLE_TEXT={
 };
 function applyMe(flyThere){
   if(meFig){meFig.scale.setScalar(1);meFig.remove(meMarker);meFig=null}
-  meTag.hidden=true;
+  meTag.hidden=true;playBtn.hidden=true;
   if(!meId){meCard.hidden=true;meBtn.hidden=true;return}
   meCard.hidden=false;document.getElementById('meName').textContent='@'+meNick.replace(/^@+/,'');
   if(!dataLoaded){setMeInfo([noData?'Planetu se teď nepodařilo načíst.':'Hledám tvůj dům…']);meBtn.hidden=true;return}
@@ -1715,6 +1768,7 @@ function applyMe(flyThere){
     if(flyThere)flyToSurface(CEM,2.6);
     return;
   }
+  playBtn.hidden=false;
   if(r.home==null&&siteKeyOf(r.role)){
     setMeInfo([ROLE_TEXT[r.role]||(r.role==='doctor'?'Jsi ředitel a hlavní lékař nemocnice 🏥.':r.role==='farmer'?'Jsi farmář/ka a patří ti farma s polem 🌾.':r.role==='builder'?'Jsi stavitel planety 🏗️. Patří ti stavební firma s jeřábem.':r.role==='tennis'?'Patří ti dům s vlastním tenisovým kurtem 🎾.':r.role==='gardener'?'Jsi zahradník/ice planety 🌷. Chodíš mezi domy a zaléváš kytky.':`Patří ti stavba: ${SITES[siteKeyOf(r.role)].title}.`)]);
   }else{
@@ -1725,8 +1779,9 @@ function applyMe(flyThere){
   meFig=findFig(meId);
   if(meFig){
     meFig.scale.setScalar(1.35);meMarker.position.y=.25;meFig.add(meMarker);
-    if(flyThere){const w=new THREE.Vector3();meFig.getWorldPosition(w);flyToSurface(w,1.5);if(r.home!=null)selected='h'+r.home}
+    if(flyThere&&!play){const w=new THREE.Vector3();meFig.getWorldPosition(w);flyToSurface(w,1.5);if(r.home!=null)selected='h'+r.home}
   }
+  if(play){play.av.fig.add(meMarker);meMarker.position.y=.25}
 }
 function updateMeTag(camDir){
   if(!meFig||!meFig.parent){meTag.hidden=true;return}
@@ -1746,11 +1801,274 @@ document.getElementById('welcomeForm').addEventListener('submit',e=>{
 });
 document.getElementById('justLook').onclick=()=>{welcome.hidden=true;if(!meId)flyTo(townCenter(),townDist())};
 document.getElementById('meChange').onclick=()=>{
+  if(play)stopPlay();
   meId=null;meNick='';try{localStorage.removeItem('planeta-nick')}catch(_){}
   applyMe(false);document.getElementById('nickInput').value='';welcome.hidden=false;document.getElementById('nickInput').focus();
 };
 meBtn.onclick=()=>applyMe(true);
 document.getElementById('games').onclick=()=>announceText('Minihry se chystají, už brzy 🎮');
+
+// ---------- play: walk your own character around the planet ----------
+// PC: WASD / arrows, Shift to run, Q/E or drag to turn the camera, wheel to zoom.
+// Phone: joystick bottom left, drag anywhere else to turn the camera.
+// Live: everyone's position goes through a Firebase Realtime Database (REST + server-sent events),
+// so other visitors of the website see the characters walking.
+const LIVE_DB='https://planetafolloweru-default-rtdb.europe-west1.firebasedatabase.app';
+const ROLE_LOOK={doctor:['#ffffff','doctor'],farmer:['#4f7a4a','straw'],builder:['#e8792a','helmet'],tennis:['#ffffff','tennis'],paramedic:['#2fa35a',null],
+  football:['#5b3fa8','captain'],scientist:['#ffffff','glasses'],cafe:['#3b2418','beret'],barber:['#1e2a44',null],kebab:['#ffffff','chef'],
+  firefighter:['#2b2b33','fire'],mechanic:['#2f5d9e','cap'],sheriff:['#c9a66b','cowboy']};
+const SKINS=['#f1c9a5','#d9a37c','#a8714d','#7a4d32'];
+const AV_SCALE=1.4, WALK=.5, RUN=1.05; // walking speeds in world units per second (planet radius is 10)
+const playerGroup=new THREE.Group();scene.add(playerGroup);
+const playBtn=document.getElementById('playBtn'),playUi=document.getElementById('playUi'),playHelp=document.getElementById('playHelp');
+const joy=document.getElementById('joy'),joyKnob=document.getElementById('joyKnob'),liveChip=document.getElementById('liveChip');
+let sawTouch=false;const touchUI=()=>sawTouch||matchMedia('(pointer: coarse)').matches||('ontouchstart' in window);
+addEventListener('pointerdown',e=>{if(e.pointerType==='touch'&&!sawTouch){sawTouch=true;if(play)joy.hidden=false}},true);
+const keys=new Set();
+let joyVec=null,joyId=null,camDrag=null,lastPlayT=0,helpTimer=null;
+
+function makeAvatar(r){ // looks like the resident's own figure, but walks
+  let fig,parts;
+  if(r.role==='gardener'){
+    const g=makeGardener(r);fig=g.fig;
+    parts={armL:g.left,armR:g.right,legL:null,legR:null,armUp:false};
+  }else{
+    let shirt,hat=null,skin=null;
+    if(ROLE_LOOK[r.role])[shirt,hat]=ROLE_LOOK[r.role];
+    else{const pr=rnd(hash(r.id));shirt=ROOFS[Math.floor(pr()*ROOFS.length)];skin=SKINS[Math.floor(pr()*4)]}
+    fig=makePerson(r,shirt,hat,skin);siteArms.pop(); // it walks, it doesn't wave
+    parts={armL:fig.getObjectByName('armL'),armR:fig.getObjectByName('armR'),legL:fig.getObjectByName('legL'),legR:fig.getObjectByName('legR'),armUp:true};
+  }
+  delete fig.userData.memberId;
+  fig.scale.setScalar(AV_SCALE);
+  return {fig,parts};
+}
+function poseAvatar(a,T,speed){ // speed 0..1: swing legs and arms
+  const s=Math.sin(T*(9+speed*5))*Math.min(1,speed),p=a.parts;
+  if(p.legL){p.legL.rotation.x=s*.8;p.legR.rotation.x=-s*.8}
+  if(p.armL)p.armL.rotation.set(-s*.7,0,-.12);
+  if(p.armR)p.armR.rotation.set(s*.7,0,p.armUp?Math.PI+.12:.12);
+}
+function tangentize(v,n){v.sub(n.clone().multiplyScalar(v.dot(n)));if(v.lengthSq()<1e-10)v.copy(tangentOf(n));return v.normalize()}
+
+// ---------- my own character ----------
+function startPlay(){
+  const r=residentById.get(meId);if(!r||r.left||play)return;
+  finishFly();controls.autoRotate=false;controls.enabled=false;
+  sheet.hidden=true;bar.hidden=false;
+  const av=makeAvatar(r);playerGroup.add(av.fig);
+  let p,face;
+  const src=findFig(meId);
+  if(src){const w=new THREE.Vector3();src.getWorldPosition(w);p=w.normalize();face=new THREE.Vector3(0,0,1).applyQuaternion(src.getWorldQuaternion(new THREE.Quaternion()))}
+  else{p=START.clone().add(tangentOf(START).multiplyScalar(PLAZA*1.2)).normalize();face=START.clone().sub(p)}
+  tangentize(face,p);
+  play={av,p,f:face.clone(),face:face.clone(),speed:0,camDist:1.7,pitch:1.0,camInit:false,lastSend:0,sentP:null,sentM:-1};
+  document.body.classList.add('playing');playUi.hidden=false;joy.hidden=!touchUI();
+  playHelp.textContent=touchUI()?'Chůze: táhni žlutým kolečkem · Kamera: táhni prstem po planetě':'Chůze: W A S D · Shift běh · Kamera: Q/E nebo táhni myší · kolečko zoom · Esc konec';
+  playHelp.style.opacity=1;clearTimeout(helpTimer);helpTimer=setTimeout(()=>playHelp.style.opacity=0,7000);
+  applyMe(false);
+  liveSend(performance.now(),true);
+  updateChip();
+}
+function stopPlay(){
+  if(!play)return;
+  const p=play.p.clone();
+  liveLeave();
+  playerGroup.remove(play.av.fig);play=null;keys.clear();joyVec=null;joyId=null;camDrag=null;joyKnob.style.transform='';
+  document.body.classList.remove('playing');playUi.hidden=true;
+  controls.enabled=true;setControls(surfacePoint(p),p,'surface');
+  applyMe(false);
+}
+playBtn.onclick=startPlay;
+document.getElementById('playExit').onclick=stopPlay;
+
+function obstacles(){ // houses and the fountain can't be walked through
+  const o=[];
+  for(const [,h] of houses)o.push([h.v,.024]);
+  if(fountain.visible)o.push([START,.05]);
+  for(const g of siteGroup.children){const S=SITES[g.userData.site];if(S)o.push([S.dir,.028])}
+  return o;
+}
+function updatePlay(now){
+  const dt=Math.min(.1,(now-(lastPlayT||now))/1000);lastPlayT=now;
+  if(!play)return;
+  const P=play;
+  // camera turn from keys
+  let yaw=0;if(keys.has('KeyQ'))yaw+=1;if(keys.has('KeyE'))yaw-=1;
+  if(yaw)P.f.applyAxisAngle(P.p,yaw*1.8*dt);
+  // movement input relative to the camera
+  let ix=0,iy=0,run=keys.has('ShiftLeft')||keys.has('ShiftRight');
+  if(keys.has('KeyW')||keys.has('ArrowUp'))iy+=1;
+  if(keys.has('KeyS')||keys.has('ArrowDown'))iy-=1;
+  if(keys.has('KeyD')||keys.has('ArrowRight'))ix+=1;
+  if(keys.has('KeyA')||keys.has('ArrowLeft'))ix-=1;
+  let mag=Math.hypot(ix,iy);if(mag>1){ix/=mag;iy/=mag;mag=1}
+  let speed=mag*(run?RUN:WALK);
+  if(joyVec){const m=Math.hypot(joyVec.x,joyVec.y);if(m>.12){ix=joyVec.x/m;iy=joyVec.y/m;speed=Math.min(1,m)*RUN*.85}}
+  P.speed+=(speed-P.speed)*Math.min(1,dt*10);
+  if(speed>0){
+    const right=new THREE.Vector3().crossVectors(P.f,P.p);
+    const move=P.f.clone().multiplyScalar(iy).add(right.multiplyScalar(ix)).normalize();
+    const axis=new THREE.Vector3().crossVectors(P.p,move).normalize();
+    const q=new THREE.Quaternion().setFromAxisAngle(axis,speed*dt/R);
+    P.p.applyQuaternion(q).normalize();P.f.applyQuaternion(q);
+    P.face.lerp(move.applyQuaternion(q),Math.min(1,dt*14));
+    for(const [v,rad] of obstacles()){ // slide around buildings
+      const a=P.p.angleTo(v);
+      if(a<rad){const out=tangentize(P.p.clone().sub(v),v);P.p.copy(v.clone().multiplyScalar(Math.cos(rad)).add(out.multiplyScalar(Math.sin(rad)))).normalize()}
+    }
+  }
+  tangentize(P.f,P.p);tangentize(P.face,P.p);
+  const T=now/1000,sp=P.speed/WALK;
+  placeOn(P.av.fig,P.p,Math.abs(Math.sin(T*(9+sp*5)))*.012*Math.min(1,sp),0);faceToward(P.av.fig,P.p,P.face);
+  poseAvatar(P.av,T,sp);
+  // third-person camera behind the character
+  const base=P.p.clone().multiplyScalar(R+terrain(P.p)+.13);
+  const want=base.clone().add(P.f.clone().multiplyScalar(-Math.cos(P.pitch)).add(P.p.clone().multiplyScalar(Math.sin(P.pitch))).multiplyScalar(P.camDist));
+  const cd=want.clone().normalize(),floor=R+terrain(cd)+.08;if(want.length()<floor)want.setLength(floor);
+  if(!P.camInit){camera.position.copy(want);P.camInit=true}else camera.position.lerp(want,1-Math.exp(-dt*9));
+  camera.up.copy(P.p);camera.lookAt(base);
+  liveSend(now,false);
+}
+// keyboard
+addEventListener('keydown',e=>{
+  if(e.target&&e.target.closest&&e.target.closest('input,textarea,select'))return;
+  const move=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code);
+  if(!play){ // pressing W A S D starts the game when you have a character
+    if(move&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&welcome.hidden&&sheet.hidden&&!playBtn.hidden)startPlay();
+    if(!play)return;
+  }
+  if(e.code==='Escape'){stopPlay();return}
+  keys.add(e.code);
+  if(move||e.code==='Space')e.preventDefault();
+});
+addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('blur',()=>keys.clear());
+// camera: drag to turn, wheel to zoom
+canvas.addEventListener('pointerdown',e=>{if(!play)return;camDrag={id:e.pointerId,x:e.clientX,y:e.clientY};try{canvas.setPointerCapture(e.pointerId)}catch(_){}});
+canvas.addEventListener('pointermove',e=>{
+  if(!play||!camDrag||e.pointerId!==camDrag.id)return;
+  const dx=e.clientX-camDrag.x,dy=e.clientY-camDrag.y;camDrag.x=e.clientX;camDrag.y=e.clientY;
+  play.f.applyAxisAngle(play.p,-dx*.006);play.pitch=Math.min(1.35,Math.max(.25,play.pitch+dy*.004));
+});
+const endDrag=e=>{if(camDrag&&e.pointerId===camDrag.id)camDrag=null};
+canvas.addEventListener('pointerup',endDrag);canvas.addEventListener('pointercancel',endDrag);
+canvas.addEventListener('wheel',e=>{if(!play)return;e.preventDefault();e.stopImmediatePropagation();play.camDist=Math.min(3,Math.max(.5,play.camDist*(1+e.deltaY*.0012)))},{passive:false,capture:true});
+// joystick (phone)
+function joyMove(e){
+  const b=joy.getBoundingClientRect(),max=b.width/2-14;
+  let dx=e.clientX-(b.left+b.width/2),dy=e.clientY-(b.top+b.height/2);const l=Math.hypot(dx,dy);
+  if(l>max){dx*=max/l;dy*=max/l}
+  joyKnob.style.transform=`translate(${dx}px,${dy}px)`;joyVec={x:dx/max,y:-dy/max};
+}
+joy.addEventListener('pointerdown',e=>{e.preventDefault();joyId=e.pointerId;try{joy.setPointerCapture(e.pointerId)}catch(_){}joyMove(e)});
+joy.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e)});
+const joyEnd=e=>{if(e.pointerId!==joyId)return;joyId=null;joyVec=null;joyKnob.style.transform=''};
+joy.addEventListener('pointerup',joyEnd);joy.addEventListener('pointercancel',joyEnd);joy.addEventListener('lostpointercapture',joyEnd);
+addEventListener('pointerup',joyEnd);addEventListener('pointercancel',joyEnd);
+
+// ---------- live: other visitors walking ----------
+const live={es:null,players:{},avatars:new Map(),labels:new Map(),sending:false,ok:false};
+const liveKey=id=>id.replace(/\./g,'-');           // Firebase keys can't contain dots
+const liveUrl=id=>LIVE_DB+'/players/'+liveKey(id)+'.json';
+function liveStart(){
+  if(!LIVE_DB||live.es||typeof EventSource==='undefined')return;
+  try{
+    const es=new EventSource(LIVE_DB+'/players.json');
+    const apply=(e,merge)=>{try{const m=JSON.parse(e.data);if(m&&typeof m.path==='string')applyPath(m.path,m.data,merge)}catch(_){}};
+    es.addEventListener('put',e=>apply(e,false));
+    es.addEventListener('patch',e=>apply(e,true));
+    es.onopen=()=>{live.ok=true;updateChip()};
+    es.onerror=()=>{live.ok=false;updateChip()}; // EventSource reconnects by itself
+    live.es=es;
+  }catch(_){}
+}
+function applyPath(path,data,merge){
+  const parts=path.split('/').filter(Boolean);
+  if(!parts.length){
+    if(!merge)live.players={};
+    if(data&&typeof data==='object')for(const k in data)setPlayer(k,data[k]);
+    return;
+  }
+  const key=parts[0];
+  if(parts.length===1){setPlayer(key,merge&&live.players[key]&&data?{...live.players[key].raw,...data}:data);return}
+  const cur=live.players[key]?JSON.parse(JSON.stringify(live.players[key].raw)):{};
+  let o=cur;for(let i=1;i<parts.length-1;i++){if(!o[parts[i]]||typeof o[parts[i]]!=='object')o[parts[i]]={};o=o[parts[i]]}
+  const last=parts[parts.length-1];
+  if(data===null)delete o[last];else o[last]=data;
+  setPlayer(key,cur);
+}
+function setPlayer(key,raw){
+  if(!raw||typeof raw!=='object'||!Array.isArray(raw.p)||raw.p.length<3){delete live.players[key];return}
+  const p=new THREE.Vector3(+raw.p[0],+raw.p[1],+raw.p[2]);if(!(p.lengthSq()>.25))return;p.normalize();
+  const d=Array.isArray(raw.d)&&raw.d.length>=3?new THREE.Vector3(+raw.d[0],+raw.d[1],+raw.d[2]):null;
+  const age=Number(raw.t)?Math.max(0,Date.now()-Number(raw.t)):0;
+  live.players[key]={raw,p,d,seen:performance.now()-age};
+}
+function liveSend(now,force){
+  if(!LIVE_DB||!play||!meId)return;
+  const P=play,moving=P.speed>.05?1:0;
+  const moved=!P.sentP||P.sentP.angleTo(P.p)>.0003;
+  const due=force||moving!==P.sentM||(moved&&now-P.lastSend>150)||now-P.lastSend>5000;
+  if(!due||live.sending)return;
+  P.lastSend=now;P.sentP=P.p.clone();P.sentM=moving;live.sending=true;
+  const r4=v=>Math.round(v*1e4)/1e4,r3=v=>Math.round(v*1e3)/1e3;
+  const body={p:[r4(P.p.x),r4(P.p.y),r4(P.p.z)],d:[r3(P.face.x),r3(P.face.y),r3(P.face.z)],m:moving,t:{'.sv':'timestamp'}};
+  fetch(liveUrl(meId),{method:'PUT',body:JSON.stringify(body)}).catch(()=>{}).finally(()=>{live.sending=false});
+}
+function liveLeave(){
+  if(!LIVE_DB||!meId)return;
+  try{fetch(liveUrl(meId),{method:'DELETE',keepalive:true}).catch(()=>{})}catch(_){}
+}
+addEventListener('pagehide',()=>{if(play)liveLeave()});
+document.addEventListener('visibilitychange',()=>{if(play&&document.visibilityState==='visible')liveSend(performance.now(),true)});
+let lastRemoteT=0;
+function updateRemotes(now){
+  const dt=Math.min(.1,(now-(lastRemoteT||now))/1000);lastRemoteT=now;
+  const T=now/1000,k=1-Math.exp(-dt*8),keep=new Set();
+  for(const key in live.players){
+    const pl=live.players[key],id=key.replace(/-/g,'.');
+    if(play&&id===meId)continue;
+    const r=residentById.get(id);
+    if(!r||r.left||now-pl.seen>20000)continue; // only residents, only while they're around
+    keep.add(id);
+    let a=live.avatars.get(id);
+    if(!a){a={...makeAvatar(r),pos:pl.p.clone(),face:tangentize((pl.d||tangentOf(pl.p)).clone(),pl.p),walk:0,name:r.name};playerGroup.add(a.fig);live.avatars.set(id,a)}
+    const before=a.pos.clone();
+    if(a.pos.angleTo(pl.p)>.3)a.pos.copy(pl.p);else a.pos.lerp(pl.p,k).normalize();
+    const v=before.angleTo(a.pos)*R/Math.max(dt,1e-3);
+    if(pl.d)a.face.lerp(pl.d,k);tangentize(a.face,a.pos);
+    a.walk+=((pl.raw.m?Math.max(.6,Math.min(2,v/WALK)):Math.min(1,v/WALK))-a.walk)*k;
+    placeOn(a.fig,a.pos,Math.abs(Math.sin(T*(9+a.walk*5)))*.012*Math.min(1,a.walk),0);faceToward(a.fig,a.pos,a.face);
+    poseAvatar(a,T,a.walk);
+  }
+  for(const [id,a] of live.avatars)if(!keep.has(id)){playerGroup.remove(a.fig);live.avatars.delete(id)}
+  if(play&&live.avatars.size!==live.lastN){live.lastN=live.avatars.size;updateChip()}
+}
+function updateChip(){
+  if(!play)return;
+  const n=live.avatars.size+1;
+  if(!LIVE_DB||!live.ok){liveChip.textContent='Hraješ';liveChip.classList.add('off');return}
+  liveChip.classList.remove('off');
+  liveChip.textContent=n===1?'Online jen ty':`Online ${n} ${n<5?'hráči':'hráčů'}`;
+}
+// figures standing at home hide while their owner walks around
+let figList=[];
+function updateHidden(){
+  if(figDirty){figList=[];for(const grp of [townGroup,siteGroup,walkerGroup])grp.traverse(o=>{if(o.userData&&o.userData.memberId)figList.push(o)});figDirty=false}
+  for(const f of figList){const hide=live.avatars.has(f.userData.memberId)||(play&&f.userData.memberId===meId);if(f.visible===hide)f.visible=!hide}
+}
+function updatePlayerLabels(camDir,dist){
+  for(const [id,a] of live.avatars){
+    let el=live.labels.get(id);
+    if(!el){el=document.createElement('div');el.className='label player';el.textContent=a.name;labelsEl.append(el);live.labels.set(id,el)}
+    const n=a.pos;
+    if(n.dot(camDir)<.3||dist>R+16){el.hidden=true;continue}
+    const p=n.clone().multiplyScalar(R+terrain(n)+.28).project(camera);
+    el.hidden=false;el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(500+Math.round(n.dot(camDir)*100));
+  }
+  for(const [id,el] of live.labels)if(!live.avatars.has(id)){el.remove();live.labels.delete(id)}
+}
 
 // ---------- data ----------
 // Public website: residents come from followers.json next to the page, refreshed every minute.
@@ -1787,6 +2105,7 @@ async function loadFromFile(){
   };
   await pull();setInterval(pull,60000);
 }
+liveStart();
 (async()=>{
   const db=window.claude?.use?await window.claude.use('db'):null;
   if(!db){loadFromFile();return}
