@@ -107,6 +107,7 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .joy{position:fixed;left:max(24px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 28px);width:136px;height:136px;border-radius:50%;background:rgba(20,18,40,.45);border:2px solid rgba(255,226,180,.4);pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none}
 .joy i{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(255,204,102,.9);box-shadow:0 2px 10px rgba(0,0,0,.45);pointer-events:none}
 .label.player{background:rgba(20,18,40,.9);font-size:11px;padding:3px 8px}
+.jump-btn{position:fixed;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 52px);width:88px;height:88px;border-radius:50%;padding:0;background:rgba(255,204,102,.9);color:#2b1d0e;border:2px solid rgba(255,255,255,.5);font-size:15px;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
 </style>
 
 <canvas id="world" aria-label="3D planeta, každý dům patří jednomu followerovi"></canvas>
@@ -164,6 +165,7 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
   <div class="play-top"><span class="card live-chip" id="liveChip">Hraješ</span><button id="playExit" type="button">Konec hry</button></div>
   <div class="play-help" id="playHelp"></div>
   <div class="joy" id="joy" hidden aria-label="Joystick pro chůzi"><i id="joyKnob"></i></div>
+  <button class="jump-btn" id="jumpBtn" type="button" hidden>Skok</button>
 </div>
 
 <section class="sheet" id="sheet" hidden aria-label="Seznam obyvatel">
@@ -1592,7 +1594,11 @@ addEventListener('pointercancel',endPan,true);
 // ---------- loop ----------
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
 addEventListener('resize',resize);resize();
+const _sz=new THREE.Vector2();
 function loop(now){
+  {const cw=canvas.clientWidth,ch=canvas.clientHeight; // render size follows the canvas (phones can change it without a resize event)
+   renderer.getSize(_sz);
+   if(cw&&ch&&(_sz.x!==cw||_sz.y!==ch||Math.abs(camera.aspect-cw/ch)>1e-3)){renderer.setSize(cw,ch,false);camera.aspect=cw/ch;camera.updateProjectionMatrix()}}
   if(fly){
     const t=Math.min(1,(now-fly.t0)/fly.dur),e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
     // travel around the sphere, never through it
@@ -1781,6 +1787,7 @@ function applyMe(flyThere){
     meFig.scale.setScalar(1.35);meMarker.position.y=.25;meFig.add(meMarker);
     if(flyThere&&!play){const w=new THREE.Vector3();meFig.getWorldPosition(w);flyToSurface(w,1.5);if(r.home!=null)selected='h'+r.home}
   }
+  meMarker.children[1].visible=!play; // while playing only the arrow above the head, no ring
   if(play){play.av.fig.add(meMarker);meMarker.position.y=.25}
 }
 function updateMeTag(camDir){
@@ -1821,9 +1828,9 @@ const SKINS=['#f1c9a5','#d9a37c','#a8714d','#7a4d32'];
 const AV_SCALE=1.4, WALK=.5, RUN=1.05; // walking speeds in world units per second (planet radius is 10)
 const playerGroup=new THREE.Group();scene.add(playerGroup);
 const playBtn=document.getElementById('playBtn'),playUi=document.getElementById('playUi'),playHelp=document.getElementById('playHelp');
-const joy=document.getElementById('joy'),joyKnob=document.getElementById('joyKnob'),liveChip=document.getElementById('liveChip');
+const jumpBtn=document.getElementById('jumpBtn'),joy=document.getElementById('joy'),joyKnob=document.getElementById('joyKnob'),liveChip=document.getElementById('liveChip');
 let sawTouch=false;const touchUI=()=>sawTouch||matchMedia('(pointer: coarse)').matches||('ontouchstart' in window);
-addEventListener('pointerdown',e=>{if(e.pointerType==='touch'&&!sawTouch){sawTouch=true;if(play)joy.hidden=false}},true);
+addEventListener('pointerdown',e=>{if(e.pointerType==='touch'&&!sawTouch){sawTouch=true;if(play)joy.hidden=jumpBtn.hidden=false}},true);
 const keys=new Set();
 let joyVec=null,joyId=null,camDrag=null,lastPlayT=0,helpTimer=null;
 
@@ -1849,6 +1856,31 @@ function poseAvatar(a,T,speed){ // speed 0..1: swing legs and arms
   if(p.armL)p.armL.rotation.set(-s*.7,0,-.12);
   if(p.armR)p.armR.rotation.set(s*.7,0,p.armUp?Math.PI+.12:.12);
 }
+// jump: the feet rise to about the character's waist
+const GRAV=1.76,JUMP_V=.44;
+function stepJump(a,dt){if(a.jy>0||a.jv>0){a.jv-=GRAV*dt;a.jy=Math.max(0,a.jy+a.jv*dt);if(a.jy===0)a.jv=0}return a.jy}
+function poseJump(a){const p=a.parts;if(p.legL){p.legL.rotation.x=-.55;p.legR.rotation.x=-.3}if(p.armL)p.armL.rotation.set(0,0,-2.5);if(p.armR)p.armR.rotation.set(0,0,p.armUp?-.6:2.5)}
+function startJump(){if(play&&play.jy===0&&play.jv===0){play.jv=JUMP_V;play.jn++;liveSend(performance.now(),true)}}
+// buildings and trees standing between the camera and your character are hidden so you can always see yourself
+const cutHidden=new Set(),_seg=new THREE.Line3(),_cp=new THREE.Vector3(),_hc=new THREE.Vector3();
+function cutaway(cam,target){
+  _seg.set(cam,target);
+  const pd=target.clone().normalize(),want=new Set();
+  const test=(g,dir,h,rad)=>{
+    if(dir.angleTo(pd)>.2)return;
+    _hc.copy(dir).multiplyScalar(R+terrain(dir)+h*.5);
+    const t=_seg.closestPointToPointParameter(_hc,true);if(t<.02||t>.97)return;
+    _seg.at(t,_cp);
+    // compare with the building as a vertical box: horizontal distance and height range
+    const up=dir,d=_cp.clone().sub(_hc),vert=d.dot(up),hor=d.sub(up.clone().multiplyScalar(vert)).length();
+    if(hor<rad&&Math.abs(vert)<h*.5+.05)want.add(g);
+  };
+  for(const [,h] of houses)test(h.g,h.v,h.g.userData.height||.5,.26);
+  for(const g of siteGroup.children){const S=SITES[g.userData.site];if(S)test(g,S.dir,g.userData.height||.6,.45)}
+  for(const t of extraTrees.children){const dir=t.position.clone().normalize();test(t,dir,.5,.12)}
+  for(const o of cutHidden)if(!want.has(o)){o.visible=true;cutHidden.delete(o)}
+  for(const o of want){o.visible=false;cutHidden.add(o)}
+}
 function tangentize(v,n){v.sub(n.clone().multiplyScalar(v.dot(n)));if(v.lengthSq()<1e-10)v.copy(tangentOf(n));return v.normalize()}
 
 // ---------- my own character ----------
@@ -1862,9 +1894,9 @@ function startPlay(){
   if(src){const w=new THREE.Vector3();src.getWorldPosition(w);p=w.normalize();face=new THREE.Vector3(0,0,1).applyQuaternion(src.getWorldQuaternion(new THREE.Quaternion()))}
   else{p=START.clone().add(tangentOf(START).multiplyScalar(PLAZA*1.2)).normalize();face=START.clone().sub(p)}
   tangentize(face,p);
-  play={av,p,f:face.clone(),face:face.clone(),speed:0,camDist:1.7,pitch:1.0,camInit:false,lastSend:0,sentP:null,sentM:-1};
-  document.body.classList.add('playing');playUi.hidden=false;joy.hidden=!touchUI();
-  playHelp.textContent=touchUI()?'Chůze: táhni žlutým kolečkem · Kamera: táhni prstem po planetě':'Chůze: W A S D · Shift běh · Kamera: Q/E nebo táhni myší · kolečko zoom · Esc konec';
+  play={av,p,f:face.clone(),face:face.clone(),speed:0,camDist:1.7,pitch:1.0,camInit:false,lastSend:0,sentP:null,sentM:-1,jy:0,jv:0,jn:0};
+  document.body.classList.add('playing');playUi.hidden=false;joy.hidden=jumpBtn.hidden=!touchUI();
+  playHelp.textContent=touchUI()?'Chůze: táhni žlutým kolečkem · Skok: tlačítko vpravo · Kamera: táhni prstem po planetě':'Chůze: W A S D · Shift běh · Mezerník skok · Kamera: Q/E nebo táhni myší · kolečko zoom · Esc konec';
   playHelp.style.opacity=1;clearTimeout(helpTimer);helpTimer=setTimeout(()=>playHelp.style.opacity=0,7000);
   applyMe(false);
   liveSend(performance.now(),true);
@@ -1874,6 +1906,7 @@ function stopPlay(){
   if(!play)return;
   const p=play.p.clone();
   liveLeave();
+  for(const o of cutHidden)o.visible=true;cutHidden.clear();
   playerGroup.remove(play.av.fig);play=null;keys.clear();joyVec=null;joyId=null;camDrag=null;joyKnob.style.transform='';
   document.body.classList.remove('playing');playUi.hidden=true;
   controls.enabled=true;setControls(surfacePoint(p),p,'surface');
@@ -1920,14 +1953,16 @@ function updatePlay(now){
   }
   tangentize(P.f,P.p);tangentize(P.face,P.p);
   const T=now/1000,sp=P.speed/WALK;
-  placeOn(P.av.fig,P.p,Math.abs(Math.sin(T*(9+sp*5)))*.012*Math.min(1,sp),0);faceToward(P.av.fig,P.p,P.face);
-  poseAvatar(P.av,T,sp);
+  const jy=stepJump(P,dt);
+  placeOn(P.av.fig,P.p,jy+(jy?0:Math.abs(Math.sin(T*(9+sp*5)))*.012*Math.min(1,sp)),0);faceToward(P.av.fig,P.p,P.face);
+  if(jy>0)poseJump(P.av);else poseAvatar(P.av,T,sp);
   // third-person camera behind the character
   const base=P.p.clone().multiplyScalar(R+terrain(P.p)+.13);
   const want=base.clone().add(P.f.clone().multiplyScalar(-Math.cos(P.pitch)).add(P.p.clone().multiplyScalar(Math.sin(P.pitch))).multiplyScalar(P.camDist));
   const cd=want.clone().normalize(),floor=R+terrain(cd)+.08;if(want.length()<floor)want.setLength(floor);
   if(!P.camInit){camera.position.copy(want);P.camInit=true}else camera.position.lerp(want,1-Math.exp(-dt*9));
   camera.up.copy(P.p);camera.lookAt(base);
+  cutaway(camera.position,base);
   liveSend(now,false);
 }
 // keyboard
@@ -1939,6 +1974,7 @@ addEventListener('keydown',e=>{
     if(!play)return;
   }
   if(e.code==='Escape'){stopPlay();return}
+  if(e.code==='Space'){e.preventDefault();if(!e.repeat)startJump();return}
   keys.add(e.code);
   if(move||e.code==='Space')e.preventDefault();
 });
@@ -1964,6 +2000,7 @@ function joyMove(e){
 joy.addEventListener('pointerdown',e=>{e.preventDefault();joyId=e.pointerId;try{joy.setPointerCapture(e.pointerId)}catch(_){}joyMove(e)});
 joy.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e)});
 const joyEnd=e=>{if(e.pointerId!==joyId)return;joyId=null;joyVec=null;joyKnob.style.transform=''};
+jumpBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();startJump()});
 joy.addEventListener('pointerup',joyEnd);joy.addEventListener('pointercancel',joyEnd);joy.addEventListener('lostpointercapture',joyEnd);
 addEventListener('pointerup',joyEnd);addEventListener('pointercancel',joyEnd);
 
@@ -2013,7 +2050,7 @@ function liveSend(now,force){
   if(!due||live.sending)return;
   P.lastSend=now;P.sentP=P.p.clone();P.sentM=moving;live.sending=true;
   const r4=v=>Math.round(v*1e4)/1e4,r3=v=>Math.round(v*1e3)/1e3;
-  const body={p:[r4(P.p.x),r4(P.p.y),r4(P.p.z)],d:[r3(P.face.x),r3(P.face.y),r3(P.face.z)],m:moving,t:{'.sv':'timestamp'}};
+  const body={p:[r4(P.p.x),r4(P.p.y),r4(P.p.z)],d:[r3(P.face.x),r3(P.face.y),r3(P.face.z)],m:moving,j:P.jn,t:{'.sv':'timestamp'}};
   fetch(liveUrl(meId),{method:'PUT',body:JSON.stringify(body)}).catch(()=>{}).finally(()=>{live.sending=false});
 }
 function liveLeave(){
@@ -2033,14 +2070,16 @@ function updateRemotes(now){
     if(!r||r.left||now-pl.seen>20000)continue; // only residents, only while they're around
     keep.add(id);
     let a=live.avatars.get(id);
-    if(!a){a={...makeAvatar(r),pos:pl.p.clone(),face:tangentize((pl.d||tangentOf(pl.p)).clone(),pl.p),walk:0,name:r.name};playerGroup.add(a.fig);live.avatars.set(id,a)}
+    if(!a){a={...makeAvatar(r),pos:pl.p.clone(),face:tangentize((pl.d||tangentOf(pl.p)).clone(),pl.p),walk:0,name:r.name,jy:0,jv:0,jn:+pl.raw.j||0};playerGroup.add(a.fig);live.avatars.set(id,a)}
     const before=a.pos.clone();
     if(a.pos.angleTo(pl.p)>.3)a.pos.copy(pl.p);else a.pos.lerp(pl.p,k).normalize();
     const v=before.angleTo(a.pos)*R/Math.max(dt,1e-3);
     if(pl.d)a.face.lerp(pl.d,k);tangentize(a.face,a.pos);
     a.walk+=((pl.raw.m?Math.max(.6,Math.min(2,v/WALK)):Math.min(1,v/WALK))-a.walk)*k;
-    placeOn(a.fig,a.pos,Math.abs(Math.sin(T*(9+a.walk*5)))*.012*Math.min(1,a.walk),0);faceToward(a.fig,a.pos,a.face);
-    poseAvatar(a,T,a.walk);
+    const jn=+pl.raw.j||0;if(jn!==a.jn){a.jn=jn;if(a.jy===0)a.jv=JUMP_V}
+    const jy=stepJump(a,dt);
+    placeOn(a.fig,a.pos,jy+(jy?0:Math.abs(Math.sin(T*(9+a.walk*5)))*.012*Math.min(1,a.walk)),0);faceToward(a.fig,a.pos,a.face);
+    if(jy>0)poseJump(a);else poseAvatar(a,T,a.walk);
   }
   for(const [id,a] of live.avatars)if(!keep.has(id)){playerGroup.remove(a.fig);live.avatars.delete(id)}
   if(play&&live.avatars.size!==live.lastN){live.lastN=live.avatars.size;updateChip()}
