@@ -1,5 +1,5 @@
 {
- "updated": 1793643208896,
+ "updated": 1793646320000,
  "followers": [
   {
    "id": "lubikosuch",
@@ -727,6 +727,11 @@
    "id": "nemec927",
    "name": "@nemec927",
    "at": 1793641973575
+  },
+  {
+   "id": "lukas_kalay",
+   "name": "@lukas_kalay",
+   "at": 1793646300000
   }
  ]
 }
