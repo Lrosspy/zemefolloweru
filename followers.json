@@ -1,5 +1,5 @@
 {
- "updated": 1793707526808,
+ "updated": 1793718266488,
  "followers": [
   {
    "id": "lubikosuch",
@@ -16,7 +16,9 @@
   {
    "id": "teo_bracho",
    "name": "@teo_bracho",
-   "at": 1793544898276
+   "at": 1793544898276,
+   "left": true,
+   "leftAt": 1793718266488
   },
   {
    "id": "reporio_13",
@@ -279,7 +281,9 @@
   {
    "id": "_sammos",
    "name": "@_sammos",
-   "at": 1793588711264
+   "at": 1793588711264,
+   "left": true,
+   "leftAt": 1793718266488
   },
   {
    "id": "zid.cislo.2",
@@ -631,7 +635,9 @@
   {
    "id": "ojan_207",
    "name": "@ojan_207",
-   "at": 1793630554047
+   "at": 1793630554047,
+   "left": true,
+   "leftAt": 1793718266488
   },
   {
    "id": "ondra38089",
@@ -768,6 +774,26 @@
    "id": "julusee_",
    "name": "@julusee_",
    "at": 1793707526808
+  },
+  {
+   "id": "tomas86745",
+   "name": "@tomas86745",
+   "at": 1793718266488
+  },
+  {
+   "id": "klarinkaa_officiall",
+   "name": "@klarinkaa_officiall",
+   "at": 1793718266489
+  },
+  {
+   "id": "vitekodstrcil",
+   "name": "@vitekodstrcil",
+   "at": 1793718266490
+  },
+  {
+   "id": "timi.wilzn",
+   "name": "@timi.wilzn",
+   "at": 1793718266491
   }
  ]
 }
