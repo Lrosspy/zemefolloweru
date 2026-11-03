@@ -1,5 +1,5 @@
 {
- "updated": 1793729059075,
+ "updated": 1793740664203,
  "followers": [
   {
    "id": "lubikosuch",
@@ -158,7 +158,9 @@
    "id": "_.extra.random_amalka._",
    "name": "@_.extra.random_amalka._",
    "at": 1793566500001,
-   "role": "gardener"
+   "role": "gardener",
+   "left": true,
+   "leftAt": 1793740664203
   },
   {
    "id": "jiziceek_",
@@ -809,6 +811,11 @@
    "id": "martin_2233_",
    "name": "@martin_2233_",
    "at": 1793729059077
+  },
+  {
+   "id": "mirkr___",
+   "name": "@mirkr___",
+   "at": 1793740664203
   }
  ]
 }
