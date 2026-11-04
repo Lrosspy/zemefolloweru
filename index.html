@@ -108,6 +108,24 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .joy i{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(255,204,102,.9);box-shadow:0 2px 10px rgba(0,0,0,.45);pointer-events:none}
 .label.player{background:rgba(20,18,40,.9);font-size:11px;padding:3px 8px}
 .jump-btn{position:fixed;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 52px);width:88px;height:88px;border-radius:50%;padding:0;background:rgba(255,204,102,.9);color:#2b1d0e;border:2px solid rgba(255,255,255,.5);font-size:15px;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
+.chat{position:fixed;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 76px);z-index:7;width:min(320px,calc(100% - 32px));border-radius:16px;padding:8px 10px;border:1px solid transparent;background:transparent;transition:background .2s,border-color .2s;pointer-events:none}
+@media (max-width:620px){.chat{bottom:calc(env(safe-area-inset-bottom,0px) + 124px)}}
+body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-bottom,0px) + 182px)}
+.chat.open{background:var(--panel);border-color:var(--panel-line);pointer-events:auto}
+.chat-log{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-direction:column;gap:3px;font-size:13px;line-height:1.3;color:var(--ink)}
+.chat-log li{text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.6);overflow-wrap:anywhere}
+.chat.open .chat-log li{text-shadow:none}
+.chat-log b{color:var(--sun);font-weight:800}
+.chat-log li.mine b{color:#7fe0a0}
+.chat-log li.sys{color:var(--ink-dim);font-style:italic}
+.chat-open-btn{pointer-events:auto;font-size:13px;padding:7px 12px;border-radius:999px;background:rgba(20,18,40,.55);color:var(--ink);border:1px solid var(--panel-line)}
+.chat.open .chat-open-btn{display:none}
+.chat-form{display:none;gap:6px;align-items:center}
+.chat.open .chat-form{display:flex}
+.chat-form input{flex:1;min-width:0;font:inherit;font-size:16px;padding:9px 11px;border-radius:10px;border:1px solid var(--panel-line);background:rgba(0,0,0,.35);color:var(--ink)}
+.chat-form button{padding:9px 12px;border-radius:10px;font-size:13px}
+.chat-hint{font-size:11px;color:var(--ink-dim);margin:4px 2px 0;display:none}
+.chat.open .chat-hint{display:block}
 </style>
 
 <canvas id="world" aria-label="3D planeta, každý dům patří jednomu followerovi"></canvas>
@@ -166,6 +184,18 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
   <div class="play-help" id="playHelp"></div>
   <div class="joy" id="joy" hidden aria-label="Joystick pro chůzi"><i id="joyKnob"></i></div>
   <button class="jump-btn" id="jumpBtn" type="button" hidden>Skok</button>
+</div>
+
+<div class="chat" id="chat" aria-label="Chat planety">
+  <ul class="chat-log" id="chatLog" aria-live="polite"></ul>
+  <button class="chat-open-btn" id="chatOpen" type="button">💬 Psát do chatu</button>
+  <form class="chat-form" id="chatForm" autocomplete="off">
+    <label for="chatInput" style="position:absolute;left:-9999px">Zpráva</label>
+    <input id="chatInput" maxlength="120" placeholder="Napiš zprávu…" enterkeyhint="send">
+    <button class="primary" type="submit">Poslat</button>
+    <button type="button" id="chatClose" aria-label="Zavřít chat">✕</button>
+  </form>
+  <p class="chat-hint" id="chatHint">Enter pošle · Esc zavře</p>
 </div>
 
 <section class="sheet" id="sheet" hidden aria-label="Seznam obyvatel">
@@ -1896,7 +1926,7 @@ function startPlay(){
   tangentize(face,p);
   play={av,p,f:face.clone(),face:face.clone(),speed:0,camDist:1.7,pitch:1.0,camInit:false,lastSend:0,sentP:null,sentM:-1,jy:0,jv:0,jn:0};
   document.body.classList.add('playing');playUi.hidden=false;joy.hidden=jumpBtn.hidden=!touchUI();
-  playHelp.textContent=touchUI()?'Chůze: táhni žlutým kolečkem · Skok: tlačítko vpravo · Kamera: táhni prstem po planetě':'Chůze: W A S D · Shift běh · Mezerník skok · Kamera: Q/E nebo táhni myší · kolečko zoom · Esc konec';
+  playHelp.textContent=touchUI()?'Chůze: táhni žlutým kolečkem · Skok: tlačítko vpravo · Kamera: táhni prstem po planetě':'Chůze: W A S D · Shift běh · Mezerník skok · Kamera: Q/E nebo táhni myší · kolečko zoom · Enter chat · Esc konec';
   playHelp.style.opacity=1;clearTimeout(helpTimer);helpTimer=setTimeout(()=>playHelp.style.opacity=0,7000);
   applyMe(false);
   liveSend(performance.now(),true);
@@ -2059,6 +2089,77 @@ function liveLeave(){
 }
 addEventListener('pagehide',()=>{if(play)liveLeave()});
 document.addEventListener('visibilitychange',()=>{if(play&&document.visibilityState==='visible')liveSend(performance.now(),true)});
+// ---------- chat: last 5 messages on the left, background only while writing ----------
+const chat={el:document.getElementById('chat'),log:document.getElementById('chatLog'),form:document.getElementById('chatForm'),
+  input:document.getElementById('chatInput'),hint:document.getElementById('chatHint'),msgs:{},es:null,lastSent:0};
+const CHAT_SHOW=5;
+const BAD=/(kurv|p[ií]č|kokot|zmrd|čur[aá]k|mrd|buzer|negr|fuck|shit|bitch)\p{L}*/giu;
+const cleanText=t=>String(t||'').replace(/[\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().slice(0,120).replace(BAD,m=>m[0]+'***');
+function chatRender(){
+  const list=Object.entries(chat.msgs).sort((a,b)=>a[0]<b[0]?-1:1).slice(-CHAT_SHOW);
+  chat.log.textContent='';
+  for(const [,m] of list){
+    const li=document.createElement('li');
+    if(m.sys){li.className='sys';li.textContent=m.x}
+    else{
+      const b=document.createElement('b');b.textContent=m.n+': ';li.append(b,document.createTextNode(m.x));
+      if(meNick&&m.n==='@'+meNick)li.className='mine';
+    }
+    chat.log.appendChild(li);
+  }
+}
+function chatSys(text){chat.msgs['~'+Date.now()]={sys:1,x:text};chatRender()}
+function chatSet(key,m){
+  if(!m||typeof m!=='object'){delete chat.msgs[key];return}
+  const n=String(m.n||'').slice(0,32),x=cleanText(m.x);
+  if(!/^@[A-Za-z0-9._]{1,30}$/.test(n)||!x)return;
+  chat.msgs[key]={n,x,t:+m.t||0};
+}
+function chatStart(){
+  if(!LIVE_DB||chat.es||typeof EventSource==='undefined')return;
+  try{
+    const es=new EventSource(LIVE_DB+'/chat.json?orderBy=%22%24key%22&limitToLast=20');
+    const apply=(e,merge)=>{try{
+      const m=JSON.parse(e.data);if(!m||typeof m.path!=='string')return;
+      const parts=m.path.split('/').filter(Boolean);
+      if(!parts.length){if(!merge)for(const k in chat.msgs)if(k[0]!=='~')delete chat.msgs[k];if(m.data&&typeof m.data==='object')for(const k in m.data)chatSet(k,m.data[k])}
+      else if(parts.length===1)chatSet(parts[0],m.data);
+      chatRender();
+    }catch(_){}};
+    es.addEventListener('put',e=>apply(e,false));
+    es.addEventListener('patch',e=>apply(e,true));
+    chat.es=es;
+  }catch(_){}
+}
+function chatCanWrite(){const r=meId&&residentById.get(meId);return !!(r&&!r.left)}
+function chatOpen(){
+  if(!meId){welcome.hidden=false;welcomeMsg.textContent='Pro psaní v chatu zadej svůj nick z Instagramu.';document.getElementById('nickInput').focus();return}
+  chat.el.classList.add('open');keys.clear();
+  if(!chatCanWrite()){
+    chat.hint.textContent=meId?'Psát můžou jen obyvatelé planety. Dej follow @planetafolloweru a za chvíli tu máš dům.':'Nejdřív zadej svůj nick z Instagramu (tlačítko vlevo nahoře „změnit“, nebo obnov stránku).';
+    chat.input.disabled=true;
+  }else{chat.hint.textContent='Enter pošle · Esc zavře';chat.input.disabled=false;setTimeout(()=>chat.input.focus(),0)}
+}
+function chatClose(){chat.el.classList.remove('open');chat.input.blur()}
+document.getElementById('chatOpen').onclick=chatOpen;
+document.getElementById('chatClose').onclick=chatClose;
+chat.input.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();chatClose()}e.stopPropagation()});
+addEventListener('keydown',e=>{
+  if(e.target&&e.target.closest&&e.target.closest('input,textarea,select'))return;
+  if((e.key==='Enter'||e.key==='t'||e.key==='T')&&!chat.el.classList.contains('open')&&welcome.hidden&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();chatOpen()}
+});
+chat.form.addEventListener('submit',e=>{
+  e.preventDefault();
+  if(!chatCanWrite())return;
+  const x=cleanText(chat.input.value);if(!x)return;
+  const now=Date.now();
+  if(now-chat.lastSent<3000){chat.hint.textContent='Pomalu 🙂 další zprávu můžeš poslat za pár vteřin.';return}
+  chat.lastSent=now;chat.input.value='';chat.hint.textContent='Enter pošle · Esc zavře';
+  fetch(LIVE_DB+'/chat.json',{method:'POST',body:JSON.stringify({n:'@'+meNick,x,t:{'.sv':'timestamp'}})})
+    .then(r=>{if(!r.ok)throw 0})
+    .catch(()=>{chat.hint.textContent='Zprávu se nepodařilo poslat. Zkus to za chvíli znovu.'});
+});
+chatStart();
 let lastRemoteT=0;
 function updateRemotes(now){
   const dt=Math.min(.1,(now-(lastRemoteT||now))/1000);lastRemoteT=now;
