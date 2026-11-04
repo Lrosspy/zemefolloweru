@@ -1,5 +1,5 @@
 {
- "updated": 1793793870000,
+ "updated": 1793804663194,
  "followers": [
   {
    "id": "lubikosuch",
@@ -830,7 +830,9 @@
   {
    "id": "reeal_dave11",
    "name": "@reeal_dave11",
-   "at": 1793775981311
+   "at": 1793775981311,
+   "left": true,
+   "leftAt": 1793804663194
   },
   {
    "id": "ofc_salii",
@@ -841,6 +843,21 @@
    "id": "tobiaspetlak",
    "name": "@tobiaspetlak",
    "at": 1793793861790
+  },
+  {
+   "id": "davcis_11",
+   "name": "@davcis_11",
+   "at": 1793804663195
+  },
+  {
+   "id": "natyy._._y",
+   "name": "@natyy._._y",
+   "at": 1793804663196
+  },
+  {
+   "id": "samuel649277",
+   "name": "@samuel649277",
+   "at": 1793804663197
   }
  ]
 }
