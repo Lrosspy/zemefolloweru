@@ -110,6 +110,34 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .jump-btn{position:fixed;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 52px);width:88px;height:88px;border-radius:50%;padding:0;background:rgba(255,204,102,.9);color:#2b1d0e;border:2px solid rgba(255,255,255,.5);font-size:15px;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
 .label.bubble{background:#fff;color:#1b1530;border:0;font-weight:700;font-size:12px;white-space:normal;max-width:190px;width:max-content;text-align:center;padding:6px 10px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,.35);transition:opacity .4s;margin-top:-8px}
 .label.bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff}
+.admin-key{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:6;width:44px;height:44px;padding:0;border-radius:50%;font-size:19px;line-height:1;display:grid;place-items:center;opacity:.75}
+.admin-key:hover{opacity:1}
+@media (max-width:700px){.bar{padding-right:72px}}
+body.playing .admin-key{display:none}
+.admin{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
+.admin-card{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#15122b;border:1px solid var(--panel-line);border-radius:18px;padding:18px 18px 20px;box-sizing:border-box;color:var(--ink)}
+.admin-card header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.admin-card h2{margin:0;font-family:var(--display);font-weight:400;font-size:20px}
+.admin-form{display:grid;gap:10px}
+.admin-form label{display:grid;gap:4px;font-size:12px;font-weight:700;color:var(--ink-dim)}
+.admin-form input{font:inherit;font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--panel-line);background:rgba(0,0,0,.35);color:var(--ink)}
+.admin-msg{font-size:13px;color:#ffb3a1;margin:0;min-height:1em}
+.admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.admin-tile{background:rgba(255,255,255,.05);border:1px solid var(--panel-line);border-radius:14px;padding:12px}
+.admin-tile b{display:block;font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.admin-tile span{font-size:12px;color:var(--ink-dim);font-weight:700}
+.admin-tile small{display:block;font-size:11px;color:var(--ink-dim);margin-top:4px}
+.admin-split{margin-top:12px}
+.admin-split .row{display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:6px}
+.admin-bar{height:12px;border-radius:999px;background:#4aa3ff;overflow:hidden;display:flex}
+.admin-bar i{display:block;height:100%;background:var(--sun)}
+.admin-days{margin-top:14px}
+.admin-days h3{margin:0 0 8px;font-size:13px;color:var(--ink-dim)}
+.admin-chart{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:4px;align-items:end;height:110px}
+.admin-chart div{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px;font-size:10px;color:var(--ink-dim)}
+.admin-chart i{display:block;width:100%;background:var(--sun);border-radius:4px 4px 0 0;min-height:2px}
+.admin-chart em{font-style:normal;color:var(--ink);font-weight:800}
+.admin-foot{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:14px;font-size:11px;color:var(--ink-dim)}
 .online{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%);z-index:6;pointer-events:none;white-space:nowrap}
 @media (max-width:700px){.online{top:calc(env(safe-area-inset-top,0px) + 132px)}}
 body.playing .online{display:none}
@@ -150,6 +178,34 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     <div class="stat"><b id="today">0</b><span>dnes</span></div>
   </div>
 </div>
+
+<button class="admin-key" id="adminKey" type="button" aria-label="Admin panel">🔑</button>
+<section class="admin" id="admin" hidden aria-labelledby="adminTitle">
+  <div class="admin-card">
+    <header><h2 id="adminTitle">Admin · statistiky</h2><button type="button" id="adminClose">Zavřít</button></header>
+    <form class="admin-form" id="adminLogin">
+      <label for="adminEmail">E-mail<input id="adminEmail" type="email" autocomplete="username" required></label>
+      <label for="adminPass">Heslo<input id="adminPass" type="password" autocomplete="current-password" required></label>
+      <button class="primary" type="submit">Přihlásit</button>
+      <p class="admin-msg" id="adminMsg" role="status"></p>
+    </form>
+    <div id="adminStats" hidden>
+      <div class="admin-grid">
+        <div class="admin-tile"><span>Návštěvy stránky dnes</span><b id="stViewsToday">–</b><small id="stViewsMore"></small></div>
+        <div class="admin-tile"><span>Online právě teď</span><b id="stNow">–</b><small>lidí má hru otevřenou</small></div>
+        <div class="admin-tile"><span>Lidí online za 24 h</span><b id="st24">–</b><small>různých návštěvníků</small></div>
+        <div class="admin-tile"><span>Lidí online za týden</span><b id="st7">–</b><small>různých návštěvníků</small></div>
+      </div>
+      <div class="admin-split">
+        <div class="row"><span>📱 Mobil <b id="stMob">–</b></span><span>💻 PC <b id="stPc">–</b></span></div>
+        <div class="admin-bar" aria-hidden="true"><i id="stMobBar" style="width:50%"></i></div>
+        <small style="font-size:11px;color:var(--ink-dim)">lidé za posledních 7 dní</small>
+      </div>
+      <div class="admin-days"><h3>Lidé za den (14 dní)</h3><div class="admin-chart" id="stChart"></div></div>
+      <div class="admin-foot"><span id="stUpdated"></span><span style="display:flex;gap:8px"><button type="button" id="adminRefresh">Obnovit</button><button type="button" id="adminOut">Odhlásit</button></span></div>
+    </div>
+  </div>
+</section>
 
 <div class="card live-chip online" id="online" hidden aria-live="polite"></div>
 
@@ -2301,6 +2357,86 @@ function updateOnline(){
 visitBeat();visit.timer=setInterval(()=>{visitBeat();updateOnline()},25000);setInterval(updateOnline,5000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')visitLeave();else visitBeat()});
 addEventListener('pagehide',visitLeave);
+// ---------- statistics (anonymous): one record per visitor per day ----------
+// Firebase rules let anyone add their own day record, but only the owner's login can read them.
+const FB_API_KEY=''; // Firebase → Project settings → Web API key (public by design)
+const pragueDay=(ms)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Prague',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
+const stat={vid:null,day:null,dev:(matchMedia('(pointer: coarse)').matches||/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent))?'m':'p'};
+try{stat.vid=localStorage.getItem('planeta-vid');if(!stat.vid){stat.vid='u'+Math.random().toString(36).slice(2,12);localStorage.setItem('planeta-vid',stat.vid)}}catch(_){stat.vid='u'+Math.random().toString(36).slice(2,12)}
+function statUrl(){return LIVE_DB+'/stats/days/'+stat.day+'/'+stat.vid+'.json'}
+function statVisit(){
+  if(!LIVE_DB)return;
+  stat.day=pragueDay(Date.now());let c=1;
+  try{const k='planeta-views-'+stat.day;c=(+localStorage.getItem(k)||0)+1;localStorage.setItem(k,String(c))}catch(_){}
+  fetch(statUrl(),{method:'PUT',body:JSON.stringify({d:stat.dev,c,t:{'.sv':'timestamp'}})}).catch(()=>{});
+}
+function statSeen(){ // keeps "last seen" fresh while the page is open
+  if(!LIVE_DB||document.visibilityState==='hidden')return;
+  if(stat.day!==pragueDay(Date.now())){statVisit();return}
+  fetch(statUrl(),{method:'PATCH',body:JSON.stringify({t:{'.sv':'timestamp'}})}).catch(()=>{});
+}
+statVisit();setInterval(statSeen,5*60*1000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')statSeen()});
+
+// ---------- admin panel (key icon bottom right) ----------
+const adm={el:document.getElementById('admin'),login:document.getElementById('adminLogin'),stats:document.getElementById('adminStats'),msg:document.getElementById('adminMsg'),token:null,exp:0,refresh:null};
+try{const t=JSON.parse(sessionStorage.getItem('planeta-admin')||'null');if(t&&t.exp>Date.now()){adm.token=t.token;adm.exp=t.exp;adm.refresh=t.refresh}}catch(_){}
+const $id=id=>document.getElementById(id);
+function adminShow(){adm.el.hidden=false;const ok=!!adm.token;adm.login.hidden=ok;adm.stats.hidden=!ok;if(ok)adminLoad();else setTimeout(()=>$id('adminEmail').focus(),0)}
+$id('adminKey').onclick=adminShow;
+$id('adminClose').onclick=()=>{adm.el.hidden=true};
+adm.el.addEventListener('click',e=>{if(e.target===adm.el)adm.el.hidden=true});
+adm.el.addEventListener('keydown',e=>{if(e.key==='Escape')adm.el.hidden=true;e.stopPropagation()});
+function adminSave(){try{sessionStorage.setItem('planeta-admin',JSON.stringify({token:adm.token,exp:adm.exp,refresh:adm.refresh}))}catch(_){}}
+adm.login.addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!FB_API_KEY){adm.msg.textContent='Admin panel ještě není propojený s Firebase (chybí Web API key).';return}
+  adm.msg.textContent='Přihlašuji…';
+  try{
+    const r=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+FB_API_KEY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$id('adminEmail').value.trim(),password:$id('adminPass').value,returnSecureToken:true})});
+    const j=await r.json();
+    if(!r.ok||!j.idToken){adm.msg.textContent='Špatný e-mail nebo heslo.';return}
+    adm.token=j.idToken;adm.refresh=j.refreshToken;adm.exp=Date.now()+(+j.expiresIn||3600)*1000-60000;adminSave();
+    $id('adminPass').value='';adm.msg.textContent='';adminShow();
+  }catch(_){adm.msg.textContent='Přihlášení se nepovedlo. Zkontroluj připojení.'}
+});
+$id('adminOut').onclick=()=>{adm.token=null;adm.refresh=null;try{sessionStorage.removeItem('planeta-admin')}catch(_){}adminShow()};
+$id('adminRefresh').onclick=()=>adminLoad();
+async function adminToken(){
+  if(adm.token&&Date.now()<adm.exp)return adm.token;
+  if(!adm.refresh||!FB_API_KEY)return null;
+  try{const r=await fetch('https://securetoken.googleapis.com/v1/token?key='+FB_API_KEY,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(adm.refresh)});
+    const j=await r.json();if(!j.id_token)return null;adm.token=j.id_token;adm.refresh=j.refresh_token;adm.exp=Date.now()+(+j.expires_in||3600)*1000-60000;adminSave();return adm.token}catch(_){return null}
+}
+async function adminLoad(){
+  const tok=await adminToken();
+  if(!tok){adm.token=null;adminShow();adm.msg.textContent='Přihlášení vypršelo, přihlas se znovu.';return}
+  $id('stUpdated').textContent='Načítám…';
+  try{
+    const r=await fetch(LIVE_DB+'/stats/days.json?auth='+encodeURIComponent(tok));
+    if(r.status===401||r.status===403){$id('stUpdated').textContent='Tento účet nemá ke statistikám přístup.';return}
+    const days=(await r.json())||{},now=Date.now()+live.offset;
+    const keys=Object.keys(days).sort(),today=pragueDay(now);
+    const last=n=>{const out=[];for(let i=n-1;i>=0;i--)out.push(pragueDay(now-i*86400000));return out};
+    const week=last(7),two=last(14);
+    let viewsToday=0,viewsWeek=0,viewsAll=0;const p24=new Set(),p7=new Map();
+    for(const d of keys){const recs=days[d]||{};
+      for(const v in recs){const x=recs[v]||{},c=+x.c||1;viewsAll+=c;if(d===today)viewsToday+=c;
+        if(week.includes(d)){viewsWeek+=c;if(!p7.has(v)||x.d==='m')p7.set(v,x.d==='m'?'m':'p')}
+        if(+x.t&&now-x.t<86400000)p24.add(v)}}
+    $id('stViewsToday').textContent=viewsToday;
+    $id('stViewsMore').textContent=`za týden ${viewsWeek} · celkem ${viewsAll}`;
+    $id('stNow').textContent=onlineCount()||'–';
+    $id('st24').textContent=p24.size;$id('st7').textContent=p7.size;
+    let mob=0;for(const [,d] of p7)if(d==='m')mob++;const pc=p7.size-mob,tot=p7.size||1;
+    $id('stMob').textContent=`${mob} (${Math.round(mob/tot*100)} %)`;$id('stPc').textContent=`${pc} (${Math.round(pc/tot*100)} %)`;
+    $id('stMobBar').style.width=(p7.size?mob/tot*100:50)+'%';
+    const counts=two.map(d=>Object.keys(days[d]||{}).length),max=Math.max(1,...counts),ch=$id('stChart');ch.textContent='';
+    two.forEach((d,i)=>{const col=document.createElement('div'),em=document.createElement('em'),bar=document.createElement('i'),lab=document.createElement('span');
+      em.textContent=counts[i];bar.style.height=(counts[i]/max*70)+'px';lab.textContent=d.slice(8)+'.';col.title=d;col.append(em,bar,lab);ch.append(col)});
+    $id('stUpdated').textContent='Aktualizováno '+new Date().toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
+  }catch(_){$id('stUpdated').textContent='Statistiky se nepodařilo načíst.'}
+}
 let lastRemoteT=0;
 function updateRemotes(now){
   const dt=Math.min(.1,(now-(lastRemoteT||now))/1000);lastRemoteT=now;
