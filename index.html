@@ -2359,7 +2359,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 addEventListener('pagehide',visitLeave);
 // ---------- statistics (anonymous): one record per visitor per day ----------
 // Firebase rules let anyone add their own day record, but only the owner's login can read them.
-const FB_API_KEY=''; // Firebase → Project settings → Web API key (public by design)
+const FB_API_KEY='AIzaSyALYbgJBfpRJSw2UHdCbFxwz5hHkiIiS_E'; // Firebase → Project settings → Web API key (public by design)
 const pragueDay=(ms)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Prague',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
 const stat={vid:null,day:null,dev:(matchMedia('(pointer: coarse)').matches||/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent))?'m':'p'};
 try{stat.vid=localStorage.getItem('planeta-vid');if(!stat.vid){stat.vid='u'+Math.random().toString(36).slice(2,12);localStorage.setItem('planeta-vid',stat.vid)}}catch(_){stat.vid='u'+Math.random().toString(36).slice(2,12)}
