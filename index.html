@@ -108,6 +108,8 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .joy i{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(255,204,102,.9);box-shadow:0 2px 10px rgba(0,0,0,.45);pointer-events:none}
 .label.player{background:rgba(20,18,40,.9);font-size:11px;padding:3px 8px}
 .jump-btn{position:fixed;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 52px);width:88px;height:88px;border-radius:50%;padding:0;background:rgba(255,204,102,.9);color:#2b1d0e;border:2px solid rgba(255,255,255,.5);font-size:15px;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
+.label.bubble{background:#fff;color:#1b1530;border:0;font-weight:700;font-size:12px;white-space:normal;max-width:190px;width:max-content;text-align:center;padding:6px 10px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,.35);transition:opacity .4s;margin-top:-8px}
+.label.bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff}
 .chat{position:fixed;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 76px);z-index:7;width:min(320px,calc(100% - 32px));border-radius:16px;padding:8px 10px;border:1px solid transparent;background:transparent;transition:background .2s,border-color .2s;pointer-events:none}
 @media (max-width:620px){.chat{bottom:calc(env(safe-area-inset-bottom,0px) + 124px)}}
 body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-bottom,0px) + 182px)}
@@ -267,6 +269,7 @@ const SITES={
 };
 // a mystery building site a little outside the town: bricks around, a big yellow question mark in the middle
 const MYSTERY={dir:ringDir(200,1.08),r:.16,scale:2};
+const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // secret UFO base, far side of the planet
 function ringDir(deg,c){const a=deg*Math.PI/180;return START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*c)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*c)).normalize()}
 // jobs that work in someone else's building
 const WORKER_OF={paramedic:'doctor'};
@@ -283,6 +286,7 @@ const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',build
     if(v.angleTo(CEM)<CEM_R*1.25)continue; // and the cemetery
     if(Object.values(SITES).some(S=>v.angleTo(S.dir)<S.r))continue; // and the job buildings
     if(v.angleTo(MYSTERY.dir)<MYSTERY.r)continue; // and the mystery site
+    if(v.angleTo(BASE.dir)<BASE.r)continue; // and the UFO base
     PLOTS.push({v, k:v.angleTo(START)+(hash('p'+i)%1000)/90000});
   }
   PLOTS.sort((a,b)=>a.k-b.k);
@@ -776,6 +780,79 @@ function animateMystery(T){
   const {q,glow}=mystery.userData;
   q.rotation.y=T*1.2;q.position.y=.62+Math.sin(T*2)*.05;
   glow.material.opacity=.18+Math.sin(T*2)*.08;
+}
+// ---------- secret UFO base on the far side of the planet ----------
+const base=new THREE.Group();scene.add(base);
+(function(){
+  const add=(m,parent=base)=>{parent.add(m);return m};
+  const glowMat=(c,o)=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:o,depthWrite:false,blending:THREE.AdditiveBlending});
+  add(new THREE.Mesh(new THREE.CylinderGeometry(.72,.78,.03,32),mat('#1a0f2e'))).position.y=.012;
+  const rune=add(new THREE.Mesh(new THREE.RingGeometry(.5,.55,48),glowMat('#9b5cff',.7)));rune.rotation.x=-Math.PI/2;rune.position.y=.03;
+  const rune2=add(new THREE.Mesh(new THREE.RingGeometry(.28,.3,6),glowMat('#c48bff',.6)));rune2.rotation.x=-Math.PI/2;rune2.position.y=.031;
+  // dark aura dome around everything
+  const aura=add(new THREE.Mesh(new THREE.SphereGeometry(.95,28,16,0,Math.PI*2,0,Math.PI/2),new THREE.MeshBasicMaterial({color:'#12051f',transparent:true,opacity:.42,depthWrite:false,side:THREE.DoubleSide})));
+  const aura2=add(new THREE.Mesh(new THREE.SphereGeometry(.98,28,16,0,Math.PI*2,0,Math.PI/2),glowMat('#5a1fa8',.12)));aura2.material.side=THREE.BackSide;
+  // magic sparks rising in a swirl
+  const N=180,pos=new Float32Array(N*3),seed=[],rr=rnd(404);
+  for(let i=0;i<N;i++)seed.push([rr()*6.28,.15+rr()*.7,rr(),.2+rr()*.5]);
+  const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const sparks=add(new THREE.Points(pg,new THREE.PointsMaterial({color:'#c48bff',size:.045,transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending})));
+  // the flying saucer
+  const ufo=add(new THREE.Group());ufo.position.y=.72;
+  const hull=new THREE.Mesh(new THREE.SphereGeometry(.42,28,12),new THREE.MeshLambertMaterial({color:'#a3abbd',flatShading:true}));hull.scale.y=.22;ufo.add(hull);
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(.41,.035,8,36),mat('#4a4f63'));rim.rotation.x=Math.PI/2;ufo.add(rim);
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(.17,18,10,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({color:'#7cf7d4',emissive:'#1f8a70',emissiveIntensity:.6,transparent:true,opacity:.8}));dome.position.y=.07;ufo.add(dome);
+  const belly=new THREE.Mesh(new THREE.CircleGeometry(.16,20),glowMat('#9bffe0',.8));belly.rotation.x=Math.PI/2;belly.position.y=-.095;ufo.add(belly);
+  const lights=[];
+  for(let i=0;i<12;i++){const a=i/12*Math.PI*2,l=new THREE.Mesh(new THREE.SphereGeometry(.028,8,6),new THREE.MeshBasicMaterial({color:i%2?'#ff4fd8':'#7cf7d4'}));l.position.set(Math.cos(a)*.41,0,Math.sin(a)*.41);ufo.add(l);lights.push(l)}
+  // tractor beam down to the ground
+  const beam=add(new THREE.Mesh(new THREE.CylinderGeometry(.13,.42,.62,28,1,true),glowMat('#9b5cff',.2)));beam.position.y=.34;
+  // the magic question mark above the saucer
+  const q=add(new THREE.Group());q.position.y=1.45;
+  const qm=new THREE.MeshLambertMaterial({color:'#c48bff',emissive:'#6a1fd1',emissiveIntensity:.8,flatShading:true});
+  const hook=new THREE.Mesh(new THREE.TorusGeometry(.13,.05,10,24,Math.PI*1.35),qm);hook.rotation.z=-Math.PI*.42;hook.position.y=.14;q.add(hook);
+  const stem=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.13,12),qm);stem.position.y=-.04;q.add(stem);
+  const cap=new THREE.Mesh(new THREE.SphereGeometry(.05,12,8),qm);cap.position.y=.025;q.add(cap);
+  const dot=new THREE.Mesh(new THREE.SphereGeometry(.062,14,10),qm);dot.position.y=-.2;q.add(dot);
+  const halo=new THREE.Mesh(new THREE.TorusGeometry(.32,.012,6,40),glowMat('#e0b8ff',.7));q.add(halo);
+  base.userData={ufo,lights,beam,q,halo,rune,rune2,aura2,sparks,seed,pos,height:1.9};
+  placeOn(base,BASE.dir,0,0);base.scale.setScalar(BASE.scale);
+})();
+function animateBase(T){
+  const u=base.userData;
+  u.ufo.position.y=.72+Math.sin(T*1.4)*.05;u.ufo.rotation.y=T*.9;u.ufo.rotation.z=Math.sin(T*.9)*.05;
+  u.lights.forEach((l,i)=>l.visible=((Math.floor(T*4)+i)%3)!==0);
+  u.beam.material.opacity=.14+Math.sin(T*3)*.07;u.beam.rotation.y=-T*.6;
+  u.q.rotation.y=-T*1.1;u.q.position.y=1.45+Math.sin(T*1.7)*.07;u.halo.rotation.x=Math.PI/2+Math.sin(T)*.3;u.halo.rotation.y=T*1.5;
+  u.rune.rotation.z=T*.3;u.rune2.rotation.z=-T*.5;u.rune.material.opacity=.5+Math.sin(T*2)*.25;
+  u.aura2.material.opacity=.1+Math.sin(T*1.3)*.05;
+  for(let i=0;i<u.seed.length;i++){const [a0,r0,ph,sp]=u.seed[i],t=(T*sp*.35+ph)%1,a=a0+T*sp*1.5+t*3;
+    u.pos[i*3]=Math.cos(a)*r0*(1-t*.4);u.pos[i*3+1]=.03+t*1.7;u.pos[i*3+2]=Math.sin(a)*r0*(1-t*.4)}
+  u.sparks.geometry.attributes.position.needsUpdate=true;
+}
+// ---------- a comet flies past now and then ----------
+const comet=new THREE.Group();comet.visible=false;scene.add(comet);
+const COMET_TAIL=36;
+(function(){
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.45,14,10),new THREE.MeshBasicMaterial({color:'#f2fbff'}));comet.add(head);
+  for(let i=1;i<=COMET_TAIL;i++){const k=1-i/(COMET_TAIL+1);
+    const m=new THREE.Mesh(new THREE.SphereGeometry(.5,10,8),new THREE.MeshBasicMaterial({color:i<8?'#bfefff':'#6fc8ff',transparent:true,opacity:.55*k,depthWrite:false,blending:THREE.AdditiveBlending}));
+    m.scale.setScalar(.3+1.5*k);comet.add(m)}
+  comet.userData={next:performance.now()+12000,run:null};
+})();
+function animateComet(now){
+  const c=comet.userData;
+  if(!c.run){
+    if(now<c.next)return;
+    const r=Math.random,u=new THREE.Vector3(r()-.5,r()-.5,r()-.5).normalize(),v=new THREE.Vector3(r()-.5,r()-.5,r()-.5).cross(u).normalize();
+    c.run={t0:now,dur:9000+r()*4000,u,v,rad:26+r()*14,a0:r()*6.28,span:(1.6+r()*.8)*(r()<.5?-1:1),tilt:(r()-.5)*8};
+    comet.visible=true;
+  }
+  const R_=c.run,t=(now-R_.t0)/R_.dur;
+  if(t>=1){c.run=null;comet.visible=false;c.next=now+40000+Math.random()*50000;return}
+  const at=s=>{const a=R_.a0+s*R_.span;return R_.u.clone().multiplyScalar(Math.cos(a)*R_.rad).add(R_.v.clone().multiplyScalar(Math.sin(a)*R_.rad)).add(R_.u.clone().cross(R_.v).multiplyScalar(R_.tilt))};
+  const fade=Math.min(1,t*6,(1-t)*6);
+  comet.children.forEach((m,i)=>{m.position.copy(at(t-i*.009));m.material.transparent=true;if(i===0)m.material.opacity=fade;else m.material.opacity=.55*(1-i/(COMET_TAIL+1))*fade});
 }
 const siteArms=[];
 let siteSig='';
@@ -1392,7 +1469,7 @@ function syncSites(animate){
     placeOn(g,S.dir,0,0);faceToward(g,S.dir,START.clone().sub(S.dir));
     g.userData.site=k;siteGroup.add(g);
   }
-  for(const d of decoItems)if(activeSites().some(k=>d.v.angleTo(SITES[k].dir)<SITES[k].r)||d.v.angleTo(MYSTERY.dir)<MYSTERY.r*1.2)d.o.visible=false;
+  for(const d of decoItems)if(activeSites().some(k=>d.v.angleTo(SITES[k].dir)<SITES[k].r)||d.v.angleTo(MYSTERY.dir)<MYSTERY.r*1.2||d.v.angleTo(BASE.dir)<BASE.r)d.o.visible=false;
   syncWalker();
 }
 const siteLabels=new Map();
@@ -1426,6 +1503,12 @@ function updateSiteLabels(camDir,dist){
     if(!el){el=document.createElement('div');el.className='label site';el.textContent='❓ Tajná stavba · co tu bude?';labelsEl.append(el);siteLabels.set('mystery',el)}
     const p=MYSTERY.dir.clone().multiplyScalar(R+terrain(MYSTERY.dir)+2.0).project(camera);
     el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(3+Math.round(MYSTERY.dir.dot(camDir)*100));
+  }
+  if(BASE.dir.dot(camDir)>.3&&dist<=R+22){
+    want.add('base');let el=siteLabels.get('base');
+    if(!el){el=document.createElement('div');el.className='label site';el.textContent='👽 Tajná základna · ???';labelsEl.append(el);siteLabels.set('base',el)}
+    const p=BASE.dir.clone().multiplyScalar(R+terrain(BASE.dir)+4.0).project(camera);
+    el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(3+Math.round(BASE.dir.dot(camDir)*100));
   }
   if(walker){ // name tag that walks with the gardener
     const w=new THREE.Vector3();walker.fig.getWorldPosition(w);const n=w.clone().normalize();
@@ -1659,7 +1742,7 @@ function loop(now){
   updatePlay(now);
   updateRemotes(now);
   updateHidden();
-  if(!reduce)animateMystery(now/1000);
+  if(!reduce){animateMystery(now/1000);animateBase(now/1000);animateComet(now)}
   if(meFig&&!reduce)meMarker.position.y=.25+Math.sin(now/300)*.025, meMarker.rotation.y=now/600;
   if(!reduce){ // residents wave: arm raised to the side, swinging back and forth
     const T=now/1000;
@@ -1674,6 +1757,7 @@ function loop(now){
   if(!fly&&!panning&&!play)controls.update();
   renderer.render(scene,camera);
   updateLabels();
+  updateBubbles(now);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
@@ -1949,6 +2033,7 @@ function obstacles(){ // houses and the fountain can't be walked through
   const o=[];
   for(const [,h] of houses)o.push([h.v,.024]);
   if(fountain.visible)o.push([START,.05]);
+  o.push([BASE.dir,.06]);
   for(const g of siteGroup.children){const S=SITES[g.userData.site];if(S)o.push([S.dir,.028])}
   return o;
 }
@@ -2123,7 +2208,7 @@ function chatStart(){
       const m=JSON.parse(e.data);if(!m||typeof m.path!=='string')return;
       const parts=m.path.split('/').filter(Boolean);
       if(!parts.length){if(!merge)for(const k in chat.msgs)if(k[0]!=='~')delete chat.msgs[k];if(m.data&&typeof m.data==='object')for(const k in m.data)chatSet(k,m.data[k])}
-      else if(parts.length===1)chatSet(parts[0],m.data);
+      else if(parts.length===1){const isNew=!chat.msgs[parts[0]];chatSet(parts[0],m.data);const mm=chat.msgs[parts[0]];if(isNew&&mm&&!mm.sys)chatBubble(mm.n,mm.x)}
       chatRender();
     }catch(_){}};
     es.addEventListener('put',e=>apply(e,false));
@@ -2160,6 +2245,28 @@ chat.form.addEventListener('submit',e=>{
     .catch(()=>{chat.hint.textContent='Zprávu se nepodařilo poslat. Zkus to za chvíli znovu.'});
 });
 chatStart();
+// the newest message also pops up above the writer's character for a few seconds
+chat.bubbles=new Map();
+function chatBubble(nick,text){
+  const id=nickId(nick);let b=chat.bubbles.get(id);
+  if(!b){const el=document.createElement('div');el.className='label bubble';labelsEl.append(el);b={el,fig:null};chat.bubbles.set(id,b)}
+  b.el.textContent=text;b.until=performance.now()+Math.min(12000,5000+text.length*90);b.fig=null;
+}
+function updateBubbles(now){
+  if(!chat.bubbles||!chat.bubbles.size)return;
+  const camDir=camera.position.clone().normalize(),dist=camera.position.length();
+  for(const [id,b] of chat.bubbles){
+    if(now>b.until){b.el.remove();chat.bubbles.delete(id);continue}
+    let n=null,h=.5;
+    if(play&&id===meId){n=play.p;h+=play.jy||0}
+    else{const a=live.avatars.get(id);if(a){n=a.pos;h+=a.jy||0}
+      else{if(!b.fig)b.fig=findFig(id);if(b.fig){const w=new THREE.Vector3();b.fig.getWorldPosition(w);n=w.normalize();h=.42}}}
+    if(!n||n.dot(camDir)<.25||dist>R+24){b.el.hidden=true;continue}
+    const p=n.clone().multiplyScalar(R+terrain(n)+h).project(camera);
+    b.el.hidden=false;b.el.style.opacity=b.until-now<500?String((b.until-now)/500):'1';
+    b.el.style.left=((p.x+1)/2*innerWidth)+'px';b.el.style.top=((1-p.y)/2*innerHeight)+'px';b.el.style.zIndex=String(900+Math.round(n.dot(camDir)*50));
+  }
+}
 let lastRemoteT=0;
 function updateRemotes(now){
   const dt=Math.min(.1,(now-(lastRemoteT||now))/1000);lastRemoteT=now;
