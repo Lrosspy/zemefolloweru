@@ -103,6 +103,7 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .live-chip{font-size:13px;font-weight:800;padding:8px 14px;border-radius:999px}
 .live-chip::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#5fd38a;margin-right:7px;vertical-align:1px}
 .live-chip.off::before{background:#8a8496}
+.abduct-flash{position:fixed;inset:0;z-index:9;pointer-events:none;background:radial-gradient(circle at 50% 55%,rgba(196,139,255,.55),rgba(60,10,110,.75));opacity:0;transition:opacity .35s}
 .play-help{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 64px);transform:translateX(-50%);font-size:12px;font-weight:700;color:var(--ink);background:var(--panel);border:1px solid var(--panel-line);border-radius:12px;padding:8px 14px;text-align:center;width:max-content;max-width:calc(100% - 32px);transition:opacity .6s}
 .joy{position:fixed;left:max(24px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 28px);width:136px;height:136px;border-radius:50%;background:rgba(20,18,40,.45);border:2px solid rgba(255,226,180,.4);pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none}
 .joy i{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(255,204,102,.9);box-shadow:0 2px 10px rgba(0,0,0,.45);pointer-events:none}
@@ -246,6 +247,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 <div class="play-ui" id="playUi" hidden>
   <div class="play-top"><span class="card live-chip" id="liveChip">Hraješ</span><button id="playExit" type="button">Konec hry</button></div>
   <div class="play-help" id="playHelp"></div>
+  <div class="abduct-flash" id="abductFlash" aria-hidden="true"></div>
   <div class="joy" id="joy" hidden aria-label="Joystick pro chůzi"><i id="joyKnob"></i></div>
   <button class="jump-btn" id="jumpBtn" type="button" hidden>Skok</button>
 </div>
@@ -2093,6 +2095,102 @@ function cutaway(cam,target){
 }
 function tangentize(v,n){v.sub(n.clone().multiplyScalar(v.dot(n)));if(v.lengthSq()<1e-10)v.copy(tangentOf(n));return v.normalize()}
 
+// ---------- alien pet: walk into the UFO's beam and a little alien follows you ----------
+const PET_KEY=id=>'planeta-pet-'+id;
+function hasPet(){if(!meId)return false;if(pets.loaded)return pets.owners.has(meId);try{return localStorage.getItem(PET_KEY(meId))==='alien'}catch(_){return false}}
+function makeAlien(){
+  const g=new THREE.Group(),body=new THREE.Group();g.add(body);
+  const green=new THREE.MeshLambertMaterial({color:'#7be05a',emissive:'#1f5a12',emissiveIntensity:.35,flatShading:true}),black=new THREE.MeshBasicMaterial({color:'#0b0a12'});
+  const torso=new THREE.Mesh(new THREE.SphereGeometry(.017,10,8),green);torso.scale.set(1,1.25,.9);torso.position.y=.026;body.add(torso);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.024,12,10),green);head.scale.set(1.15,.95,1);head.position.y=.062;body.add(head);
+  for(const sx of [-1,1]){
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(.0085,10,8),black);eye.scale.set(1,1.35,.6);eye.position.set(sx*.011,.064,.02);eye.rotation.z=sx*-.45;body.add(eye);
+    const glint=new THREE.Mesh(new THREE.SphereGeometry(.0022,6,4),new THREE.MeshBasicMaterial({color:'#ffffff'}));glint.position.set(sx*.009,.069,.0255);body.add(glint);
+    const ant=new THREE.Mesh(new THREE.CylinderGeometry(.0018,.0018,.026,5),green);ant.position.set(sx*.01,.093,0);ant.rotation.z=sx*-.35;body.add(ant);
+    const tip=new THREE.Mesh(new THREE.SphereGeometry(.0048,8,6),new THREE.MeshBasicMaterial({color:'#c48bff'}));tip.position.set(sx*.0145,.105,0);tip.name='tip';body.add(tip);
+    const arm=new THREE.Group();arm.position.set(sx*.016,.035,0);body.add(arm);
+    const a=new THREE.Mesh(new THREE.CylinderGeometry(.003,.0035,.02,5),green);a.position.y=-.009;arm.add(a);arm.rotation.z=sx*.5;arm.name=sx<0?'armL':'armR';
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.012,5),green);leg.position.set(sx*.007,.006,0);body.add(leg);
+  }
+  const mouth=new THREE.Mesh(new THREE.TorusGeometry(.005,.0013,4,10,Math.PI),black);mouth.rotation.z=Math.PI;mouth.position.set(0,.05,.022);body.add(mouth);
+  g.scale.setScalar(AV_SCALE);
+  return {g,body,armL:body.getObjectByName('armL'),armR:body.getObjectByName('armR'),pos:null,face:new THREE.Vector3(),hop:0,wave:0};
+}
+function updatePet(pet,ownerPos,ownerFace,T,dt){ // trots after its owner, a little behind and to the side
+  const side=new THREE.Vector3().crossVectors(ownerFace,ownerPos).normalize();
+  const target=ownerPos.clone().add(ownerFace.clone().multiplyScalar(-.022)).add(side.multiplyScalar(.016)).normalize();
+  if(!pet.pos){pet.pos=target.clone();pet.face.copy(ownerFace)}
+  const gap=pet.pos.angleTo(target);
+  if(gap>.25)pet.pos.copy(target);
+  const moving=gap>.004;
+  if(moving){pet.pos.lerp(target,1-Math.exp(-dt*(gap>.03?7:4))).normalize();tangentize(pet.face.copy(target).sub(pet.pos),pet.pos)}
+  else{pet.face.lerp(tangentize(ownerPos.clone().sub(pet.pos),pet.pos),Math.min(1,dt*4));tangentize(pet.face,pet.pos)}
+  pet.hop=moving?Math.abs(Math.sin(T*14))*.018:Math.abs(Math.sin(T*2.2))*.004;
+  placeOn(pet.g,pet.pos,pet.hop,0);faceToward(pet.g,pet.pos,pet.face);
+  const waving=!moving&&(T%7)<1.6;
+  pet.armR.rotation.z=waving?-2.4+Math.sin(T*14)*.4:.5+(moving?Math.sin(T*14)*.5:0);
+  pet.armL.rotation.z=-.5-(moving?Math.sin(T*14)*.5:0);
+  pet.body.rotation.z=moving?Math.sin(T*14)*.12:0;
+  pet.body.traverse(o=>{if(o.name==='tip')o.material.color.setHSL(.75+Math.sin(T*3)*.08,.9,.6+Math.sin(T*5)*.15)});
+}
+function givePet(){
+  if(!play||play.pet)return;
+  play.pet=makeAlien();playerGroup.add(play.pet.g);
+}
+const abductFlash=document.getElementById('abductFlash');
+function sayPlay(text,ms){playHelp.textContent=text;playHelp.style.opacity=1;clearTimeout(helpTimer);helpTimer=setTimeout(()=>playHelp.style.opacity=0,ms||5000)}
+// only the first PET_LIMIT players get one: the list of owners lives in Firebase under /pets
+const PET_LIMIT=30,pets={owners:new Set(),loaded:false};
+function petsLoad(){
+  if(!LIVE_DB)return Promise.resolve();
+  return fetch(LIVE_DB+'/pets.json?shallow=true').then(r=>r.ok?r.json():null).then(j=>{
+    pets.owners=new Set(Object.keys(j||{}).map(k=>k.replace(/-/g,'.')));pets.loaded=true;
+    if(meId&&pets.owners.has(meId)){try{localStorage.setItem(PET_KEY(meId),'alien')}catch(_){}if(play&&!play.pet)givePet()}
+  }).catch(()=>{});
+}
+petsLoad();setInterval(petsLoad,60000);
+async function petClaim(){ // 'ok' | 'full' | 'err'
+  await petsLoad();
+  if(pets.owners.has(meId))return 'ok';
+  if(!pets.loaded)return 'err';
+  if(pets.owners.size>=PET_LIMIT)return 'full';
+  try{
+    const r=await fetch(LIVE_DB+'/pets/'+liveKey(meId)+'.json',{method:'PUT',body:JSON.stringify({t:{'.sv':'timestamp'}})});
+    if(!r.ok)return 'err';
+    await petsLoad();
+    // two people grabbing the last one at the same moment: the earlier ones keep theirs
+    if(pets.owners.size>PET_LIMIT){
+      const j=await fetch(LIVE_DB+'/pets.json').then(x=>x.json()).catch(()=>null);
+      if(j){const order=Object.entries(j).sort((a,b)=>(+a[1].t||0)-(+b[1].t||0)).map(e=>e[0]);if(order.indexOf(liveKey(meId))>=PET_LIMIT)return 'full'}
+    }
+    pets.owners.add(meId);return 'ok';
+  }catch(_){return 'err'}
+}
+function petsLeft(){return Math.max(0,PET_LIMIT-pets.owners.size)}
+function updateAbduct(P,now,dt){ // returns extra lift while the UFO beam holds you
+  const a=P.p.angleTo(BASE.dir);
+  if(!P.abduct){
+    if(P.noPet&&a>.15)P.noPet=false;
+    if(!P.pet&&!P.noPet&&a<.098){
+      if(pets.loaded&&petsLeft()===0&&!pets.owners.has(meId)){P.noPet=true;sayPlay('👽 Všech 30 mimozemšťánků už je rozdaných. Byl jsi pozdě 😢',6000);return 0}
+      P.abduct={t0:now,res:'pending'};petClaim().then(r=>{if(P.abduct)P.abduct.res=r});
+      sayPlay('👽 UFO tě nasává…',2500);abductFlash.style.opacity=.6;
+    }
+    else if(!P.pet&&a<.3&&!P.baseHint){P.baseHint=true;sayPlay(pets.loaded&&petsLeft()===0?'👽 Mimozemšťánci už jsou všichni rozdaní.':`👽 Vejdi do fialového paprsku pod UFO… (zbývá ${pets.loaded?petsLeft():'?'} z ${PET_LIMIT} mimozemšťánků)`,5000)}
+    return 0;
+  }
+  const A=P.abduct;let t=(now-A.t0)/1000;
+  P.face.applyAxisAngle(P.p,dt*7);
+  if(t>1.5&&A.res==='pending'&&t<8){A.t0+=dt*1000;t=1.5} // hover at the top until the answer comes
+  if(t>=1.5&&!A.done){
+    A.done=true;abductFlash.style.opacity=0;
+    if(A.res==='ok'){try{localStorage.setItem(PET_KEY(meId),'alien')}catch(_){}givePet();sayPlay(`👽 Máš mimozemšťánka! Jsi jeden z ${PET_LIMIT} vyvolených, chodí teď všude s tebou.`,6000);liveSend(now,true)}
+    else{P.noPet=true;sayPlay(A.res==='full'?'👽 Všech 30 mimozemšťánků už je rozdaných. Byl jsi pozdě 😢':'👽 UFO se teď nepodařilo spojit. Zkus to za chvíli znovu.',6000)}
+  }
+  if(t>2.6){P.abduct=null;P.jy=0;P.jv=0;return 0}
+  return t<1.5?Math.sin(Math.min(1,t/1.5)*Math.PI/2)*.55:.55*(1-(t-1.5)/1.1);
+}
+
 // ---------- my own character ----------
 function startPlay(){
   const r=residentById.get(meId);if(!r||r.left||play)return;
@@ -2104,7 +2202,8 @@ function startPlay(){
   if(src){const w=new THREE.Vector3();src.getWorldPosition(w);p=w.normalize();face=new THREE.Vector3(0,0,1).applyQuaternion(src.getWorldQuaternion(new THREE.Quaternion()))}
   else{p=START.clone().add(tangentOf(START).multiplyScalar(PLAZA*1.2)).normalize();face=START.clone().sub(p)}
   tangentize(face,p);
-  play={av,p,f:face.clone(),face:face.clone(),speed:0,camDist:1.7,pitch:1.0,camInit:false,lastSend:0,sentP:null,sentM:-1,jy:0,jv:0,jn:0};
+  play={av,p,f:face.clone(),face:face.clone(),speed:0,camDist:1.7,pitch:1.0,camInit:false,lastSend:0,sentP:null,sentM:-1,jy:0,jv:0,jn:0,pet:null,abduct:null};
+  if(hasPet())givePet();
   document.body.classList.add('playing');playUi.hidden=false;joy.hidden=jumpBtn.hidden=!touchUI();
   playHelp.textContent=touchUI()?'Chůze: táhni žlutým kolečkem · Skok: tlačítko vpravo · Kamera: táhni prstem po planetě':'Chůze: W A S D · Shift běh · Mezerník skok · Kamera: Q/E nebo táhni myší · kolečko zoom · Enter chat · Esc konec';
   playHelp.style.opacity=1;clearTimeout(helpTimer);helpTimer=setTimeout(()=>playHelp.style.opacity=0,7000);
@@ -2117,7 +2216,7 @@ function stopPlay(){
   const p=play.p.clone();
   liveLeave();
   for(const o of cutHidden)o.visible=true;cutHidden.clear();
-  playerGroup.remove(play.av.fig);play=null;keys.clear();joyVec=null;joyId=null;camDrag=null;joyKnob.style.transform='';
+  playerGroup.remove(play.av.fig);if(play.pet)playerGroup.remove(play.pet.g);abductFlash.style.opacity=0;play=null;keys.clear();joyVec=null;joyId=null;camDrag=null;joyKnob.style.transform='';
   document.body.classList.remove('playing');playUi.hidden=true;
   controls.enabled=true;setControls(surfacePoint(p),p,'surface');
   applyMe(false);
@@ -2149,6 +2248,7 @@ function updatePlay(now){
   let mag=Math.hypot(ix,iy);if(mag>1){ix/=mag;iy/=mag;mag=1}
   let speed=mag*(run?RUN:WALK);
   if(joyVec){const m=Math.hypot(joyVec.x,joyVec.y);if(m>.12){ix=joyVec.x/m;iy=joyVec.y/m;speed=Math.min(1,m)*RUN*.85}}
+  if(P.abduct)speed=0;
   P.speed+=(speed-P.speed)*Math.min(1,dt*10);
   if(speed>0){
     const right=new THREE.Vector3().crossVectors(P.f,P.p);
@@ -2164,9 +2264,11 @@ function updatePlay(now){
   }
   tangentize(P.f,P.p);tangentize(P.face,P.p);
   const T=now/1000,sp=P.speed/WALK;
-  const jy=stepJump(P,dt);
+  const lift=updateAbduct(P,now,dt);
+  const jy=lift||stepJump(P,dt);
   placeOn(P.av.fig,P.p,jy+(jy?0:Math.abs(Math.sin(T*(9+sp*5)))*.012*Math.min(1,sp)),0);faceToward(P.av.fig,P.p,P.face);
   if(jy>0)poseJump(P.av);else poseAvatar(P.av,T,sp);
+  if(P.pet)updatePet(P.pet,P.p,P.face,T,dt);
   // third-person camera behind the character
   const base=P.p.clone().multiplyScalar(R+terrain(P.p)+.13);
   const want=base.clone().add(P.f.clone().multiplyScalar(-Math.cos(P.pitch)).add(P.p.clone().multiplyScalar(Math.sin(P.pitch))).multiplyScalar(P.camDist));
@@ -2266,7 +2368,7 @@ function liveSend(now,force){
   if(!due||live.sending)return;
   P.lastSend=now;P.sentP=P.p.clone();P.sentM=moving;live.sending=true;
   const r4=v=>Math.round(v*1e4)/1e4,r3=v=>Math.round(v*1e3)/1e3;
-  const body={p:[r4(P.p.x),r4(P.p.y),r4(P.p.z)],d:[r3(P.face.x),r3(P.face.y),r3(P.face.z)],m:moving,j:P.jn,t:{'.sv':'timestamp'}};
+  const body={p:[r4(P.p.x),r4(P.p.y),r4(P.p.z)],d:[r3(P.face.x),r3(P.face.y),r3(P.face.z)],m:moving,j:P.jn,a:P.pet?1:0,t:{'.sv':'timestamp'}};
   fetch(liveUrl(meId),{method:'PUT',body:JSON.stringify(body)}).catch(()=>{}).finally(()=>{live.sending=false});
 }
 function liveLeave(){
@@ -2528,8 +2630,12 @@ function updateRemotes(now){
     const jy=stepJump(a,dt);
     placeOn(a.fig,a.pos,jy+(jy?0:Math.abs(Math.sin(T*(9+a.walk*5)))*.012*Math.min(1,a.walk)),0);faceToward(a.fig,a.pos,a.face);
     if(jy>0)poseJump(a);else poseAvatar(a,T,a.walk);
+    const ownsPet=pl.raw.a===1&&(!pets.loaded||pets.owners.has(id));
+    if(ownsPet&&!a.pet){a.pet=makeAlien();playerGroup.add(a.pet.g)}
+    if(!ownsPet&&a.pet){playerGroup.remove(a.pet.g);a.pet=null}
+    if(a.pet)updatePet(a.pet,a.pos,a.face,T,dt);
   }
-  for(const [id,a] of live.avatars)if(!keep.has(id)){playerGroup.remove(a.fig);live.avatars.delete(id)}
+  for(const [id,a] of live.avatars)if(!keep.has(id)){playerGroup.remove(a.fig);if(a.pet)playerGroup.remove(a.pet.g);live.avatars.delete(id)}
   if(play&&live.avatars.size!==live.lastN){live.lastN=live.avatars.size;updateChip()}
 }
 function updateChip(){
