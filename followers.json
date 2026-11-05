@@ -1,5 +1,5 @@
 {
- "updated": 1793880298126,
+ "updated": 1793891044208,
  "followers": [
   {
    "id": "lubikosuch",
@@ -847,7 +847,9 @@
   {
    "id": "davcis_11",
    "name": "@davcis_11",
-   "at": 1793804663195
+   "at": 1793804663195,
+   "left": true,
+   "leftAt": 1793891044208
   },
   {
    "id": "natyy._._y",
@@ -873,6 +875,11 @@
    "id": "davgraff_d",
    "name": "@davgraff_d",
    "at": 1793833672954
+  },
+  {
+   "id": "d_a_v_e11",
+   "name": "@d_a_v_e11",
+   "at": 1793891044208
   }
  ]
 }
