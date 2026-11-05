@@ -1,5 +1,5 @@
 {
- "updated": 1793891044208,
+ "updated": 1793901846025,
  "followers": [
   {
    "id": "lubikosuch",
@@ -785,7 +785,9 @@
   {
    "id": "klarinkaa_officiall",
    "name": "@klarinkaa_officiall",
-   "at": 1793718266489
+   "at": 1793718266489,
+   "left": true,
+   "leftAt": 1793901846025
   },
   {
    "id": "vitekodstrcil",
