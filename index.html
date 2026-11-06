@@ -1278,6 +1278,82 @@ function updateWalker(now){
     w.left.rotation.x=step*.5;w.right.rotation.x=-step*.35;w.can.rotation.x=step*.15;
   }
 }
+// ---------- residents stroll around the town (never out of it), then go back home ----------
+const wanderGroup=new THREE.Group();scene.add(wanderGroup);
+const wanderers=new Map(); // memberId -> {fig,houseKey,local,pos,face,mode,until,target,stuck}
+let townR=PLAZA*2,lastWander=0;
+function syncWanderers(){
+  // the town's edge: just past the farthest house
+  townR=PLAZA*2;for(const [,h] of houses)townR=Math.max(townR,h.v.angleTo(START)+.015);
+  const seen=new Set(),now=performance.now();
+  for(const [key,h] of houses){
+    h.g.updateMatrixWorld(true);
+    const figs=h.g.children.filter(o=>o.userData&&o.userData.memberId);
+    for(const fig of figs){
+      const id=fig.userData.memberId;seen.add(id);
+      const local=fig.position.clone(),home=h.g.localToWorld(local.clone()).normalize();
+      const old=wanderers.get(id);
+      h.g.remove(fig);wanderGroup.add(fig);
+      if(old){wanderGroup.remove(old.fig);
+        // keep strolling from where they were
+        Object.assign(old,{fig,houseKey:key,home});placeOn(fig,old.pos,0,0);faceToward(fig,old.pos,old.face);continue}
+      const w={fig,houseKey:key,home,pos:home.clone(),face:tangentize(START.clone().sub(home),home),mode:'idle',until:now+2000+Math.random()*12000,target:null,stuck:0};
+      placeOn(fig,w.pos,0,0);faceToward(fig,w.pos,w.face);wanderers.set(id,w);
+    }
+  }
+  for(const [id,w] of wanderers)if(!seen.has(id)){wanderGroup.remove(w.fig);wanderers.delete(id)}
+  figDirty=true;
+}
+function pickStroll(w){
+  if(Math.random()<.3)return w.home.clone(); // back to their own front door
+  for(let i=0;i<12;i++){ // a random spot in town that isn't inside a house or the fountain
+    const a=Math.random()*Math.PI*2,d=PLAZA*.95+Math.random()*(townR-PLAZA*.95);
+    const v=START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*d)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*d)).normalize();
+    let ok=v.angleTo(START)<townR;for(const [,h] of houses)if(h.v.angleTo(v)<.04){ok=false;break}
+    if(ok)return v;
+  }
+  return w.home.clone();
+}
+function updateWanderers(now){
+  const dt=Math.min(.1,(now-(lastWander||now))/1000);lastWander=now;
+  if(reduce||!wanderers.size)return;
+  const T=now/1000,speed=WALK_SPEED*.55;
+  const obs=[];for(const [,h] of houses)obs.push(h.v);
+  for(const [id,w] of wanderers){
+    const f=w.fig;
+    if(w.mode==='idle'){
+      if(now<w.until)continue;
+      w.target=pickStroll(w);w.mode='walk';w.stuck=0;f.userData.walking=true;
+    }
+    const gap=w.pos.angleTo(w.target);
+    if(gap<.004){ // arrived: stand still for a while
+      w.mode='idle';w.until=now+(w.target.angleTo(w.home)<.005?15000:5000)+Math.random()*15000;
+      f.userData.walking=false;
+      const legL=f.getObjectByName('legL'),legR=f.getObjectByName('legR');if(legL)legL.rotation.x=0;if(legR)legR.rotation.x=0;
+      const armL=f.getObjectByName('armL');if(armL)armL.rotation.x=0;
+      if(w.target.angleTo(w.home)<.005)w.face=tangentize(START.clone().sub(w.pos),w.pos);
+      placeOn(f,w.pos,0,0);faceToward(f,w.pos,w.face);continue;
+    }
+    // head for the target, sliding round houses on the way
+    const dir=tangentize(w.target.clone().sub(w.pos),w.pos);
+    for(const hv of obs){const a=hv.angleTo(w.pos);if(a<.045&&hv.angleTo(w.target)>.03){
+      const away=tangentize(w.pos.clone().sub(hv),w.pos),k=(.045-a)/.045;
+      dir.add(away.multiplyScalar(k*2.2)).add(new THREE.Vector3().crossVectors(w.pos,away).multiplyScalar(k*1.2));}}
+    tangentize(dir,w.pos);
+    const before=gap,step=Math.min(gap,speed*dt);
+    const next=w.pos.clone().add(dir.multiplyScalar(step)).normalize();
+    if(next.angleTo(START)>townR+.01){w.target=w.home.clone()} // never leave town
+    else{w.pos.copy(next)}
+    w.face.lerp(dir,Math.min(1,dt*8));tangentize(w.face,w.pos);
+    w.stuck=w.pos.angleTo(w.target)>=before-step*.2?w.stuck+dt:0;
+    if(w.stuck>2.5){w.target=w.home.clone();w.stuck=0;if(w.pos.angleTo(w.home)>.002&&Math.random()<.5)w.pos.copy(w.home)}
+    placeOn(f,w.pos,Math.abs(Math.sin(T*9+w.home.x*50))*.005,0);faceToward(f,w.pos,w.face);
+    const sw=Math.sin(T*9+w.home.x*50)*.5;
+    const legL=f.getObjectByName('legL'),legR=f.getObjectByName('legR');if(legL)legL.rotation.x=sw;if(legR)legR.rotation.x=-sw;
+    const armL=f.getObjectByName('armL'),armR=f.getObjectByName('armR');if(armL)armL.rotation.x=-sw*.8;if(armR){armR.rotation.z=Math.PI-.2;armR.rotation.x=-sw*.8}
+  }
+}
+
 // ---------- second-ring job buildings ----------
 function textTex(text,bg,fg,w=512,h=128,font='900 76px system-ui,sans-serif'){
   const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
@@ -1848,13 +1924,14 @@ function loop(now){
   updateWalker(now);
   updatePlay(now);
   updateRemotes(now);
+  updateWanderers(now);
   updateHidden();
   if(!reduce){animateMystery(now/1000);animateBase(now/1000);animateComet(now)}
   if(meFig&&!reduce)meMarker.position.y=.25+Math.sin(now/300)*.025, meMarker.rotation.y=now/600;
   if(!reduce){ // residents wave: arm raised to the side, swinging back and forth
     const T=now/1000;
     for(const [,h] of houses){const arms=h.g.userData.waveArms;if(!arms)continue;
-      for(const a of arms)a.arm.rotation.z=-.5+Math.sin(T*a.sp+a.ph)*.45}
+      for(const a of arms){if(a.arm.parent&&a.arm.parent.userData.walking)continue;a.arm.rotation.z=-.5+Math.sin(T*a.sp+a.ph)*.45}}
     for(const a of siteArms)a.arm.rotation.z=-.5+Math.sin(T*a.sp+a.ph)*.45;
     siteGroup.children.forEach(g=>{const c=g.userData.crane;if(!c||!c.alive)return;
       c.top.rotation.y=Math.sin(T*.25)*1.1;c.trolley.position.x=.45+Math.sin(T*.4)*.22;c.trolley.rotation.z=Math.sin(T*1.3)*.04});
@@ -1931,7 +2008,7 @@ function setResidents(list){
   const prev=new Set(residents.map(r=>r.id));
   residents=list;groupHomes();figDirty=true;residentById=new Map(list.map(r=>[r.id,r]));
   const fresh=new Set(firstLoad?[]:list.filter(r=>!prev.has(r.id)).map(r=>r.id));
-  syncHouses(!firstLoad);syncSites(!firstLoad);syncGraves(!firstLoad);paintPlanet();updateHud();applyMe(firstLoad&&!!meId);
+  syncHouses(!firstLoad);syncWanderers();syncSites(!firstLoad);syncGraves(!firstLoad);paintPlanet();updateHud();applyMe(firstLoad&&!!meId);
   const died=firstLoad?[]:list.filter(r=>r.left&&prevLeft.get(r.id)===false);
   const revived=firstLoad?[]:list.filter(r=>!r.left&&prevLeft.get(r.id)===true);
   if(firstLoad){
@@ -1963,7 +2040,7 @@ const meMarker=new THREE.Group();
 })();
 const meTag=document.createElement('div');meTag.className='label me-tag';meTag.textContent='TY';meTag.hidden=true;
 document.getElementById('labels').append(meTag);
-function findFig(id){let f=null;for(const grp of [townGroup,siteGroup,walkerGroup])grp.traverse(o=>{if(!f&&o.userData&&o.userData.memberId===id)f=o});return f}
+function findFig(id){let f=null;for(const grp of [townGroup,siteGroup,walkerGroup,wanderGroup])grp.traverse(o=>{if(!f&&o.userData&&o.userData.memberId===id)f=o});return f}
 function setMeInfo(nodes){meInfo.textContent='';nodes.forEach(n=>meInfo.append(n))}
 function igLink(){const a=document.createElement('a');a.href='https://www.instagram.com/planetafolloweru/';a.target='_blank';a.rel='noopener';a.textContent='@planetafolloweru';return a}
 const ROLE_TEXT={
@@ -2658,7 +2735,7 @@ function updateChip(){
 // figures standing at home hide while their owner walks around
 let figList=[];
 function updateHidden(){
-  if(figDirty){figList=[];for(const grp of [townGroup,siteGroup,walkerGroup])grp.traverse(o=>{if(o.userData&&o.userData.memberId)figList.push(o)});figDirty=false}
+  if(figDirty){figList=[];for(const grp of [townGroup,siteGroup,walkerGroup,wanderGroup])grp.traverse(o=>{if(o.userData&&o.userData.memberId)figList.push(o)});figDirty=false}
   for(const f of figList){const hide=live.avatars.has(f.userData.memberId)||(play&&f.userData.memberId===meId);if(f.visible===hide)f.visible=!hide}
 }
 function updatePlayerLabels(camDir,dist){
