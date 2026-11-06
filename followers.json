@@ -1,5 +1,6 @@
 {
- "updated": 1793988273300,
+ "updated": 1794000000000,
+ "changedAt": 1793997222981,
  "followers": [
   {
    "id": "lubikosuch",
@@ -53,7 +54,9 @@
   {
    "id": "eyro__studio",
    "name": "@eyro__studio",
-   "at": 1793548518338
+   "at": 1793548518338,
+   "left": true,
+   "leftAt": 1793997222981
   },
   {
    "id": "sokoliknikolas",
@@ -1017,6 +1020,16 @@
    "id": "bultech15",
    "name": "@bultech15",
    "at": 1793988273232
+  },
+  {
+   "id": "eyrocz",
+   "name": "@eyrocz",
+   "at": 1793997222981
+  },
+  {
+   "id": "fild.aaaaaaa",
+   "name": "@fild.aaaaaaa",
+   "at": 1793997222982
   }
  ]
 }
