@@ -91,6 +91,8 @@ button.link{background:none;border:0;padding:0;color:var(--sun);font-weight:700;
 .label .gone{color:var(--ink-dim);font-style:italic}
 .label.grave{background:rgba(40,38,48,.9);color:#d9d4cc;font-size:10px;padding:3px 8px}
 .label.gate{background:#2b2733;color:#e8e0d0;font-family:var(--display);font-weight:400;letter-spacing:.04em}
+.sheet li .on{display:inline-block;width:9px;height:9px;border-radius:50%;background:#3ddc6f;box-shadow:0 0 6px #3ddc6f;margin-right:7px;vertical-align:1px}
+.sheet .online-head{display:block;cursor:default;color:#7fe0a0;font-weight:800;font-size:13px;border-bottom:1px solid var(--panel-line);padding:6px 4px}
 .sheet li.dead .nm{text-decoration:line-through;color:var(--ink-dim)}
 .label.hl{background:var(--sun);color:#2b1d0e;border-color:transparent}
 .label.hl .new{color:#7a3a10}
@@ -1968,12 +1970,17 @@ const fmt=new Intl.DateTimeFormat('cs-CZ',{day:'numeric',month:'numeric',hour:'2
 function renderList(){
   const ol=document.getElementById('list');ol.textContent='';
   if(!residents.length){const li=document.createElement('li');li.className='empty';li.textContent='Zatím nikdo. První follower dostane první dům.';ol.append(li);return}
-  [...residents].reverse().forEach((r,ri)=>{
-    const i=residents.length-ri;
+  let on=new Set();try{on=onlineIds()}catch(_){}
+  const onList=residents.filter(r=>!r.left&&on.has(r.id));
+  if(onList.length){const h=document.createElement('li');h.className='online-head';h.textContent=`Online teď: ${onList.length}`;ol.append(h)}
+  // online residents first, then everyone else from the newest
+  [...onList.slice().reverse(),...[...residents].reverse().filter(r=>!onList.includes(r))].forEach((r,ri)=>{
     const li=document.createElement('li');
     const a=document.createElement('span');a.className='no';a.textContent=r.left?'hřbitov':(r.home==null&&siteKeyOf(r.role))?SITES[siteKeyOf(r.role)].title.toLowerCase():'dům '+(r.home+1);
     if(r.left)li.classList.add('dead');
-    const b=document.createElement('span');b.className='nm';b.textContent=r.name;
+    const b=document.createElement('span');b.className='nm';
+    if(!r.left&&on.has(r.id)){const d=document.createElement('i');d.className='on';d.title='online';d.setAttribute('aria-label','online');b.append(d)}
+    b.append(document.createTextNode(r.name));
     const c=document.createElement('span');c.className='dt';c.textContent=r.at?fmt.format(new Date(r.at)):'';
     li.append(a,b,c);
     li.onclick=()=>{flyToResident(r,3.2);closeSheet()};
@@ -1982,7 +1989,8 @@ function renderList(){
 }
 const sheet=document.getElementById('sheet'),bar=document.getElementById('bar');
 const closeSheet=()=>{sheet.hidden=true;bar.hidden=false};
-document.getElementById('openList').onclick=()=>{sheet.hidden=false;bar.hidden=true};
+document.getElementById('openList').onclick=()=>{renderList();sheet.hidden=false;bar.hidden=true};
+setInterval(()=>{if(!sheet.hidden)renderList()},10000); // keep the online dots fresh while the list is open
 document.getElementById('closeList').onclick=closeSheet;
 let tickTimer=null;
 function announceText(text){
@@ -2404,7 +2412,7 @@ joy.addEventListener('pointerup',joyEnd);joy.addEventListener('pointercancel',jo
 addEventListener('pointerup',joyEnd);addEventListener('pointercancel',joyEnd);
 
 // ---------- live: other visitors walking ----------
-const live={visitors:{},offset:0,es:null,players:{},avatars:new Map(),labels:new Map(),sending:false,ok:false};
+const live={visitorNick:{},visitors:{},offset:0,es:null,players:{},avatars:new Map(),labels:new Map(),sending:false,ok:false};
 const liveKey=id=>id.replace(/\./g,'-');           // Firebase keys can't contain dots
 const liveUrl=id=>LIVE_DB+'/players/'+liveKey(id)+'.json';
 function liveStart(){
@@ -2437,7 +2445,7 @@ function applyPath(path,data,merge){
 function setPlayer(key,raw){
   if(key.startsWith('v_')){ // a visitor that just has the website open (counted as online)
     if(!raw||typeof raw!=='object'||!Number(raw.t))delete live.visitors[key];
-    else{live.visitors[key]=+raw.t;if(key===visit.key)live.offset=+raw.t-Date.now()}
+    else{live.visitors[key]=+raw.t;live.visitorNick[key]=typeof raw.n==='string'?raw.n.slice(0,40):null;if(key===visit.key)live.offset=+raw.t-Date.now()}
     updateOnline();return;
   }
   if(!raw||typeof raw!=='object'||!Array.isArray(raw.p)||raw.p.length<3){delete live.players[key];return}
@@ -2562,9 +2570,17 @@ try{let sid=sessionStorage.getItem('planeta-sid');if(!sid){sid=Math.random().toS
 const onlineEl=document.getElementById('online');
 function visitBeat(){
   if(!LIVE_DB||document.visibilityState==='hidden')return;
-  fetch(LIVE_DB+'/players/'+visit.key+'.json',{method:'PUT',body:JSON.stringify({v:1,t:{'.sv':'timestamp'}})}).catch(()=>{});
+  const body={v:1,t:{'.sv':'timestamp'}};if(meId)body.n=meId; // your nick, so the residents list can show you as online
+  fetch(LIVE_DB+'/players/'+visit.key+'.json',{method:'PUT',body:JSON.stringify(body)}).catch(()=>{});
 }
 function visitLeave(){if(LIVE_DB)try{fetch(LIVE_DB+'/players/'+visit.key+'.json',{method:'DELETE',keepalive:true}).catch(()=>{})}catch(_){}}
+function onlineIds(){ // residents who have the game open right now
+  const now=Date.now()+live.offset,ids=new Set();
+  for(const k in live.visitors)if(now-live.visitors[k]<75000&&live.visitorNick[k])ids.add(live.visitorNick[k]);
+  for(const id of live.avatars.keys())ids.add(id);
+  if(meId&&live.ok)ids.add(meId);
+  return ids;
+}
 function onlineCount(){
   const now=Date.now()+live.offset;let n=0,stale=null;
   for(const k in live.visitors){const age=now-live.visitors[k];if(age<75000)n++;else if(age>600000)stale=k}
