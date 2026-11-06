@@ -45,7 +45,8 @@ def zalom(txt, maxz):
     return out
 def velka(txt, caps):  # VELKÁ PÍSMENA jako v minulých reelech, @jména zůstanou malá
     if not caps: return txt
-    return re.sub(r"(@[\w.]+)|([^@{}]+)|(\{/?y\})", lambda m: m.group(1) or m.group(3) or m.group(2).upper(), txt)
+    return re.sub(r"(@[\w.]+)|(\\n)|([^@{}\\]+)|(\{/?y\})",
+                  lambda m: m.group(1) or m.group(2) or m.group(4) or m.group(3).upper(), txt)
 def hex_bgr(h):  # "#ffd23a" -> "3AD2FF"
     h = h.lstrip("#"); return (h[4:6] + h[2:4] + h[0:2]).upper()
 
