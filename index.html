@@ -311,7 +311,7 @@ function terrain0(v){ // gentle hills, v is unit vector
 var PADS=null;
 function terrain(v){
   let t=terrain0(v);
-  if(PADS)for(const p of PADS){const a=v.angleTo(p.dir);if(a<p.r*1.6){const k=a<=p.r?1:1-(a-p.r)/(p.r*.6),w=k*k*(3-2*k);t=t*(1-w)+p.h*w}}
+  if(PADS)for(const p of PADS){const a=v.angleTo(p.dir);if(a<p.r*1.6){const k=a<=p.r?1:1-(a-p.r)/(p.r*.6),w=k*k*(3-2*k);t=t*(1-w)+(p.h+R*(1/Math.cos(Math.min(a,p.r))-1))*w}} // flat like a table top, not bent with the planet
   return t;
 }
 
@@ -822,7 +822,7 @@ const siteGroup=new THREE.Group();scene.add(siteGroup);
 const mystery=new THREE.Group();scene.add(mystery);
 (function(){
   const dirt=mat('#8a6440'),brick=mat('#b5552f'),brick2=mat('#9e4528'),wood=mat('#a8693a'),orange=mat('#f28a1e'),white=mat('#f4f1ea');
-  const pad=new THREE.Mesh(new THREE.CylinderGeometry(.62,.66,.03,24),dirt);pad.position.y=.012;mystery.add(pad);
+  const pad=new THREE.Mesh(new THREE.CylinderGeometry(.62,.66,.03,24),dirt);pad.position.y=-.008;mystery.add(pad);
   // fence of barrier posts with orange/white rails, gap at the front for the road
   for(let i=0;i<20;i++){const a=i/20*Math.PI*2;if(Math.abs(Math.atan2(Math.sin(a),Math.cos(a))-Math.PI/2)<.3)continue;
     const p=new THREE.Mesh(new THREE.BoxGeometry(.025,.16,.025),white);p.position.set(Math.cos(a)*.6,.08,Math.sin(a)*.6);mystery.add(p);
