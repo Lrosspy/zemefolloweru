@@ -1,6 +1,6 @@
 {
- "updated": 1794042326451,
- "changedAt": 1794042326451,
+ "updated": 1794053282228,
+ "changedAt": 1794053282228,
  "followers": [
   {
    "id": "lubikosuch",
@@ -1155,6 +1155,26 @@
    "id": "cappuccino1604",
    "name": "@cappuccino1604",
    "at": 1794042326458
+  },
+  {
+   "id": "cenda.slouka",
+   "name": "@cenda.slouka",
+   "at": 1794048516563
+  },
+  {
+   "id": "tobiassecka_",
+   "name": "@tobiassecka_",
+   "at": 1794048516564
+  },
+  {
+   "id": "karin_brab",
+   "name": "@karin_brab",
+   "at": 1794053282229
+  },
+  {
+   "id": "adousek.secret",
+   "name": "@adousek.secret",
+   "at": 1794053282230
   }
  ]
 }
