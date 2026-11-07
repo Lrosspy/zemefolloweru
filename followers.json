@@ -1,6 +1,6 @@
 {
- "updated": 1794053282228,
- "changedAt": 1794053282228,
+ "updated": 1794064062160,
+ "changedAt": 1794064062160,
  "followers": [
   {
    "id": "lubikosuch",
@@ -1175,6 +1175,11 @@
    "id": "adousek.secret",
    "name": "@adousek.secret",
    "at": 1794053282230
+  },
+  {
+   "id": "bjk_daniceqq_",
+   "name": "@bjk_daniceqq_",
+   "at": 1794064062160
   }
  ]
 }
