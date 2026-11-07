@@ -348,6 +348,7 @@ SITES.burger={title:'Mekáč planety',dir:MYSTERY.dir,r:.16}; // winner of the s
 // third ring, wished for in the comments: a temple (@unknown_username002 wants to found a religion) and a post office (@jakubkolbe)
 SITES.temple={title:'Chrám planety',dir:ringDir(120,.9),r:.13};
 SITES.post={title:'Pošta',dir:ringDir(315,.88),r:.1};
+SITES.radio={title:'Rádiová stanice',dir:ringDir(12,1.0),r:.1,always:true}; // next to the stadium, beams radio waves into space; belongs to the whole planet
 const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // secret UFO base, far side of the planet
 function ringDir(deg,c){const a=deg*Math.PI/180;return START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*c)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*c)).normalize()}
 PADS=[...Object.values(SITES),MYSTERY,BASE].map(S=>({dir:S.dir,r:S.r,h:terrain0(S.dir)}));
@@ -360,8 +361,8 @@ const FOX_OWNER='kvxtjnu';     // a little orange fox with a glowing aura that r
 const hasRole=(r,k)=>r.role===k||(EXTRA_ROLES[r.id]||[]).includes(k);
 function siteKeyOf(role){return role?(SITES[role]?role:(WORKER_OF[role]||null)):null}
 function siteMembers(k){return residents.filter(r=>hasRole(r,k)||WORKER_OF[r.role]===k).sort((a,b)=>a.at-b.at)}
-const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮'};
-const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta'};
+const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡'};
+const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta',radio:'Tichá rádiová stanice'};
 (function(){
   const g=Math.PI*(3-Math.sqrt(5));
   for(let i=0;i<SLOTS;i++){
@@ -961,7 +962,7 @@ function animateComet(now){
 }
 const siteArms=[];
 let siteSig='';
-function activeSites(){return Object.keys(SITES).filter(k=>residents.some(r=>siteKeyOf(r.role)===k||hasRole(r,k)))}
+function activeSites(){return Object.keys(SITES).filter(k=>SITES[k].always||residents.some(r=>siteKeyOf(r.role)===k||hasRole(r,k)))}
 function siteOwner(k){return residents.filter(r=>hasRole(r,k)).sort((a,b)=>a.at-b.at)[0]}
 function flyToResident(r,h){
   if(r.left){flyToSurface(CEM,h);return}
@@ -1819,8 +1820,41 @@ function buildPost(owner){ // the planet's post office: sign, mailbox, a parcel 
   g.userData.height=.62*S;return g;
 }
 
+function buildRadio(){ // radio station: lattice mast, a dish aimed at the sky and rings of radio waves rising into space
+  const g=new THREE.Group(),S=1.5,b=new THREE.Group();b.scale.setScalar(S);g.add(b);
+  const steel=mat('#d8dde4'),red=mat('#d62828'),white=mat('#f2f2f2'),dark=mat('#3a3f48');
+  const pad=new THREE.Mesh(new THREE.CylinderGeometry(.42,.44,.02,32),mat('#8b8f96'));pad.position.y=-.004;b.add(pad);
+  // small control building
+  const hut=new THREE.Mesh(new THREE.BoxGeometry(.24,.14,.18),white);hut.position.set(-.2,.07,.12);b.add(hut);
+  const hroof=new THREE.Mesh(new THREE.BoxGeometry(.26,.02,.2),dark);hroof.position.set(-.2,.15,.12);b.add(hroof);
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(.2,.045),new THREE.MeshBasicMaterial({map:textTex('RÁDIO','#1d2a44','#7cf7d4')}));sign.position.set(-.2,.105,.211);b.add(sign);
+  const hd=new THREE.Mesh(new THREE.BoxGeometry(.05,.09,.005),mat('#c9eaff'));hd.position.set(-.12,.045,.212);b.add(hd);
+  // tall tapered mast in red and white sections, with guy wires
+  const H=.9,seg=9;
+  for(let k=0;k<seg;k++){const r0=.045-.03*(k/seg),r1=.045-.03*((k+1)/seg),c=new THREE.Mesh(new THREE.CylinderGeometry(r1,r0,H/seg,8),k%2?white:red);c.position.set(.12,H/seg*(k+.5),-.08);b.add(c)}
+  for(let i=0;i<3;i++){const a=i/3*Math.PI*2+.4,ax=.12+Math.cos(a)*.3,az=-.08+Math.sin(a)*.3,top=new THREE.Vector3(.12,H*.7,-.08),bot=new THREE.Vector3(ax,0,az),d=top.clone().sub(bot);
+    const wire=new THREE.Mesh(new THREE.CylinderGeometry(.002,.002,d.length(),3),dark);wire.position.copy(bot.clone().add(top).multiplyScalar(.5));wire.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());b.add(wire)}
+  const tip=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.12,5),steel);tip.position.set(.12,H+.06,-.08);b.add(tip);
+  const beacon=new THREE.Mesh(new THREE.SphereGeometry(.018,10,8),new THREE.MeshBasicMaterial({color:'#ff2a2a'}));beacon.position.set(.12,H+.13,-.08);b.add(beacon);
+  // dish aimed at the sky
+  const dishG=new THREE.Group();dishG.position.set(-.2,.15,-.16);b.add(dishG);
+  const stand=new THREE.Mesh(new THREE.CylinderGeometry(.012,.018,.1,6),dark);stand.position.y=.05;dishG.add(stand);
+  const dishP=new THREE.Group();dishP.position.y=.11;dishP.rotation.x=-.45;dishG.add(dishP);
+  const dish=new THREE.Mesh(new THREE.SphereGeometry(.13,20,10,0,Math.PI*2,0,Math.PI/3.2),white);dish.material.side=THREE.DoubleSide;dish.rotation.x=Math.PI;dish.position.y=.1;dishP.add(dish);
+  const feed=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.1,4),dark);feed.position.y=.06;dishP.add(feed);
+  // radio waves: rings that rise from the mast tip into space and fade
+  const waves=[];
+  for(let i=0;i<5;i++){const w=new THREE.Mesh(new THREE.TorusGeometry(.1,.006,6,40),new THREE.MeshBasicMaterial({color:'#7cf7d4',transparent:true,depthWrite:false}));w.rotation.x=Math.PI/2;b.add(w);waves.push({w,ph:i/5})}
+  g.userData.anim=T=>{
+    beacon.material.color.set(Math.floor(T*1.4)%2?'#5a1010':'#ff2a2a');
+    dishG.rotation.y=T*.25;
+    for(const v of waves){const t=(T*.35+v.ph)%1;v.w.position.set(.12,H+.15+t*1.4,-.08);v.w.scale.setScalar(.4+t*3);v.w.material.opacity=(1-t)*.8}
+  };
+  g.userData.height=1.2*S;return g;
+}
+
 const SITE_BUILD={doctor:buildHospital,farmer:buildFarm,builder:buildConstruction,tennis:buildTennis,gardener:buildGreenhouse,
-  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost};
+  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio};
 function syncSites(animate){
   const sig=Object.keys(SITES).map(k=>k+':'+siteMembers(k).map(m=>m.id+':'+(m.role||'')+(m.left?'x':'')).join(',')).join('|');
   if(sig===siteSig)return;siteSig=sig;
@@ -1835,7 +1869,7 @@ function syncSites(animate){
   syncWalker();
 }
 const siteLabels=new Map();
-function siteDead(k){const own=residents.filter(r=>hasRole(r,k));return !own.length||own.every(r=>r.left)}
+function siteDead(k){if(SITES[k].always)return false;const own=residents.filter(r=>hasRole(r,k));return !own.length||own.every(r=>r.left)}
 function siteLabelText(k){
   const S=SITES[k],alive=residents.filter(r=>hasRole(r,k)&&!r.left).sort((a,b)=>a.at-b.at),n=alive.map(r=>r.name).join(' & ');
   if(k==='doctor'){const pm=residents.filter(r=>r.role==='paramedic'&&!r.left).map(r=>r.name);return `Nemocnice · ředitel ${n}`+(pm.length?` · záchranář/ka ${pm.join(', ')}`:'')}
@@ -1846,6 +1880,7 @@ function siteLabelText(k){
   if(k==='burger')return `Mekáč planety · šéf ${n}`;
   if(k==='temple')return `Chrám planety · velekněz ${n}`;
   if(k==='post')return `Pošta · poštmistr ${n}`;
+  if(k==='radio')return n?`Rádiová stanice · ${n}`:'Rádiová stanice · vysílá do vesmíru';
   return `${S.title} · ${n}`;
 }
 function updateSiteLabels(camDir,dist){
