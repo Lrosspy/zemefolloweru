@@ -345,18 +345,23 @@ const SITES={
 // a mystery building site a little outside the town: bricks around, a big yellow question mark in the middle
 const MYSTERY={dir:ringDir(200,1.08),r:.16,scale:2,done:true}; // done: the vote is over, the winning building stands here now
 SITES.burger={title:'Mekáč planety',dir:MYSTERY.dir,r:.16}; // winner of the secret-site vote (most-liked comment by @kubicek_cernousek)
+// third ring, wished for in the comments: a temple (@unknown_username002 wants to found a religion) and a post office (@jakubkolbe)
+SITES.temple={title:'Chrám planety',dir:ringDir(120,.9),r:.13};
+SITES.post={title:'Pošta',dir:ringDir(315,.88),r:.1};
 const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // secret UFO base, far side of the planet
 function ringDir(deg,c){const a=deg*Math.PI/180;return START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*c)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*c)).normalize()}
 PADS=[...Object.values(SITES),MYSTERY,BASE].map(S=>({dir:S.dir,r:S.r,h:terrain0(S.dir)}));
 // jobs that work in someone else's building
 const WORKER_OF={paramedic:'doctor'};
 // a resident can run a second building on top of their own role
-const EXTRA_ROLES={'lukygg.12_oficiap':['studio'],'kubicek_cernousek':['burger']};
+const EXTRA_ROLES={'lukygg.12_oficiap':['studio'],'kubicek_cernousek':['burger'],'unknown_username002':['temple'],'jakubkolbe':['post']};
+const JET_OWNER='adam.morgi';  // asked for a fighter jet on his house (17 likes)
+const FOX_OWNER='kvxtjnu';     // a little snow fox that runs around town
 const hasRole=(r,k)=>r.role===k||(EXTRA_ROLES[r.id]||[]).includes(k);
 function siteKeyOf(role){return role?(SITES[role]?role:(WORKER_OF[role]||null)):null}
 function siteMembers(k){return residents.filter(r=>hasRole(r,k)||WORKER_OF[r.role]===k).sort((a,b)=>a.at-b.at)}
-const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔'};
-const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety'};
+const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮'};
+const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta'};
 (function(){
   const g=Math.PI*(3-Math.sqrt(5));
   for(let i=0;i<SLOTS;i++){
@@ -507,6 +512,23 @@ function addLegs(fig,id){ // shorter shirt on top of two legs
 }
 function shapeTorso(shirt){shirt.geometry=FIG.torso;shirt.position.y=.06}
 const darkWin=new THREE.MeshBasicMaterial({color:'#3a3352'});
+
+function makeJet(y,onPole){ // a small grey fighter jet parked on a roof (on a short stand if the roof is pointed)
+  const j=new THREE.Group(),grey=mat('#8e98a6'),dark=mat('#4a525e');
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.03,.024,.34,10),grey);body.rotation.z=Math.PI/2;j.add(body);
+  const nose=new THREE.Mesh(new THREE.ConeGeometry(.03,.1,10),grey);nose.rotation.z=-Math.PI/2;nose.position.x=.22;j.add(nose);
+  const cock=new THREE.Mesh(new THREE.SphereGeometry(.03,12,8),mat('#2b3f5c'));cock.scale.set(1.8,.8,.8);cock.position.set(.1,.025,0);j.add(cock);
+  const wing=new THREE.Shape();wing.moveTo(.06,0);wing.lineTo(-.08,.17);wing.lineTo(-.12,.17);wing.lineTo(-.1,0);wing.lineTo(-.12,-.17);wing.lineTo(-.08,-.17);wing.closePath();
+  const wg=new THREE.Mesh(new THREE.ExtrudeGeometry(wing,{depth:.008,bevelEnabled:false}),grey);wg.rotation.x=Math.PI/2;wg.position.y=.004;j.add(wg);
+  for(const z of [-.025,.025]){const fin=new THREE.Mesh(new THREE.BoxGeometry(.07,.07,.006),dark);fin.position.set(-.14,.045,z);fin.rotation.x=z>0?-.25:.25;j.add(fin)}
+  const flame=new THREE.Mesh(new THREE.ConeGeometry(.018,.05,8),new THREE.MeshBasicMaterial({color:'#ff9a1f'}));flame.rotation.z=Math.PI/2;flame.position.x=-.2;j.add(flame);
+  const star=new THREE.Mesh(new THREE.CircleGeometry(.018,5),new THREE.MeshBasicMaterial({color:'#d62828',side:THREE.DoubleSide}));star.rotation.x=-Math.PI/2;star.position.set(-.03,.013,.11);j.add(star);
+  const root=new THREE.Group();root.add(j);
+  if(onPole){const pole=new THREE.Mesh(new THREE.CylinderGeometry(.008,.012,.06,6),dark);pole.position.y=.03;root.add(pole);j.position.y=.07;j.rotation.z=.12}
+  else j.position.y=.03;
+  root.position.y=y;root.rotation.y=.6;root.userData.isJet=true;return root;
+}
+
 function makeHouse(home){
   const idx=home.i;
   const rr=rnd(hash(home.key+'|'+home.members[0].id));
@@ -520,8 +542,10 @@ function makeHouse(home){
     const top=new THREE.Mesh(new THREE.BoxGeometry(w*1.06,.05,d*1.06),mat(roof));top.position.y=h+.025;g.add(top);
   }else{
     const rf=new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,d)*.78,.24,4),mat(roof));rf.position.y=h+.12;rf.rotation.y=Math.PI/4;g.add(rf);
+    g.userData.peak=true;
     if(rr()<.45){const ch=new THREE.Mesh(new THREE.BoxGeometry(.05,.14,.05),mat('#6a5048'));ch.position.set(w*.25,h+.14,0);g.add(ch)}
   }
+  if(home.members.some(m=>m.id===JET_OWNER&&!m.left))g.add(makeJet(h+(g.userData.peak?.2:.05),!!g.userData.peak));
   // windows: lit in proportion to how many people live here
   const living=home.members.filter(m=>!m.left);
   const waveArms=[];
@@ -1318,6 +1342,55 @@ function pickStroll(w){
   }
   return w.home.clone();
 }
+
+// ---------- a little snow fox (owner: FOX_OWNER) that runs around inside the town ----------
+let fox=null,foxS=null,lastFox=0;
+function makeFox(){
+  const f=new THREE.Group(),white=mat('#f4f6fb'),blue=mat('#8fd3ff'),dark=mat('#2a2f3a');
+  const body=new THREE.Mesh(new THREE.SphereGeometry(.035,12,8),white);body.scale.set(.8,.75,1.4);body.position.y=.045;f.add(body);
+  const head=new THREE.Group();head.position.set(0,.075,.05);f.add(head);
+  head.add(new THREE.Mesh(new THREE.SphereGeometry(.026,12,8),white));
+  const snout=new THREE.Mesh(new THREE.ConeGeometry(.012,.03,8),white);snout.rotation.x=Math.PI/2;snout.position.z=.028;head.add(snout);
+  const nose=new THREE.Mesh(new THREE.SphereGeometry(.005,6,4),dark);nose.position.z=.043;head.add(nose);
+  for(const x of [-.012,.012]){const e=new THREE.Mesh(new THREE.ConeGeometry(.009,.025,4),white);e.position.set(x,.025,-.004);head.add(e);
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(.004,6,4),dark);eye.position.set(x*.8,.006,.022);head.add(eye)}
+  const tail=new THREE.Group();tail.position.set(0,.05,-.045);f.add(tail);
+  const t1=new THREE.Mesh(new THREE.SphereGeometry(.022,10,8),white);t1.scale.set(.8,.8,1.8);t1.position.z=-.03;tail.add(t1);
+  const t2=new THREE.Mesh(new THREE.SphereGeometry(.014,8,6),blue);t2.position.z=-.065;tail.add(t2);
+  tail.rotation.x=.5;f.userData.tail=tail;
+  const legs=[];for(const [x,z] of [[-.015,.025],[.015,.025],[-.015,-.025],[.015,-.025]]){const l=new THREE.Mesh(new THREE.CylinderGeometry(.005,.005,.03,5),white);l.position.set(x,.015,z);f.add(l);legs.push(l)}
+  f.userData.legs=legs;f.scale.setScalar(1.5);return f;
+}
+function foxSpot(){
+  for(let k=0;k<12;k++){
+    const a=Math.random()*360,d=PLAZA*1.1+Math.random()*Math.max(.01,townR-PLAZA*1.4),v=ringDir(a,Math.tan(d));
+    let ok=true;for(const [,h] of houses)if(h.v.angleTo(v)<.045){ok=false;break}
+    if(ok)return v;
+  }
+  return START.clone();
+}
+function updateFox(now){
+  const own=residentById.get(FOX_OWNER),want=own&&!own.left&&!reduce;
+  if(!want){if(fox)fox.visible=false;return}
+  if(!fox){fox=makeFox();wanderGroup.add(fox);foxS={pos:foxSpot(),target:null,face:tangentOf(START),wait:1}}
+  fox.visible=true;
+  const dt=Math.min(.1,(now-(lastFox||now))/1000);lastFox=now;const T=now/1000,s=foxS;
+  let run=false;
+  if(s.wait>0){s.wait-=dt}
+  else{
+    if(!s.target||s.pos.angleTo(s.target)<.008){s.target=foxSpot();if(Math.random()<.4)s.wait=.8+Math.random()*2.2}
+    const dir=tangentize(s.target.clone().sub(s.pos),s.pos);
+    for(const [,h] of houses){const a=h.v.angleTo(s.pos);if(a<.045&&h.v.angleTo(s.target)>.03){const away=tangentize(s.pos.clone().sub(h.v),s.pos),k=(.045-a)/.045;dir.add(away.multiplyScalar(k*2.2)).add(new THREE.Vector3().crossVectors(s.pos,away).multiplyScalar(k*1.2))}}
+    tangentize(dir,s.pos);
+    const next=s.pos.clone().add(dir.clone().multiplyScalar(WALK_SPEED*1.7*dt)).normalize();
+    if(next.angleTo(START)>townR+.01)s.target=foxSpot();else{s.pos.copy(next);run=true}
+    s.face.lerp(dir,Math.min(1,dt*8));tangentize(s.face,s.pos);
+  }
+  placeOn(fox,s.pos,run?Math.abs(Math.sin(T*16))*.012:0,0);faceToward(fox,s.pos,s.face);
+  fox.userData.legs.forEach((l,i)=>{l.rotation.x=run?Math.sin(T*16+(i%2?Math.PI:0)+(i>1?Math.PI/2:0))*.7:0});
+  fox.userData.tail.rotation.y=Math.sin(T*(run?10:4))*.4;
+}
+
 function updateWanderers(now){
   const dt=Math.min(.1,(now-(lastWander||now))/1000);lastWander=now;
   if(reduce||!wanderers.size)return;
@@ -1683,8 +1756,63 @@ function buildStadium(owner){
   g.userData.height=.75;return g;
 }
 
+
+function buildTemple(owner){ // round temple with columns and a golden dome; the owner wants to found a religion
+  const g=new THREE.Group(),alive=owner&&!owner.left,S=1.6,b=new THREE.Group();b.scale.setScalar(S);g.add(b);
+  const stone=mat(alive?'#e8e1d0':'#a9a49a'),stone2=mat(alive?'#d6cdb8':'#97928a'),gold=mat(alive?'#e3b341':'#8f7a4a');
+  [[.5,.03],[.44,.03],[.38,.03]].forEach(([r,h],i)=>{const st=new THREE.Mesh(new THREE.CylinderGeometry(r,r+.01,h,36),i%2?stone2:stone);st.position.y=h/2+i*h;b.add(st)});
+  const cella=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.3,28),stone2);cella.position.y=.09+.15;b.add(cella);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(.09,.16,.01),mat('#5a3a1c'));door.position.set(0,.09+.08,.2);b.add(door);
+  for(let i=0;i<12;i++){const a=i/12*Math.PI*2,c=new THREE.Mesh(new THREE.CylinderGeometry(.022,.026,.3,8),stone);c.position.set(Math.cos(a)*.33,.09+.15,Math.sin(a)*.33);b.add(c)}
+  const ent=new THREE.Mesh(new THREE.CylinderGeometry(.37,.37,.045,36),stone);ent.position.y=.415;b.add(ent);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.36,.012,6,40),gold);ring.rotation.x=Math.PI/2;ring.position.y=.44;b.add(ring);
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(.3,28,14,0,Math.PI*2,0,Math.PI/2),gold);dome.position.y=.435;b.add(dome);
+  const spire=new THREE.Mesh(new THREE.CylinderGeometry(.008,.012,.12,6),gold);spire.position.y=.79;b.add(spire);
+  const orb=new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),new THREE.MeshBasicMaterial({color:alive?'#fff1a8':'#777'}));orb.position.y=.88;b.add(orb);
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(.26,.05),new THREE.MeshBasicMaterial({map:textTex('CHRÁM',alive?'#e3b341':'#777','#3a2a10')}));sign.position.set(0,.415,.375);b.add(sign);
+  // fire altar in front and two worshippers bowing to it
+  const altar=new THREE.Mesh(new THREE.BoxGeometry(.1,.07,.1),stone2);altar.position.set(0,.035,.62);b.add(altar);
+  const fire=new THREE.Mesh(new THREE.ConeGeometry(.035,.09,8),new THREE.MeshBasicMaterial({color:'#ff9a1f'}));fire.position.set(0,.115,.62);b.add(fire);
+  const fire2=new THREE.Mesh(new THREE.ConeGeometry(.018,.06,8),new THREE.MeshBasicMaterial({color:'#ffe066'}));fire2.position.set(0,.105,.62);b.add(fire2);
+  const bowers=[];
+  if(alive)for(const [x,z] of [[-.16,.78],[.16,.78]]){const f=makePerson({id:'temple-npc-'+x},'#f1e4c3');f.position.set(x*S,0,z*S);f.rotation.y=Math.PI;g.add(f);bowers.push(f)}
+  ownerFig(g,owner,'#f4e9c8','glasses',.32,.62,0);
+  g.userData.anim=T=>{
+    if(!alive)return;
+    const k=1+Math.sin(T*9)*.15+Math.sin(T*13)*.08;fire.scale.set(1,k,1);fire2.scale.set(1,2-k,1);
+    orb.scale.setScalar(1+Math.sin(T*2)*.12);
+    bowers.forEach((f,i)=>{f.rotation.x=Math.max(0,Math.sin(T*1.6+i*.6))*.6});
+  };
+  g.userData.height=.95*S;return g;
+}
+
+function buildPost(owner){ // the planet's post office: sign, mailbox, a parcel van and a flying letter
+  const g=new THREE.Group(),alive=owner&&!owner.left,S=1.4,b=new THREE.Group();b.scale.setScalar(S);g.add(b);
+  const wall=mat(alive?'#f4d03f':'#a99a6a'),blue=mat(alive?'#1f4e9c':'#5a6476'),white=mat('#f2f2f2');
+  const lot=new THREE.Mesh(new THREE.CylinderGeometry(.46,.48,.02,32),mat('#8b8f96'));lot.position.y=-.004;b.add(lot);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.5,.3,.34),wall);body.position.y=.15;b.add(body);
+  const band=new THREE.Mesh(new THREE.BoxGeometry(.52,.04,.36),blue);band.position.y=.31;b.add(band);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(.38,.14,4),blue);roof.rotation.y=Math.PI/4;roof.scale.set(1,1,.72);roof.position.y=.4;b.add(roof);
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(.34,.07),new THREE.MeshBasicMaterial({map:textTex('POŠTA',alive?'#1f4e9c':'#666','#ffffff')}));sign.position.set(0,.245,.172);b.add(sign);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(.08,.14,.006),mat('#c9eaff'));door.position.set(.12,.07,.172);b.add(door);
+  for(const x of [-.16,-.04]){const w=new THREE.Mesh(new THREE.PlaneGeometry(.07,.07),alive?winMat:darkWin);w.position.set(x,.13,.172);b.add(w)}
+  // mailbox on a post
+  const mbPost=new THREE.Mesh(new THREE.CylinderGeometry(.01,.01,.1,6),mat('#3a3a3a'));mbPost.position.set(-.3,.05,.26);b.add(mbPost);
+  const mb=new THREE.Mesh(new THREE.BoxGeometry(.07,.08,.05),mat(alive?'#f4d03f':'#a99a6a'));mb.position.set(-.3,.13,.26);b.add(mb);
+  const slot=new THREE.Mesh(new THREE.BoxGeometry(.04,.006,.002),mat('#2a2a2a'));slot.position.set(-.3,.15,.286);b.add(slot);
+  // parcel van
+  const van=makeCar('#1f4e9c',!alive);van.scale.setScalar(.85);van.position.set(.32,0,.12);van.rotation.y=Math.PI/2;b.add(van);
+  const crate=new THREE.Mesh(new THREE.BoxGeometry(.05,.04,.05),mat('#b07a45'));crate.position.set(.22,.02,.3);b.add(crate);
+  // a letter that flies up from the roof and comes back down
+  const lc=document.createElement('canvas');lc.width=96;lc.height=64;const lx=lc.getContext('2d');lx.fillStyle='#fff';lx.fillRect(4,4,88,56);lx.strokeStyle='#1f4e9c';lx.lineWidth=5;lx.strokeRect(4,4,88,56);lx.beginPath();lx.moveTo(4,4);lx.lineTo(48,36);lx.lineTo(92,4);lx.stroke();
+  const letter=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lc),transparent:true,depthWrite:false}));letter.scale.set(.12,.08,1);letter.visible=alive;b.add(letter);
+  ownerFig(g,owner,'#1f4e9c','cap',-.2,.5,0);
+  g.userData.anim=T=>{const t=(T*.35)%1;letter.position.set(Math.sin(T*.9)*.15,.5+Math.sin(t*Math.PI)*.35,Math.cos(T*.9)*.1);letter.material.opacity=Math.min(1,Math.sin(t*Math.PI)*3)};
+  g.userData.height=.62*S;return g;
+}
+
 const SITE_BUILD={doctor:buildHospital,farmer:buildFarm,builder:buildConstruction,tennis:buildTennis,gardener:buildGreenhouse,
-  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger};
+  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost};
 function syncSites(animate){
   const sig=Object.keys(SITES).map(k=>k+':'+siteMembers(k).map(m=>m.id+':'+(m.role||'')+(m.left?'x':'')).join(',')).join('|');
   if(sig===siteSig)return;siteSig=sig;
@@ -1708,6 +1836,8 @@ function siteLabelText(k){
   if(k==='kebab')return `Nejlepší kebab na planetě · ${n}`;
   if(k==='sheriff')return `Šerif ${n}`;
   if(k==='burger')return `Mekáč planety · šéf ${n}`;
+  if(k==='temple')return `Chrám planety · velekněz ${n}`;
+  if(k==='post')return `Pošta · poštmistr ${n}`;
   return `${S.title} · ${n}`;
 }
 function updateSiteLabels(camDir,dist){
@@ -1969,6 +2099,7 @@ function loop(now){
   updatePlay(now);
   updateRemotes(now);
   updateWanderers(now);
+  updateFox(now);
   updateHidden();
   if(!reduce){if(!MYSTERY.done)animateMystery(now/1000);animateBase(now/1000);animateComet(now)}
   if(meFig&&!reduce)meMarker.position.y=.25+Math.sin(now/300)*.025, meMarker.rotation.y=now/600;
@@ -2126,7 +2257,12 @@ function applyMe(flyThere){
   if(r.home==null&&siteKeyOf(r.role)){
     setMeInfo([ROLE_TEXT[r.role]||(r.role==='doctor'?'Jsi ředitel a hlavní lékař nemocnice 🏥.':r.role==='farmer'?'Jsi farmář/ka a patří ti farma s polem 🌾.':r.role==='builder'?'Jsi stavitel planety 🏗️. Patří ti stavební firma s jeřábem.':r.role==='tennis'?'Patří ti dům s vlastním tenisovým kurtem 🎾.':r.role==='gardener'?'Jsi zahradník/ice planety 🌷. Chodíš mezi domy a zaléváš kytky.':`Patří ti stavba: ${SITES[siteKeyOf(r.role)].title}.`)+((EXTRA_ROLES[r.id]||[]).includes('studio')?' A máš na starosti nahrávací studio 🎙️ ve tvaru mikrofonu.':'')]);
   }else{
-    const extra=(EXTRA_ROLES[r.id]||[]).includes('burger')?' A jsi šéf Mekáče planety 🍔 – vyhrál tvůj komentář v hlasování o tajné stavbě!':'';
+    const ex=EXTRA_ROLES[r.id]||[];
+    const extra=(ex.includes('burger')?' A jsi šéf Mekáče planety 🍔 – vyhrál tvůj komentář v hlasování o tajné stavbě!':'')+
+      (ex.includes('temple')?' A jsi velekněz Chrámu planety 🛕. Jednou se z tebe může stát bůh planety.':'')+
+      (ex.includes('post')?' A jsi poštmistr planety 📮, patří ti pošta.':'')+
+      (r.id===JET_OWNER?' Na střeše vašeho domu parkuje tvoje stíhačka ✈️.':'')+
+      (r.id===FOX_OWNER?' Po městě ti běhá tvůj sněžný lišák 🦊.':'');
     const home=homes[r.home];
     const others=home?home.members.filter(m=>!m.left&&m.id!==meId).map(m=>m.name):[];
     setMeInfo([`Bydlíš v domě č. ${r.home+1}. `,(others.length?`Sousedé: ${others.join(', ')}.`:'Zatím tu bydlíš sám, pozvi kámoše.')+extra]);
