@@ -1,6 +1,6 @@
 {
- "updated": 1794139466056,
- "changedAt": 1794092641055,
+ "updated": 1794150256748,
+ "changedAt": 1794150256748,
  "followers": [
   {
    "id": "lubikosuch",
@@ -984,7 +984,9 @@
   {
    "id": "tonda.v.privat",
    "name": "@tonda.v.privat",
-   "at": 1793976761940
+   "at": 1793976761940,
+   "left": true,
+   "leftAt": 1794150256748
   },
   {
    "id": "richardstafl",
@@ -1199,7 +1201,9 @@
   {
    "id": "realp_clipss",
    "name": "@realp_clipss",
-   "at": 1794078000001
+   "at": 1794078000001,
+   "left": true,
+   "leftAt": 1794150256748
   },
   {
    "id": "jinousek163222",
@@ -1215,6 +1219,16 @@
    "id": "petrsu7ak",
    "name": "@petrsu7ak",
    "at": 1794092641055
+  },
+  {
+   "id": "tomas.coufal.568",
+   "name": "@tomas.coufal.568",
+   "at": 1794150256748
+  },
+  {
+   "id": "l1n_d4_",
+   "name": "@l1n_d4_",
+   "at": 1794150256749
   }
  ]
 }
