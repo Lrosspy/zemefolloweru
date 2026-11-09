@@ -51,7 +51,7 @@ def hex_bgr(h):  # "#ffd23a" -> "3AD2FF"
     h = h.lstrip("#"); return (h[4:6] + h[2:4] + h[0:2]).upper()
 
 def udelej_ass(titulky, styl, cesta):
-    vel = styl.get("velikost", 134); y0 = styl.get("pozice_y", 300); maxz = styl.get("znaku_na_radek", 15); caps = styl.get("velka_pismena", True)
+    vel = styl.get("velikost", 134); y0 = styl.get("pozice_y", 300); maxz = styl.get("znaku_na_radek", 13); caps = styl.get("velka_pismena", True)
     zl = hex_bgr(styl.get("zvyrazneni", "#ffd23a")); pod_vel = styl.get("velikost_pod", 60)
     font = styl.get("font", "Inter Display Black")
     hl = f"""[Script Info]
@@ -76,12 +76,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         if t.get("text"):
             rad = zalom(velka(EMOJI.sub("", t["text"]).strip(), caps), maxz)
             nejdelsi = max(len(re.sub(r"\{/?y\}", "", r)) for r in rad)
-            fs = vel * min(1.0, maxz * 1.08 / nejdelsi)  # dlouhé slovo (třeba @jméno) se zmenší, aby nepřeteklo
+            fs = vel * min(1.0, maxz * 0.95 / nejdelsi)  # dlouhé slovo (třeba @jméno) se zmenší, aby nepřeteklo
             txt = "\\N".join(barvy(r, zl) for r in rad)
             ev.append(f"Dialogue: 1,{ass_cas(od)},{ass_cas(do)},Velky,,0,0,0,,{{\\an8\\pos({W//2},{y:.0f})\\fs{fs:.0f}}}{anim}{txt}")
             y += len(rad) * fs * 1.02 + 34
         if t.get("pod"):
-            txt = barvy(EMOJI.sub("", t["pod"]).strip(), zl)
+            rad = zalom(EMOJI.sub("", t["pod"]).strip(), styl.get("znaku_pod", 32))  # dlouhý titulek se zalomí
+            txt = "\\N".join(barvy(r, zl) for r in rad)
             ev.append(f"Dialogue: 0,{ass_cas(od + .12)},{ass_cas(do)},Pod,,0,0,0,,{{\\an8\\pos({W//2},{y:.0f})}}{anim}{txt}")
     with open(cesta, "w", encoding="utf-8") as f: f.write(hl + "\n".join(ev) + "\n")
 

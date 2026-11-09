@@ -1,0 +1,25 @@
+{
+  "vystup": "mame_starostu.mp4",
+  "fps": 30,
+  "zabery": [
+    {"soubor": "a_clean.mp4"},
+    {"soubor": "b.mkv"}
+  ],
+  "styl": {"pozice_y": 300, "velikost_pod": 54},
+  "titulky": [
+    {"od": 0.0,   "do": 2.4,   "text": "MÁME {y}STAROSTU{/y}"},
+    {"od": 0.0,   "do": 2.4,   "y": 1500, "pod": "Máme starostu! Hádej, čí komentář vyhrál."},
+    {"od": 2.4,   "do": 4.4,   "text": "VYHRÁL {y}UNKNOWN{/y}"},
+    {"od": 2.4,   "do": 4.4,   "y": 1500, "pod": "Unknown dostal nejvíc lajků."},
+    {"od": 4.4,   "do": 6.9,   "text": "KORUNA + {y}ZLATÁ AURA{/y}"},
+    {"od": 4.4,   "do": 6.9,   "y": 1500, "pod": "Nosí korunu, červený plášť a zlatou auru."},
+    {"od": 6.9,   "do": 9.3,   "text": "{y}RADNICE{/y} PLANETY"},
+    {"od": 6.9,   "do": 9.3,   "y": 1500, "pod": "Teď mu patří radnice s hodinovou věží."},
+    {"od": 9.3,   "do": 11.6,  "text": "STAROSTA I {y}VELEKNĚZ{/y}"},
+    {"od": 9.3,   "do": 11.6,  "y": 1500, "pod": "A pořád je i velekněz chrámu. Dvě funkce, jeden člověk."},
+    {"od": 11.6,  "do": 16.0,  "text": "KDO POLETÍ {y}PRVNÍ?{/y}"},
+    {"od": 11.6,  "do": 16.0,  "y": 1500, "pod": "Teď expedice. Kdo poletí se starostou první?"},
+    {"od": 16.0,  "do": 20.35, "text": "NAPIŠ TO DO {y}KOMENTÁŘŮ{/y}"},
+    {"od": 16.0,  "do": 20.35, "y": 1500, "pod": "Napiš to do komentářů a označ kámoše."}
+  ]
+}
