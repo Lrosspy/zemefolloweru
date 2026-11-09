@@ -1875,7 +1875,12 @@ function buildTownHall(owner){
   for(let i=0;i<5;i++){const a=i/5*Math.PI*2,pt=new THREE.Mesh(new THREE.ConeGeometry(.008,.024,4),gold);pt.position.set(Math.sin(a)*.028,.022,Math.cos(a)*.028);crown.add(pt)}
   // the boss walks around his town hall, crowned, in a golden aura
   let boss=null;const R0=.55;
-  if(alive){boss=makePerson(owner,'#7a1f2b','crown');siteArms.pop();boss.scale.setScalar(1.3);g.add(boss)}
+  if(alive){boss=makePerson(owner,'#7a1f2b','crown');siteArms.pop();boss.scale.setScalar(1.3);g.add(boss)
+    // name tag floating above the mayor's crown
+    const nm=(owner.name||'@'+owner.id),cw=Math.max(320,Math.min(1400,120+nm.length*36));
+    const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:textTex('👑 '+nm,'#7a1f2b','#ffd23a',cw,96,'900 52px system-ui,sans-serif'),transparent:true,depthWrite:false}));
+    tag.scale.set(.05*cw/96,.05,1);tag.position.y=.21;tag.renderOrder=5;boss.add(tag);
+  }
   g.userData.anim=T=>{
     if(!alive)return;
     const now=new Date();hw.rotation.z=-(now.getHours()%12+now.getMinutes()/60)/12*Math.PI*2;mw.rotation.z=-now.getMinutes()/60*Math.PI*2;
