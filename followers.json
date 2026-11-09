@@ -1,6 +1,6 @@
 {
- "updated": 1794247608160,
- "changedAt": 1794247608160,
+ "updated": 1794258451982,
+ "changedAt": 1794258451982,
  "followers": [
   {
    "id": "lubikosuch",
@@ -1062,7 +1062,9 @@
   {
    "id": "veleba777",
    "name": "@veleba777",
-   "at": 1794006287640
+   "at": 1794006287640,
+   "left": true,
+   "leftAt": 1794258451982
   },
   {
    "id": "kvxtjnu",
@@ -1107,7 +1109,9 @@
   {
    "id": "mistri.kova",
    "name": "@mistri.kova",
-   "at": 1794035056124
+   "at": 1794035056124,
+   "left": true,
+   "leftAt": 1794258451982
   },
   {
    "id": "_an1ckqqq_",
@@ -1260,6 +1264,16 @@
    "id": "nzhsvjut",
    "name": "@nzhsvjut",
    "at": 1794247608160
+  },
+  {
+   "id": "imagine_ofc_",
+   "name": "@imagine_ofc_",
+   "at": 1794258451983
+  },
+  {
+   "id": "tropixoff",
+   "name": "@tropixoff",
+   "at": 1794258451984
   }
  ]
 }
