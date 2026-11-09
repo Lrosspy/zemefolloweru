@@ -1036,7 +1036,8 @@
   {
    "id": "unknown_username002",
    "name": "@unknown_username002",
-   "at": 1793999227727
+   "at": 1793999227727,
+   "role": "mayor"
   },
   {
    "id": "adam.morgi",

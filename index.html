@@ -348,7 +348,8 @@ SITES.burger={title:'Mekáč planety',dir:MYSTERY.dir,r:.16}; // winner of the s
 // third ring, wished for in the comments: a temple (@unknown_username002 wants to found a religion) and a post office (@jakubkolbe)
 SITES.temple={title:'Chrám planety',dir:ringDir(120,.9),r:.13};
 SITES.post={title:'Pošta',dir:ringDir(315,.88),r:.1};
-SITES.radio={title:'Rádiová stanice',dir:ringDir(12,1.0),r:.1,always:true}; // next to the stadium, beams radio waves into space; belongs to the whole planet
+SITES.radio={title:'Rádiová stanice',dir:ringDir(12,1.0),r:.1,always:true};
+SITES.mayor={title:'Radnice',dir:ringDir(128,.62),r:.1}; // town hall next to the barbershop; the mayor (role 'mayor') won the election in the comments // next to the stadium, beams radio waves into space; belongs to the whole planet
 const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // secret UFO base, far side of the planet
 function ringDir(deg,c){const a=deg*Math.PI/180;return START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*c)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*c)).normalize()}
 PADS=[...Object.values(SITES),MYSTERY,BASE].map(S=>({dir:S.dir,r:S.r,h:terrain0(S.dir)}));
@@ -361,8 +362,8 @@ const FOX_OWNER='kvxtjnu';     // a little orange fox with a glowing aura that r
 const hasRole=(r,k)=>r.role===k||(EXTRA_ROLES[r.id]||[]).includes(k);
 function siteKeyOf(role){return role?(SITES[role]?role:(WORKER_OF[role]||null)):null}
 function siteMembers(k){return residents.filter(r=>hasRole(r,k)||WORKER_OF[r.role]===k).sort((a,b)=>a.at-b.at)}
-const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡'};
-const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta',radio:'Tichá rádiová stanice'};
+const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡',mayor:'👑'};
+const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta',radio:'Tichá rádiová stanice',mayor:'Opuštěná radnice'};
 (function(){
   const g=Math.PI*(3-Math.sqrt(5));
   for(let i=0;i<SLOTS;i++){
@@ -980,6 +981,20 @@ function makePerson(m,shirtColor,hat,skinColor){
   if(hat==='straw'){const brim=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.006,10),mat('#e8c35a'));brim.position.y=.118;fig.add(brim);const top=new THREE.Mesh(new THREE.CylinderGeometry(.018,.022,.022,8),mat('#e8c35a'));top.position.y=.13;fig.add(top)}
   if(hat==='helmet'){const hm=new THREE.Mesh(new THREE.SphereGeometry(.026,10,6,0,Math.PI*2,0,Math.PI/2),mat('#f2c230'));hm.position.y=.106;fig.add(hm);const brim=new THREE.Mesh(new THREE.CylinderGeometry(.032,.032,.004,10),mat('#f2c230'));brim.position.y=.107;fig.add(brim)}
   if(hat==='fire'){const hm=new THREE.Mesh(new THREE.SphereGeometry(.027,10,6,0,Math.PI*2,0,Math.PI/2),mat('#d6332f'));hm.position.y=.106;fig.add(hm);const brim=new THREE.Mesh(new THREE.CylinderGeometry(.036,.036,.004,10),mat('#d6332f'));brim.position.y=.107;fig.add(brim)}
+  if(hat==='crown'){ // gold crown with a red jewel, red cape, and a golden aura around the whole figure
+    const gold=new THREE.MeshLambertMaterial({color:'#ffd23a',emissive:'#a87a00',emissiveIntensity:.55,flatShading:true});
+    const cr=new THREE.Mesh(new THREE.CylinderGeometry(.021,.019,.016,10,1,true),gold);cr.material.side=THREE.DoubleSide;cr.position.y=.124;fig.add(cr);
+    for(let i=0;i<5;i++){const a=i/5*Math.PI*2,pt=new THREE.Mesh(new THREE.ConeGeometry(.006,.016,4),gold);pt.position.set(Math.sin(a)*.02,.139,Math.cos(a)*.02);fig.add(pt)}
+    const gem=new THREE.Mesh(new THREE.SphereGeometry(.0045,6,4),new THREE.MeshBasicMaterial({color:'#e8243a'}));gem.position.set(0,.124,.021);fig.add(gem);
+    const cape=new THREE.Mesh(new THREE.BoxGeometry(.06,.075,.006),mat('#b3122e'));cape.position.set(0,.05,-.034);cape.rotation.x=.12;fig.add(cape);
+    const glowM=new THREE.MeshBasicMaterial({color:'#ffd23a',transparent:true,opacity:.22,blending:THREE.AdditiveBlending,depthWrite:false});
+    const aura=new THREE.Mesh(new THREE.SphereGeometry(.075,16,12),glowM);aura.position.y=.075;aura.scale.y=1.35;fig.add(aura);
+    const ringM=new THREE.MeshBasicMaterial({color:'#ffcc33',transparent:true,opacity:.55,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+    const ring=new THREE.Mesh(new THREE.RingGeometry(.05,.075,24),ringM);ring.rotation.x=-Math.PI/2;ring.position.y=.004;fig.add(ring);
+    const sparks=[],sm=new THREE.MeshBasicMaterial({color:'#fff2a8',transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false});
+    for(let i=0;i<8;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(.0045,5,4),sm);s.userData.ph=i/8;fig.add(s);sparks.push(s)}
+    fig.userData.aura={aura,ring,sparks};
+  }
   if(hat==='cowboy'){const brim=new THREE.Mesh(new THREE.CylinderGeometry(.048,.048,.005,12),mat('#7a5230'));brim.position.y=.118;fig.add(brim);const top=new THREE.Mesh(new THREE.CylinderGeometry(.02,.024,.03,10),mat('#7a5230'));top.position.y=.134;fig.add(top);
     const star=new THREE.Mesh(new THREE.CircleGeometry(.009,5),mat('#f2c230'));star.position.set(-.012,.06,.033);fig.add(star)}
   if(hat==='cap'){const c=new THREE.Mesh(new THREE.SphereGeometry(.024,10,6,0,Math.PI*2,0,Math.PI/2),mat('#2f5d9e'));c.position.y=.108;fig.add(c);const v=new THREE.Mesh(new THREE.BoxGeometry(.03,.004,.02),mat('#2f5d9e'));v.position.set(0,.109,.03);fig.add(v)}
@@ -1820,6 +1835,62 @@ function buildPost(owner){ // the planet's post office: sign, mailbox, a parcel 
   g.userData.height=.62*S;return g;
 }
 
+// golden aura: pulses, sparkles spiral up around the figure
+function animateAura(fig,T){
+  const a=fig&&fig.userData.aura;if(!a)return;
+  const p=.5+.5*Math.sin(T*3);
+  a.aura.material.opacity=.14+.12*p;a.aura.scale.set(1+.08*p,1.35+.1*p,1+.08*p);
+  a.ring.material.opacity=.35+.3*p;a.ring.rotation.z=T*.8;
+  a.sparks.forEach(s=>{const u=(T*.45+s.userData.ph)%1,an=s.userData.ph*Math.PI*2+T*2.2;s.position.set(Math.cos(an)*.06,.01+u*.15,Math.sin(an)*.06);s.material.opacity=.9*(1-u)});
+}
+function buildTownHall(owner){
+  const g=new THREE.Group(),alive=owner&&!owner.left;
+  const stone=mat(alive?'#efe4cc':'#aaa293'),trim=mat(alive?'#f8f3e6':'#b9b3a8'),roofM=mat(alive?'#3f6f8f':'#5c6066');
+  const gold=new THREE.MeshLambertMaterial({color:alive?'#ffd23a':'#8a7a50',emissive:alive?'#a87a00':'#000000',emissiveIntensity:.45,flatShading:true});
+  // steps and the main hall
+  for(let i=0;i<3;i++){const st=new THREE.Mesh(new THREE.BoxGeometry(.5-i*.04,.02,.12-i*.03),trim);st.position.set(0,.01+i*.02,.27-i*.015);g.add(st)}
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.72,.34,.4),stone);body.position.y=.17;g.add(body);
+  const cornice=new THREE.Mesh(new THREE.BoxGeometry(.76,.03,.44),trim);cornice.position.y=.355;g.add(cornice);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(.72,.05,.4),roofM);roof.position.y=.395;g.add(roof);
+  // portico: columns and a triangular pediment over the entrance
+  for(const x of [-.15,-.05,.05,.15]){const c=new THREE.Mesh(new THREE.CylinderGeometry(.016,.018,.3,8),trim);c.position.set(x,.2,.24);g.add(c)}
+  const ped=new THREE.Mesh(new THREE.CylinderGeometry(.21,.21,.05,3,1),trim);ped.rotation.set(Math.PI/2,0,Math.PI/2);ped.scale.set(.42,1,1);ped.position.set(0,.4,.24);g.add(ped);
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(.3,.055),new THREE.MeshBasicMaterial({map:textTex('RADNICE','#3f6f8f',alive?'#ffd23a':'#888',512,96,'900 70px Georgia,serif')}));sign.position.set(0,.325,.266);g.add(sign);
+  const door=new THREE.Mesh(new THREE.PlaneGeometry(.09,.15),mat('#5a3b2a'));door.position.set(0,.135,.201);g.add(door);
+  windowsOn(g,.72,.34,.201,2,6,alive,.08);
+  // clock tower with a golden clock and a flag
+  const tower=new THREE.Mesh(new THREE.BoxGeometry(.16,.3,.16),stone);tower.position.set(0,.57,-.02);g.add(tower);
+  const face=new THREE.Mesh(new THREE.CircleGeometry(.05,20),mat('#fffaf0'));face.position.set(0,.6,.061);g.add(face);
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(.05,.007,6,20),gold);rim.position.set(0,.6,.062);g.add(rim);
+  const hands=new THREE.Group();hands.position.set(0,.6,.065);g.add(hands);
+  const hh=new THREE.Mesh(new THREE.BoxGeometry(.006,.03,.003),mat('#222'));hh.position.y=.013;const hw=new THREE.Group();hw.add(hh);hands.add(hw);
+  const mh=new THREE.Mesh(new THREE.BoxGeometry(.004,.042,.003),mat('#222'));mh.position.y=.019;const mw=new THREE.Group();mw.add(mh);hands.add(mw);
+  const spire=new THREE.Mesh(new THREE.ConeGeometry(.13,.22,4),roofM);spire.rotation.y=Math.PI/4;spire.position.set(0,.83,-.02);g.add(spire);
+  const ball=new THREE.Mesh(new THREE.SphereGeometry(.022,10,8),gold);ball.position.set(0,.955,-.02);g.add(ball);
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.16,5),mat('#555'));pole.position.set(0,1.04,-.02);g.add(pole);
+  const flag=new THREE.Mesh(new THREE.PlaneGeometry(.09,.055),new THREE.MeshLambertMaterial({color:alive?'#ffd23a':'#777',side:THREE.DoubleSide}));flag.position.set(.047,1.09,-.02);g.add(flag);
+  // little golden crown on top of the pediment
+  const crown=new THREE.Group();crown.position.set(0,.47,.24);g.add(crown);
+  const cb=new THREE.Mesh(new THREE.CylinderGeometry(.03,.028,.022,10),gold);crown.add(cb);
+  for(let i=0;i<5;i++){const a=i/5*Math.PI*2,pt=new THREE.Mesh(new THREE.ConeGeometry(.008,.024,4),gold);pt.position.set(Math.sin(a)*.028,.022,Math.cos(a)*.028);crown.add(pt)}
+  // the boss walks around his town hall, crowned, in a golden aura
+  let boss=null;const R0=.55;
+  if(alive){boss=makePerson(owner,'#7a1f2b','crown');siteArms.pop();boss.scale.setScalar(1.3);g.add(boss)}
+  g.userData.anim=T=>{
+    if(!alive)return;
+    const now=new Date();hw.rotation.z=-(now.getHours()%12+now.getMinutes()/60)/12*Math.PI*2;mw.rotation.z=-now.getMinutes()/60*Math.PI*2;
+    flag.rotation.y=Math.sin(T*3)*.25;crown.rotation.y=T*.6;
+    const a=T*.16,st=Math.sin(T*7);
+    boss.position.set(Math.sin(a)*R0,Math.abs(st)*.006,Math.cos(a)*R0);boss.rotation.y=a+Math.PI/2;
+    const lL=boss.getObjectByName('legL'),lR=boss.getObjectByName('legR'),aL=boss.getObjectByName('armL'),aR=boss.getObjectByName('armR');
+    if(lL){lL.rotation.x=st*.6;lR.rotation.x=-st*.6}
+    if(aL)aL.rotation.set(-st*.5,0,-.12);
+    if(aR)aR.rotation.set(st*.5,0,Math.PI+.12);
+    animateAura(boss,T);
+  };
+  g.userData.height=1.15;return g;
+}
+
 function buildRadio(){ // radio station: lattice mast, a dish aimed at the sky and rings of radio waves rising into space
   const g=new THREE.Group(),S=1.5,b=new THREE.Group();b.scale.setScalar(S);g.add(b);
   const steel=mat('#d8dde4'),red=mat('#d62828'),white=mat('#f2f2f2'),dark=mat('#3a3f48');
@@ -1854,7 +1925,7 @@ function buildRadio(){ // radio station: lattice mast, a dish aimed at the sky a
 }
 
 const SITE_BUILD={doctor:buildHospital,farmer:buildFarm,builder:buildConstruction,tennis:buildTennis,gardener:buildGreenhouse,
-  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio};
+  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio,mayor:buildTownHall};
 function syncSites(animate){
   const sig=Object.keys(SITES).map(k=>k+':'+siteMembers(k).map(m=>m.id+':'+(m.role||'')+(m.left?'x':'')).join(',')).join('|');
   if(sig===siteSig)return;siteSig=sig;
@@ -1879,6 +1950,7 @@ function siteLabelText(k){
   if(k==='sheriff')return `Šerif ${n}`;
   if(k==='burger')return `Mekáč planety · šéf ${n}`;
   if(k==='temple')return `Chrám planety · velekněz ${n}`;
+  if(k==='mayor')return `Radnice · starosta ${n}`;
   if(k==='post')return `Pošta · poštmistr ${n}`;
   if(k==='radio')return n?`Rádiová stanice · ${n}`:'Rádiová stanice · vysílá do vesmíru';
   return `${S.title} · ${n}`;
@@ -2275,6 +2347,7 @@ const ROLE_TEXT={
   firefighter:'Jsi hasič 🚒. Za městem máš hasičskou stanici s blikajícím autem.',
   mechanic:'Jsi mechanik 🔧 a s parťákem opravujete auta v autodílně.',
   sheriff:'Jsi šerif planety ⭐ a patří ti šerifova stanice.',
+  mayor:'Jsi starosta planety 👑. Patří ti radnice s hodinovou věží, nosíš korunu a zlatou auru.',
   football:'Jsi kapitán týmu Galaxia United ⚽ a hraješ na vlastním stadionu.',
   paramedic:'Jsi záchranář/ka 🚑 v nemocnici.'
 };
@@ -2351,7 +2424,7 @@ document.getElementById('games').onclick=()=>announceText('Minihry se chystají,
 const LIVE_DB='https://planetafolloweru-default-rtdb.europe-west1.firebasedatabase.app';
 const ROLE_LOOK={doctor:['#ffffff','doctor'],farmer:['#4f7a4a','straw'],builder:['#e8792a','helmet'],tennis:['#ffffff','tennis'],paramedic:['#2fa35a',null],
   football:['#5b3fa8','captain'],scientist:['#ffffff','glasses'],cafe:['#3b2418','beret'],barber:['#1e2a44',null],kebab:['#ffffff','chef'],
-  firefighter:['#2b2b33','fire'],mechanic:['#2f5d9e','cap'],sheriff:['#c9a66b','cowboy']};
+  firefighter:['#2b2b33','fire'],mechanic:['#2f5d9e','cap'],sheriff:['#c9a66b','cowboy'],mayor:['#7a1f2b','crown']};
 const SKINS=['#f1c9a5','#d9a37c','#a8714d','#7a4d32'];
 const AV_SCALE=1.4, WALK=.5, RUN=1.05; // walking speeds in world units per second (planet radius is 10)
 const playerGroup=new THREE.Group();scene.add(playerGroup);
@@ -2582,7 +2655,7 @@ function updatePlay(now){
   const T=now/1000,sp=P.speed/WALK;
   const lift=updateAbduct(P,now,dt);
   const jy=lift||stepJump(P,dt);
-  placeOn(P.av.fig,P.p,jy+(jy?0:Math.abs(Math.sin(T*(9+sp*5)))*.012*Math.min(1,sp)),0);faceToward(P.av.fig,P.p,P.face);
+  placeOn(P.av.fig,P.p,jy+(jy?0:Math.abs(Math.sin(T*(9+sp*5)))*.012*Math.min(1,sp)),0);faceToward(P.av.fig,P.p,P.face);animateAura(P.av.fig,T);
   if(jy>0)poseJump(P.av);else poseAvatar(P.av,T,sp);
   if(P.pet)updatePet(P.pet,P.p,P.face,T,dt);
   // third-person camera behind the character
@@ -2952,7 +3025,7 @@ function updateRemotes(now){
     a.walk+=((pl.raw.m?Math.max(.6,Math.min(2,v/WALK)):Math.min(1,v/WALK))-a.walk)*k;
     const jn=+pl.raw.j||0;if(jn!==a.jn){a.jn=jn;if(a.jy===0)a.jv=JUMP_V}
     const jy=stepJump(a,dt);
-    placeOn(a.fig,a.pos,jy+(jy?0:Math.abs(Math.sin(T*(9+a.walk*5)))*.012*Math.min(1,a.walk)),0);faceToward(a.fig,a.pos,a.face);
+    placeOn(a.fig,a.pos,jy+(jy?0:Math.abs(Math.sin(T*(9+a.walk*5)))*.012*Math.min(1,a.walk)),0);faceToward(a.fig,a.pos,a.face);animateAura(a.fig,T);
     if(jy>0)poseJump(a);else poseAvatar(a,T,a.walk);
     const ownsPet=pl.raw.a===1&&(!pets.loaded||pets.owners.has(id));
     if(ownsPet&&!a.pet){a.pet=makeAlien();playerGroup.add(a.pet.g)}
