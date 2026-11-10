@@ -1,6 +1,6 @@
 {
- "updated": 1794312281034,
- "changedAt": 1794301583100,
+ "updated": 1794313500000,
+ "changedAt": 1794313500000,
  "followers": [
   {
    "id": "lubikosuch",
@@ -1218,7 +1218,9 @@
   {
    "id": "lailinkaa._.valzan",
    "name": "@lailinkaa._.valzan",
-   "at": 1794078000003
+   "at": 1794078000003,
+   "left": true,
+   "leftAt": 1794313500000
   },
   {
    "id": "petrsu7ak",
