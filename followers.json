@@ -1,6 +1,6 @@
 {
- "updated": 1794333803261,
- "changedAt": 1794313500000,
+ "updated": 1794344862580,
+ "changedAt": 1794344862580,
  "followers": [
   {
    "id": "lubikosuch",
@@ -1281,6 +1281,11 @@
    "id": "martin_gabriel_7",
    "name": "@martin_gabriel_7",
    "at": 1794301583100
+  },
+  {
+   "id": "aleks.bozic_",
+   "name": "@aleks.bozic_",
+   "at": 1794344862580
   }
  ]
 }
