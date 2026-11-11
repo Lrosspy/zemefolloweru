@@ -960,11 +960,33 @@ const boss=new THREE.Group();scene.add(boss);
   for(let i=0;i<W;i++)seed.push([rr()*6.28,.2+rr()*.4,rr(),.25+rr()*.5]);
   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
   const wisps=new THREE.Points(pg,new THREE.PointsMaterial({color:'#7dff9e',size:.04,transparent:true,opacity:.75,depthWrite:false,blending:THREE.AdditiveBlending}));boss.add(wisps);
-  boss.userData={body,head,lower,eyes,glow,wisps,seed,pos,fall:0};
+  // name tag with live hit points, floating above the boss
+  const cv=document.createElement('canvas');cv.width=640;cv.height=210;const tex=new THREE.CanvasTexture(cv);
+  const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));tag.scale.set(.96,.315,1);tag.position.y=2.35;tag.renderOrder=5;boss.add(tag);
+  boss.userData={body,head,lower,eyes,glow,wisps,seed,pos,fall:0,tag,cv,tex,tagKey:'',tagAt:0};
   placeOn(boss,BASE.dir,0,0);faceToward(boss,BASE.dir,tangentOf(BASE.dir));boss.scale.setScalar(BASE.scale);
 })();
+function drawBossTag(u,dead,hp){
+  const c=u.cv.getContext('2d'),W=u.cv.width,H=u.cv.height;
+  const rr=(x,y,w,h,r)=>{c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()};
+  c.clearRect(0,0,W,H);
+  rr(6,6,W-12,H-12,34);c.fillStyle='rgba(42,12,24,.92)';c.fill();c.lineWidth=6;c.strokeStyle='#c9573a';c.stroke();
+  c.textAlign='center';c.textBaseline='middle';c.fillStyle='#ffe2d6';c.font='900 54px system-ui,sans-serif';
+  c.fillText('💀 Boss ze záhrobí',W/2,64);
+  if(dead){c.fillStyle='#ffc300';c.font='900 44px system-ui,sans-serif';c.fillText('PORAŽEN 🏅',W/2,148);}
+  else{
+    rr(40,116,W-80,58,29);c.fillStyle='#231d3a';c.fill();
+    const w=Math.max(0,(W-80)*hp/BOSS_HP);
+    if(w>2){c.save();rr(40,116,W-80,58,29);c.clip();const g=c.createLinearGradient(40,0,W-40,0);g.addColorStop(0,'#a2412c');g.addColorStop(1,'#ff8a3d');c.fillStyle=g;c.fillRect(40,116,w,58);c.restore()}
+    c.fillStyle='#fff';c.font='900 34px system-ui,sans-serif';c.fillText('❤ '+bossFmt(hp)+' HP',W/2,146);
+  }
+  u.tex.needsUpdate=true;
+}
 function animateBoss(T){
   const u=boss.userData,dead=bossDead(),hit=performance.now()-bossSt.lastHit<160;
+  const hp=bossSt.loaded?bossHp():BOSS_HP,key=dead?'dead':String(hp),nowMs=performance.now();
+  if(key!==u.tagKey&&(nowMs-u.tagAt>200||dead||!u.tagKey)){u.tagKey=key;u.tagAt=nowMs;drawBossTag(u,dead,hp)}
+  u.tag.position.y+=((dead?1.15:2.35+Math.sin(T*1.2)*.04)-u.tag.position.y)*.1;
   u.fall+=((dead?1:0)-u.fall)*.03;
   u.body.rotation.x=u.fall*1.25+(1-u.fall)*Math.sin(T*.55)*.05;
   u.body.rotation.z=(1-u.fall)*Math.sin(T*.7)*.07+(hit?Math.sin(T*90)*.03:0);
@@ -2048,13 +2070,6 @@ function updateSiteLabels(camDir,dist){
     const p=MYSTERY.dir.clone().multiplyScalar(R+terrain(MYSTERY.dir)+2.0).project(camera);
     el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(3+Math.round(MYSTERY.dir.dot(camDir)*100));
   }
-  if(BASE.dir.dot(camDir)>.3&&dist<=R+22){
-    want.add('base');let el=siteLabels.get('base');
-    if(!el){el=document.createElement('button');el.type='button';el.className='label site boss';el.onclick=openBoss;labelsEl.append(el);siteLabels.set('base',el)}
-    const text=bossLabelText();if(el.textContent!==text)el.textContent=text;
-    const p=BASE.dir.clone().multiplyScalar(R+terrain(BASE.dir)+(bossDead()?2.2:4.6)).project(camera);
-    el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(3+Math.round(BASE.dir.dot(camDir)*100));
-  }
   if(walker){ // name tag that walks with the gardener
     const w=new THREE.Vector3();walker.fig.getWorldPosition(w);const n=w.clone().normalize();
     if(walker.fig.visible&&n.dot(camDir)>.3&&dist<=R+14){
@@ -2195,6 +2210,7 @@ canvas.addEventListener('pointerup',e=>{
   mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
   ray.setFromCamera(mouse,camera);
   const hit=ray.intersectObjects([planet,townGroup],true)[0];
+  const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){openBoss();return}
   selected=hit&&hit.object.userData.house?hit.object.userData.house.userData.id:null;
 });
 
