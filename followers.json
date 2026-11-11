@@ -1,6 +1,6 @@
 {
- "updated": 1794429231709,
- "changedAt": 1794427459542,
+ "updated": 1794431129171,
+ "changedAt": 1794431129171,
  "followers": [
   {
    "id": "lubikosuch",
@@ -1307,6 +1307,11 @@
    "id": "viktorpribylsoptik",
    "name": "@viktorpribylsoptik",
    "at": 1794427459542
+  },
+  {
+   "id": "vitass.21",
+   "name": "@vitass.21",
+   "at": 1794431129171
   }
  ]
 }
