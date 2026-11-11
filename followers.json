@@ -1,6 +1,6 @@
 {
- "updated": 1794409439009,
- "changedAt": 1794390000000,
+ "updated": 1794420266704,
+ "changedAt": 1794420266704,
  "followers": [
   {
    "id": "lubikosuch",
@@ -1047,7 +1047,9 @@
   {
    "id": "k.martinaa.k",
    "name": "@k.martinaa.k",
-   "at": 1794006287637
+   "at": 1794006287637,
+   "left": true,
+   "leftAt": 1794420266704
   },
   {
    "id": "toburg_9",
@@ -1272,7 +1274,9 @@
   {
    "id": "imagine_ofc_",
    "name": "@imagine_ofc_",
-   "at": 1794258451983
+   "at": 1794258451983,
+   "left": true,
+   "leftAt": 1794420266704
   },
   {
    "id": "tropixoff",
@@ -1293,6 +1297,11 @@
    "id": "kuba_juran_",
    "name": "@kuba_juran_",
    "at": 1794380688759
+  },
+  {
+   "id": "miisak.mini.kecup.1",
+   "name": "@miisak.mini.kecup.1",
+   "at": 1794420266704
   }
  ]
 }
