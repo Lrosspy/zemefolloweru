@@ -117,6 +117,24 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .admin-key:hover{opacity:1}
 @media (max-width:700px){.bar{padding-right:72px}}
 body.playing .admin-key{display:none}
+.boss-mg{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
+.boss-mg[hidden]{display:none}
+.boss-card{width:min(420px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#15122b;border:1px solid var(--panel-line);border-radius:18px;padding:18px 18px 20px;box-sizing:border-box;color:var(--ink);text-align:center}
+.boss-card header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;text-align:left}
+.boss-card h2{margin:0;font-size:18px}
+.boss-hp{height:18px;border-radius:9px;background:#2a2440;overflow:hidden;border:1px solid var(--panel-line)}
+#bossFill{height:100%;width:100%;background:linear-gradient(90deg,#a2412c,#ff8a3d);transition:width .25s}
+.boss-num{font-weight:900;font-size:17px;margin:8px 0 4px}
+.boss-sword{position:relative;margin:10px auto 6px;width:170px;height:210px;border-radius:26px;padding:0;background:radial-gradient(circle at 50% 45%,#3a2a60,#15122b 70%);display:grid;place-items:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;overflow:visible}
+.boss-sword svg{transform-origin:50% 85%;transition:transform .09s}
+.boss-sword.hit svg{animation:bossSwing .16s ease-out}
+.boss-sword:disabled{opacity:.45;cursor:default}
+@keyframes bossSwing{40%{transform:rotate(-32deg) scale(1.08)}100%{transform:none}}
+.boss-pop{position:absolute;left:50%;top:28%;font-weight:900;color:#ff6b4a;font-size:24px;pointer-events:none;animation:bossPop .7s ease-out forwards}
+@keyframes bossPop{to{transform:translate(var(--dx),-70px);opacity:0}}
+.boss-info{font-size:13px;line-height:1.45;color:var(--ink-dim);margin:6px 0 0}
+.boss-msg{min-height:18px;font-size:13px;font-weight:800;color:var(--sun);margin:8px 0 0}
+.label.boss{pointer-events:auto;cursor:pointer;font:inherit;font-weight:800;font-size:12px;background:#3a1220;color:#ffe2d6;border-color:#c9573a}
 .admin{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
 .admin-card{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#15122b;border:1px solid var(--panel-line);border-radius:18px;padding:18px 18px 20px;box-sizing:border-box;color:var(--ink)}
 .admin-card header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
@@ -183,6 +201,18 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 </div>
 
 <button class="admin-key" id="adminKey" type="button" aria-label="Admin panel">🔑</button>
+<section class="boss-mg" id="bossMg" hidden aria-labelledby="bossTitle">
+  <div class="boss-card">
+    <header><h2 id="bossTitle">💀 Boss ze záhrobí</h2><button type="button" id="bossClose">Zavřít</button></header>
+    <div class="boss-hp" id="bossBar" role="progressbar" aria-label="Životy bosse" aria-valuemin="0" aria-valuemax="1000000" aria-valuenow="1000000"><div id="bossFill"></div></div>
+    <p class="boss-num" id="bossNum">Boss se probouzí…</p>
+    <button type="button" class="boss-sword" id="bossSword" aria-label="Bouchnout bosse mečem">
+      <svg width="74" height="170" viewBox="0 0 74 170" aria-hidden="true"><path d="M37 4 L49 22 L49 112 L25 112 L25 22 Z" fill="#dfe6f2" stroke="#8a95ab" stroke-width="3" stroke-linejoin="round"/><path d="M37 10 L37 108" stroke="#aab4c8" stroke-width="3"/><rect x="6" y="112" width="62" height="12" rx="6" fill="#ffc300" stroke="#a87b00" stroke-width="3"/><rect x="30" y="124" width="14" height="30" rx="4" fill="#7a3b1f" stroke="#4a210f" stroke-width="3"/><circle cx="37" cy="160" r="8" fill="#ffc300" stroke="#a87b00" stroke-width="3"/></svg>
+    </button>
+    <p class="boss-info" id="bossInfo"></p>
+    <p class="boss-msg" id="bossMsg" role="status" aria-live="polite"></p>
+  </div>
+</section>
 <section class="admin" id="admin" hidden aria-labelledby="adminTitle">
   <div class="admin-card">
     <header><h2 id="adminTitle">Admin · statistiky</h2><button type="button" id="adminClose">Zavřít</button></header>
@@ -350,7 +380,7 @@ SITES.temple={title:'Chrám planety',dir:ringDir(120,.9),r:.13};
 SITES.post={title:'Pošta',dir:ringDir(315,.88),r:.1};
 SITES.radio={title:'Rádiová stanice',dir:ringDir(12,1.0),r:.1,always:true};
 SITES.mayor={title:'Radnice',dir:ringDir(128,.62),r:.1}; // town hall next to the barbershop; the mayor (role 'mayor') won the election in the comments // next to the stadium, beams radio waves into space; belongs to the whole planet
-const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // secret UFO base, far side of the planet
+const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // Boss ze záhrobí (used to be the UFO base), far side of the planet
 function ringDir(deg,c){const a=deg*Math.PI/180;return START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*c)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*c)).normalize()}
 PADS=[...Object.values(SITES),MYSTERY,BASE].map(S=>({dir:S.dir,r:S.r,h:terrain0(S.dir)}));
 // jobs that work in someone else's building
@@ -888,54 +918,65 @@ function animateMystery(T){
   q.rotation.y=T*1.2;q.position.y=.62+Math.sin(T*2)*.05;
   glow.material.opacity=.18+Math.sin(T*2)*.08;
 }
-// ---------- secret UFO base on the far side of the planet ----------
-const base=new THREE.Group();scene.add(base);
+// ---------- Boss ze záhrobí: a giant worm rising from the ground where the UFO base used to be ----------
+const boss=new THREE.Group();scene.add(boss);
 (function(){
-  const add=(m,parent=base)=>{parent.add(m);return m};
+  const skin=mat('#b08a5a'),skinD=mat('#8f6d45'),rib=mat('#c9573a'),ribD=mat('#a2412c'),beakM=mat('#dcc394'),beakD=mat('#c2a473'),
+        mouthM=mat('#d9506e'),throat=mat('#6e1a30'),tooth=mat('#f3ead2'),rock=mat('#7a6a58'),rockD=mat('#584a3d');
   const glowMat=(c,o)=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:o,depthWrite:false,blending:THREE.AdditiveBlending});
-  add(new THREE.Mesh(new THREE.CylinderGeometry(.72,.78,.03,32),mat('#1a0f2e'))).position.y=.012;
-  const rune=add(new THREE.Mesh(new THREE.RingGeometry(.5,.55,48),glowMat('#9b5cff',.7)));rune.rotation.x=-Math.PI/2;rune.position.y=.03;
-  const rune2=add(new THREE.Mesh(new THREE.RingGeometry(.28,.3,6),glowMat('#c48bff',.6)));rune2.rotation.x=-Math.PI/2;rune2.position.y=.031;
-  // dark aura dome around everything
-  const aura=add(new THREE.Mesh(new THREE.SphereGeometry(.95,28,16,0,Math.PI*2,0,Math.PI/2),new THREE.MeshBasicMaterial({color:'#12051f',transparent:true,opacity:.42,depthWrite:false,side:THREE.DoubleSide})));
-  const aura2=add(new THREE.Mesh(new THREE.SphereGeometry(.98,28,16,0,Math.PI*2,0,Math.PI/2),glowMat('#5a1fa8',.12)));aura2.material.side=THREE.BackSide;
-  // magic sparks rising in a swirl
-  const N=180,pos=new Float32Array(N*3),seed=[],rr=rnd(404);
-  for(let i=0;i<N;i++)seed.push([rr()*6.28,.15+rr()*.7,rr(),.2+rr()*.5]);
+  // the hole it broke out of, with rubble around
+  const hole=new THREE.Mesh(new THREE.CylinderGeometry(.46,.6,.04,11),mat('#231a15'));hole.position.y=.012;boss.add(hole);
+  const glow=new THREE.Mesh(new THREE.RingGeometry(.3,.62,32),glowMat('#59ff9c',.18));glow.rotation.x=-Math.PI/2;glow.position.y=.036;boss.add(glow);
+  for(let i=0;i<16;i++){const a=i/16*6.28+.25*Math.sin(i*7),d=.52+(i%3)*.11,sz=.05+(i%4)*.028;
+    const r=new THREE.Mesh(new THREE.DodecahedronGeometry(sz,0),i%2?rock:rockD);r.position.set(Math.cos(a)*d,sz*.45,Math.sin(a)*d);r.rotation.set(i,i*2.1,i*.7);boss.add(r)}
+  // the body: ring segments along a curved spine, ribbed belly in front, spikes on the back
+  const body=new THREE.Group();boss.add(body);
+  const N=14,pts=[];
+  for(let i=0;i<=N;i++){const t=i/N;pts.push(new THREE.Vector3(0,t*1.6,Math.sin(t*Math.PI*.95)*.3+t*t*.28))}
+  const up=new THREE.Vector3(0,1,0);
+  for(let i=0;i<N;i++){
+    const a=pts[i],b=pts[i+1],len=a.distanceTo(b),r0=.3-i*.0075;
+    const seg=new THREE.Group();seg.position.copy(a);seg.quaternion.setFromUnitVectors(up,b.clone().sub(a).normalize());body.add(seg);
+    const c=new THREE.Mesh(new THREE.CylinderGeometry(r0*.96,r0,len*1.08,10),i%2?skin:skinD);c.position.y=len/2;seg.add(c);
+    const plate=new THREE.Mesh(new THREE.TorusGeometry(r0*.93,r0*.17,4,12,Math.PI),i%2?rib:ribD);plate.rotation.x=Math.PI/2;plate.position.y=len*.5;plate.scale.set(1,1,1.6);seg.add(plate);
+    if(i>1){const sp=new THREE.Mesh(new THREE.ConeGeometry(.045,.16+(i%3)*.04,4),beakD);sp.position.set(0,len*.5,-r0*.95);sp.rotation.x=-Math.PI/2+.55;seg.add(sp)}
+  }
+  // the head with a huge beak, mouth wide open
+  const head=new THREE.Group();head.position.copy(pts[N]);head.rotation.x=-.25;body.add(head);
+  const skull=new THREE.Mesh(new THREE.SphereGeometry(.3,10,8),skin);skull.scale.set(1,.85,1.05);head.add(skull);
+  for(let i=0;i<5;i++){const cr=new THREE.Mesh(new THREE.ConeGeometry(.05,.2,4),beakD);cr.position.set(0,.2-i*.03,-.05-i*.08);cr.rotation.x=-.9;head.add(cr)}
+  const upper=new THREE.Group();upper.position.set(0,.06,.12);head.add(upper);
+  const ub=new THREE.Mesh(new THREE.ConeGeometry(.26,.72,8),beakM);ub.rotation.x=Math.PI/2;ub.position.z=.36;ub.scale.set(1,1,.5);upper.add(ub);
+  const lower=new THREE.Group();lower.position.set(0,-.08,.1);head.add(lower);
+  const lb=new THREE.Mesh(new THREE.ConeGeometry(.22,.62,8),beakD);lb.rotation.x=Math.PI/2;lb.position.z=.31;lb.scale.set(1,1,.42);lower.add(lb);
+  const tongue=new THREE.Mesh(new THREE.SphereGeometry(.17,10,6),mouthM);tongue.scale.set(1,.3,1.6);tongue.position.set(0,.05,.24);lower.add(tongue);
+  for(let i=0;i<6;i++){const sd=i%2?1:-1,z=.12+Math.floor(i/2)*.12;
+    const t=new THREE.Mesh(new THREE.ConeGeometry(.022,.07,4),tooth);t.position.set(sd*(.15-z*.18),.05,z);lower.add(t);
+    const t2=new THREE.Mesh(new THREE.ConeGeometry(.022,.07,4),tooth);t2.position.set(sd*(.17-z*.18),-.06,z+.02);t2.rotation.x=Math.PI;upper.add(t2)}
+  const gullet=new THREE.Mesh(new THREE.SphereGeometry(.14,10,6),throat);gullet.position.set(0,-.02,.1);head.add(gullet);
+  const eyes=[];for(const sd of [-1,1]){const e=new THREE.Mesh(new THREE.SphereGeometry(.04,8,6),new THREE.MeshBasicMaterial({color:'#7dff9e'}));e.position.set(sd*.2,.12,.14);head.add(e);eyes.push(e)}
+  // ghostly green wisps rising from the hole ("ze záhrobí")
+  const W=90,pos=new Float32Array(W*3),seed=[],rr=rnd(505);
+  for(let i=0;i<W;i++)seed.push([rr()*6.28,.2+rr()*.4,rr(),.25+rr()*.5]);
   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  const sparks=add(new THREE.Points(pg,new THREE.PointsMaterial({color:'#c48bff',size:.045,transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending})));
-  // the flying saucer
-  const ufo=add(new THREE.Group());ufo.position.y=.72;
-  const hull=new THREE.Mesh(new THREE.SphereGeometry(.42,28,12),new THREE.MeshLambertMaterial({color:'#a3abbd',flatShading:true}));hull.scale.y=.22;ufo.add(hull);
-  const rim=new THREE.Mesh(new THREE.TorusGeometry(.41,.035,8,36),mat('#4a4f63'));rim.rotation.x=Math.PI/2;ufo.add(rim);
-  const dome=new THREE.Mesh(new THREE.SphereGeometry(.17,18,10,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({color:'#7cf7d4',emissive:'#1f8a70',emissiveIntensity:.6,transparent:true,opacity:.8}));dome.position.y=.07;ufo.add(dome);
-  const belly=new THREE.Mesh(new THREE.CircleGeometry(.16,20),glowMat('#9bffe0',.8));belly.rotation.x=Math.PI/2;belly.position.y=-.095;ufo.add(belly);
-  const lights=[];
-  for(let i=0;i<12;i++){const a=i/12*Math.PI*2,l=new THREE.Mesh(new THREE.SphereGeometry(.028,8,6),new THREE.MeshBasicMaterial({color:i%2?'#ff4fd8':'#7cf7d4'}));l.position.set(Math.cos(a)*.41,0,Math.sin(a)*.41);ufo.add(l);lights.push(l)}
-  // tractor beam down to the ground
-  const beam=add(new THREE.Mesh(new THREE.CylinderGeometry(.13,.42,.62,28,1,true),glowMat('#9b5cff',.2)));beam.position.y=.34;
-  // the magic question mark above the saucer
-  const q=add(new THREE.Group());q.position.y=1.45;
-  const qm=new THREE.MeshLambertMaterial({color:'#c48bff',emissive:'#6a1fd1',emissiveIntensity:.8,flatShading:true});
-  const hook=new THREE.Mesh(new THREE.TorusGeometry(.13,.05,10,24,Math.PI*1.35),qm);hook.rotation.z=-Math.PI*.42;hook.position.y=.14;q.add(hook);
-  const stem=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.13,12),qm);stem.position.y=-.04;q.add(stem);
-  const cap=new THREE.Mesh(new THREE.SphereGeometry(.05,12,8),qm);cap.position.y=.025;q.add(cap);
-  const dot=new THREE.Mesh(new THREE.SphereGeometry(.062,14,10),qm);dot.position.y=-.2;q.add(dot);
-  const halo=new THREE.Mesh(new THREE.TorusGeometry(.32,.012,6,40),glowMat('#e0b8ff',.7));q.add(halo);
-  base.userData={ufo,lights,beam,q,halo,rune,rune2,aura2,sparks,seed,pos,height:1.9};
-  placeOn(base,BASE.dir,0,0);base.scale.setScalar(BASE.scale);
+  const wisps=new THREE.Points(pg,new THREE.PointsMaterial({color:'#7dff9e',size:.04,transparent:true,opacity:.75,depthWrite:false,blending:THREE.AdditiveBlending}));boss.add(wisps);
+  boss.userData={body,head,lower,eyes,glow,wisps,seed,pos,fall:0};
+  placeOn(boss,BASE.dir,0,0);faceToward(boss,BASE.dir,tangentOf(BASE.dir));boss.scale.setScalar(BASE.scale);
 })();
-function animateBase(T){
-  const u=base.userData;
-  u.ufo.position.y=.72+Math.sin(T*1.4)*.05;u.ufo.rotation.y=T*.9;u.ufo.rotation.z=Math.sin(T*.9)*.05;
-  u.lights.forEach((l,i)=>l.visible=((Math.floor(T*4)+i)%3)!==0);
-  u.beam.material.opacity=.14+Math.sin(T*3)*.07;u.beam.rotation.y=-T*.6;
-  u.q.rotation.y=-T*1.1;u.q.position.y=1.45+Math.sin(T*1.7)*.07;u.halo.rotation.x=Math.PI/2+Math.sin(T)*.3;u.halo.rotation.y=T*1.5;
-  u.rune.rotation.z=T*.3;u.rune2.rotation.z=-T*.5;u.rune.material.opacity=.5+Math.sin(T*2)*.25;
-  u.aura2.material.opacity=.1+Math.sin(T*1.3)*.05;
-  for(let i=0;i<u.seed.length;i++){const [a0,r0,ph,sp]=u.seed[i],t=(T*sp*.35+ph)%1,a=a0+T*sp*1.5+t*3;
-    u.pos[i*3]=Math.cos(a)*r0*(1-t*.4);u.pos[i*3+1]=.03+t*1.7;u.pos[i*3+2]=Math.sin(a)*r0*(1-t*.4)}
-  u.sparks.geometry.attributes.position.needsUpdate=true;
+function animateBoss(T){
+  const u=boss.userData,dead=bossDead(),hit=performance.now()-bossSt.lastHit<160;
+  u.fall+=((dead?1:0)-u.fall)*.03;
+  u.body.rotation.x=u.fall*1.25+(1-u.fall)*Math.sin(T*.55)*.05;
+  u.body.rotation.z=(1-u.fall)*Math.sin(T*.7)*.07+(hit?Math.sin(T*90)*.03:0);
+  u.body.position.y=-u.fall*.1;
+  u.head.rotation.y=(1-u.fall)*Math.sin(T*.4)*.25;
+  u.lower.rotation.x=dead?.05:.45+Math.sin(T*2.1)*.15+(hit?.2:0);
+  u.eyes.forEach(e=>e.visible=!dead);
+  u.glow.material.opacity=dead?.05:.14+Math.sin(T*2)*.06;
+  u.wisps.visible=!dead;
+  if(!dead){for(let i=0;i<u.seed.length;i++){const [a0,r0,ph,sp]=u.seed[i],t=(T*sp*.3+ph)%1,a=a0+T*sp+t*2;
+    u.pos[i*3]=Math.cos(a)*r0*(1+t*.6);u.pos[i*3+1]=.03+t*1.2;u.pos[i*3+2]=Math.sin(a)*r0*(1+t*.6)}
+    u.wisps.geometry.attributes.position.needsUpdate=true}
 }
 // ---------- a comet flies past now and then ----------
 const comet=new THREE.Group();comet.visible=false;scene.add(comet);
@@ -2009,8 +2050,9 @@ function updateSiteLabels(camDir,dist){
   }
   if(BASE.dir.dot(camDir)>.3&&dist<=R+22){
     want.add('base');let el=siteLabels.get('base');
-    if(!el){el=document.createElement('div');el.className='label site';el.textContent='👽 Tajná základna · ???';labelsEl.append(el);siteLabels.set('base',el)}
-    const p=BASE.dir.clone().multiplyScalar(R+terrain(BASE.dir)+4.0).project(camera);
+    if(!el){el=document.createElement('button');el.type='button';el.className='label site boss';el.onclick=openBoss;labelsEl.append(el);siteLabels.set('base',el)}
+    const text=bossLabelText();if(el.textContent!==text)el.textContent=text;
+    const p=BASE.dir.clone().multiplyScalar(R+terrain(BASE.dir)+(bossDead()?2.2:4.6)).project(camera);
     el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(3+Math.round(BASE.dir.dot(camDir)*100));
   }
   if(walker){ // name tag that walks with the gardener
@@ -2247,7 +2289,7 @@ function loop(now){
   updateWanderers(now);
   updateFox(now);
   updateHidden();
-  if(!reduce){if(!MYSTERY.done)animateMystery(now/1000);animateBase(now/1000);animateComet(now);animateIce(now)}
+  if(!reduce){if(!MYSTERY.done)animateMystery(now/1000);animateBoss(now/1000);animateComet(now);animateIce(now)}
   if(meFig&&!reduce)meMarker.position.y=.25+Math.sin(now/300)*.025, meMarker.rotation.y=now/600;
   if(!reduce){ // residents wave: arm raised to the side, swinging back and forth
     const T=now/1000;
@@ -2402,14 +2444,15 @@ function applyMe(flyThere){
   }
   playBtn.hidden=false;
   if(r.home==null&&siteKeyOf(r.role)){
-    setMeInfo([ROLE_TEXT[r.role]||(r.role==='doctor'?'Jsi ředitel a hlavní lékař nemocnice 🏥.':r.role==='farmer'?'Jsi farmář/ka a patří ti farma s polem 🌾.':r.role==='builder'?'Jsi stavitel planety 🏗️. Patří ti stavební firma s jeřábem.':r.role==='tennis'?'Patří ti dům s vlastním tenisovým kurtem 🎾.':r.role==='gardener'?'Jsi zahradník/ice planety 🌷. Chodíš mezi domy a zaléváš kytky.':`Patří ti stavba: ${SITES[siteKeyOf(r.role)].title}.`)+((EXTRA_ROLES[r.id]||[]).includes('studio')?' A máš na starosti nahrávací studio 🎙️ ve tvaru mikrofonu.':'')]);
+    setMeInfo([bossBadge(r.id)?'🏅 Zabiják bossů. ':'',ROLE_TEXT[r.role]||(r.role==='doctor'?'Jsi ředitel a hlavní lékař nemocnice 🏥.':r.role==='farmer'?'Jsi farmář/ka a patří ti farma s polem 🌾.':r.role==='builder'?'Jsi stavitel planety 🏗️. Patří ti stavební firma s jeřábem.':r.role==='tennis'?'Patří ti dům s vlastním tenisovým kurtem 🎾.':r.role==='gardener'?'Jsi zahradník/ice planety 🌷. Chodíš mezi domy a zaléváš kytky.':`Patří ti stavba: ${SITES[siteKeyOf(r.role)].title}.`)+((EXTRA_ROLES[r.id]||[]).includes('studio')?' A máš na starosti nahrávací studio 🎙️ ve tvaru mikrofonu.':'')]);
   }else{
     const ex=EXTRA_ROLES[r.id]||[];
     const extra=(ex.includes('burger')?' A jsi šéf Mekáče planety 🍔 – vyhrál tvůj komentář v hlasování o tajné stavbě!':'')+
       (ex.includes('temple')?' A jsi velekněz Chrámu planety 🛕. Jednou se z tebe může stát bůh planety.':'')+
       (ex.includes('post')?' A jsi poštmistr planety 📮, patří ti pošta.':'')+
       (r.id===JET_OWNER?' Na střeše vašeho domu parkuje tvoje stíhačka ✈️.':'')+
-      (r.id===FOX_OWNER?' Po městě ti běhá tvůj zářící lišák 🦊.':'');
+      (r.id===FOX_OWNER?' Po městě ti běhá tvůj zářící lišák 🦊.':'')+
+      (bossBadge(r.id)?' 🏅 Máš odznak Zabiják bossů – pomohl jsi porazit Bosse ze záhrobí.':'');
     const home=homes[r.home];
     const others=home?home.members.filter(m=>!m.left&&m.id!==meId).map(m=>m.name):[];
     setMeInfo([`Bydlíš v domě č. ${r.home+1}. `,(others.length?`Sousedé: ${others.join(', ')}.`:'Zatím tu bydlíš sám, pozvi kámoše.')+extra]);
@@ -2445,7 +2488,7 @@ document.getElementById('meChange').onclick=()=>{
   applyMe(false);document.getElementById('nickInput').value='';welcome.hidden=false;document.getElementById('nickInput').focus();
 };
 meBtn.onclick=()=>applyMe(true);
-document.getElementById('games').onclick=()=>announceText('Minihry se chystají, už brzy 🎮');
+document.getElementById('games').onclick=()=>openBoss();
 
 // ---------- play: walk your own character around the planet ----------
 // PC: WASD / arrows, Shift to run, Q/E or drag to turn the camera, wheel to zoom.
@@ -2587,28 +2630,9 @@ async function petClaim(){ // 'ok' | 'full' | 'err'
   }catch(_){return 'err'}
 }
 function petsLeft(){return Math.max(0,PET_LIMIT-pets.owners.size)}
-function updateAbduct(P,now,dt){ // returns extra lift while the UFO beam holds you
-  const a=P.p.angleTo(BASE.dir);
-  if(!P.abduct){
-    if(P.noPet&&a>.15)P.noPet=false;
-    if(!P.pet&&!P.noPet&&a<.098){
-      if(pets.loaded&&petsLeft()===0&&!pets.owners.has(meId)){P.noPet=true;sayPlay('👽 Všech 30 mimozemšťánků už je rozdaných. Byl jsi pozdě 😢',6000);return 0}
-      P.abduct={t0:now,res:'pending'};petClaim().then(r=>{if(P.abduct)P.abduct.res=r});
-      sayPlay('👽 UFO tě nasává…',2500);abductFlash.style.opacity=.6;
-    }
-    else if(!P.pet&&a<.3&&!P.baseHint){P.baseHint=true;sayPlay(pets.loaded&&petsLeft()===0?'👽 Mimozemšťánci už jsou všichni rozdaní.':`👽 Vejdi do fialového paprsku pod UFO… (zbývá ${pets.loaded?petsLeft():'?'} z ${PET_LIMIT} mimozemšťánků)`,5000)}
-    return 0;
-  }
-  const A=P.abduct;let t=(now-A.t0)/1000;
-  P.face.applyAxisAngle(P.p,dt*7);
-  if(t>1.5&&A.res==='pending'&&t<8){A.t0+=dt*1000;t=1.5} // hover at the top until the answer comes
-  if(t>=1.5&&!A.done){
-    A.done=true;abductFlash.style.opacity=0;
-    if(A.res==='ok'){try{localStorage.setItem(PET_KEY(meId),'alien')}catch(_){}givePet();sayPlay(`👽 Máš mimozemšťánka! Jsi jeden z ${PET_LIMIT} vyvolených, chodí teď všude s tebou.`,6000);liveSend(now,true)}
-    else{P.noPet=true;sayPlay(A.res==='full'?'👽 Všech 30 mimozemšťánků už je rozdaných. Byl jsi pozdě 😢':'👽 UFO se teď nepodařilo spojit. Zkus to za chvíli znovu.',6000)}
-  }
-  if(t>2.6){P.abduct=null;P.jy=0;P.jv=0;return 0}
-  return t<1.5?Math.sin(Math.min(1,t/1.5)*Math.PI/2)*.55:.55*(1-(t-1.5)/1.1);
+function updateAbduct(P,now,dt){ // the UFO base is gone (aliens can't be won anymore); near the boss just a hint
+  if(!P.bossHint&&P.p.angleTo(BASE.dir)<.4){P.bossHint=true;sayPlay(bossDead()?'💀 Tady leží poražený Boss ze záhrobí.':'💀 Boss ze záhrobí! Klikni na jeho jmenovku nebo na Minihry a bouchni ho mečem.',6000)}
+  return 0;
 }
 
 // ---------- my own character ----------
@@ -2648,7 +2672,7 @@ function obstacles(){ // houses and the fountain can't be walked through
   const o=[];
   for(const [,h] of houses)o.push([h.v,.024]);
   if(fountain.visible)o.push([START,.05]);
-  o.push([BASE.dir,.06]);
+  o.push([BASE.dir,.07]); // the boss
   for(const g of siteGroup.children){const S=SITES[g.userData.site];if(S)o.push([S.dir,.028])}
   return o;
 }
@@ -2740,6 +2764,77 @@ addEventListener('pointerup',joyEnd);addEventListener('pointercancel',joyEnd);
 // ---------- live: other visitors walking ----------
 const live={visitorNick:{},visitors:{},offset:0,es:null,players:{},avatars:new Map(),labels:new Map(),sending:false,ok:false};
 const liveKey=id=>id.replace(/\./g,'-');           // Firebase keys can't contain dots
+
+// ---------- Boss ze záhrobí minigame: click the sword, every hit takes 1 HP ----------
+// Every player's hits are counted in Firebase under /boss/hits/<player>; HP = 1 000 000 minus all hits.
+// Once the boss is dead, everyone with at least one hit has the badge "Zabiják bossů".
+const BOSS_HP=1000000,BOSS_SEND_MAX=250;
+const bossSt={hits:{},loaded:false,pending:0,sending:false,lastHit:0,wasDead:false};
+const bossFmt=n=>Math.round(n).toLocaleString('cs-CZ');
+function bossDealt(){let n=bossSt.pending;for(const k in bossSt.hits)n+=+bossSt.hits[k]||0;return n}
+function bossHp(){return Math.max(0,BOSS_HP-bossDealt())}
+function bossDead(){return bossSt.loaded&&bossHp()<=0}
+function bossHitsOf(id){return id?(+bossSt.hits[liveKey(id)]||0)+(id===meId?bossSt.pending:0):0}
+function bossBadge(id){return bossDead()&&bossHitsOf(id)>0}
+function bossLabelText(){return bossDead()?'💀 Boss ze záhrobí · poražen 🏅':'💀 Boss ze záhrobí · ❤ '+(bossSt.loaded?bossFmt(bossHp()):'1 000 000')}
+function bossLoad(){
+  if(!LIVE_DB)return Promise.resolve();
+  return fetch(LIVE_DB+'/boss/hits.json').then(r=>r.ok?r.json():Promise.reject()).then(j=>{
+    bossSt.hits=(j&&typeof j==='object')?j:{};bossSt.loaded=true;
+    const d=bossDead();if(d&&!bossSt.wasDead){bossSt.wasDead=true;if(meId)applyMe(false)}
+    bossRender();
+  }).catch(()=>{});
+}
+async function bossFlush(){
+  if(bossSt.sending||bossSt.pending<=0||!meId)return;
+  const n=Math.min(bossSt.pending,BOSS_SEND_MAX),k=liveKey(meId);bossSt.sending=true;
+  try{
+    const r=await fetch(LIVE_DB+'/boss/hits/'+k+'.json',{method:'PUT',body:JSON.stringify({'.sv':{increment:n}})});
+    if(r.ok){const v=await r.json().catch(()=>null);bossSt.pending-=n;bossSt.hits[k]=typeof v==='number'?v:(+bossSt.hits[k]||0)+n}
+    else{bossSt.pending=0;bossSay('Rány se teď nepodařilo uložit. Zkus to za chvíli znovu.')}
+  }catch(_){}
+  bossSt.sending=false;bossRender();
+}
+let bossTick=0;
+bossLoad();
+setInterval(()=>{bossFlush();bossTick++;if(!bossMg.hidden||bossTick%15===0)bossLoad()},2000);
+addEventListener('pagehide',()=>{if(bossSt.pending>0&&meId){try{fetch(LIVE_DB+'/boss/hits/'+liveKey(meId)+'.json',{method:'PUT',keepalive:true,body:JSON.stringify({'.sv':{increment:Math.min(bossSt.pending,BOSS_SEND_MAX)}})})}catch(_){}}});
+
+const bossMg=document.getElementById('bossMg'),bossSword=document.getElementById('bossSword');
+let bossSayTimer=0;
+function bossSay(t){const el=document.getElementById('bossMsg');el.textContent=t;clearTimeout(bossSayTimer);bossSayTimer=setTimeout(()=>el.textContent='',5000)}
+function bossRender(){
+  if(bossMg.hidden)return;
+  const hp=bossHp(),dead=bossDead(),pct=bossSt.loaded?hp/BOSS_HP*100:100;
+  document.getElementById('bossFill').style.width=pct.toFixed(3)+'%';
+  const bar=document.getElementById('bossBar');bar.setAttribute('aria-valuenow',String(Math.round(hp)));
+  document.getElementById('bossNum').textContent=bossSt.loaded?(dead?'Boss ze záhrobí je poražen!':'❤ '+bossFmt(hp)+' / '+bossFmt(BOSS_HP)):'Boss se probouzí…';
+  const players=Object.keys(bossSt.hits).filter(k=>+bossSt.hits[k]>0).length,mine=bossHitsOf(meId);
+  document.getElementById('bossInfo').textContent=dead
+    ?`🏅 Odznak Zabiják bossů ${players===1?'dostal 1 hráč':players>1&&players<5?'dostali '+players+' hráči':'dostalo '+players+' hráčů'}. `+(mine>0?`Máš ho i ty (${bossFmt(mine)} ran)!`:'Ty jsi ho tentokrát nebouchl.')
+    :`Každá rána mečem = 1 život. Tvoje rány: ${bossFmt(mine)} · Bojuje ${players} ${players===1?'hráč':players>1&&players<5?'hráči':'hráčů'}. Kdo bossa aspoň jednou bouchne, dostane po jeho smrti odznak 🏅 Zabiják bossů.`;
+  bossSword.disabled=dead;
+}
+function openBoss(){
+  bossMg.hidden=false;bossRender();bossLoad();
+  if(!meId)bossSay('Nejdřív zadej svoje jméno z Instagramu, ať víme, komu dát odznak.');
+}
+function bossHit(){
+  if(!meId){bossSay('Nejdřív zadej svoje jméno z Instagramu, ať víme, komu dát odznak.');return}
+  const r=residentById.get(meId);
+  if(!r||r.left){bossSay('Bossa můžou bouchat jen obyvatelé planety. Dej follow @planetafolloweru.');return}
+  if(!bossSt.loaded){bossSay('Boss se ještě probouzí… zkus to za chvíli.');bossLoad();return}
+  if(bossDead())return;
+  bossSt.pending++;bossSt.lastHit=performance.now();
+  const pop=document.createElement('span');pop.className='boss-pop';pop.textContent='−1';pop.style.setProperty('--dx',((Math.random()-.5)*90).toFixed(0)+'px');
+  bossSword.append(pop);setTimeout(()=>pop.remove(),700);
+  bossSword.classList.remove('hit');void bossSword.offsetWidth;bossSword.classList.add('hit');
+  if(bossDead())bossFlush();
+  bossRender();
+}
+bossSword.onclick=bossHit;
+document.getElementById('bossClose').onclick=()=>{bossMg.hidden=true;bossFlush()};
+bossMg.addEventListener('click',e=>{if(e.target===bossMg){bossMg.hidden=true;bossFlush()}});
 const liveUrl=id=>LIVE_DB+'/players/'+liveKey(id)+'.json';
 function liveStart(){
   if(!LIVE_DB||live.es||typeof EventSource==='undefined')return;
