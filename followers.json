@@ -1,6 +1,6 @@
 {
- "updated": 1794431129171,
- "changedAt": 1794431129171,
+ "updated": 1794434687637,
+ "changedAt": 1794434687637,
  "followers": [
   {
    "id": "lubikosuch",
@@ -1291,7 +1291,9 @@
   {
    "id": "aleks.bozic_",
    "name": "@aleks.bozic_",
-   "at": 1794344862580
+   "at": 1794344862580,
+   "left": true,
+   "leftAt": 1794434687637
   },
   {
    "id": "kuba_juran_",
@@ -1312,6 +1314,26 @@
    "id": "vitass.21",
    "name": "@vitass.21",
    "at": 1794431129171
+  },
+  {
+   "id": "elinq.weinfurt",
+   "name": "@elinq.weinfurt",
+   "at": 1794434687637
+  },
+  {
+   "id": "nezajmavej.clovek",
+   "name": "@nezajmavej.clovek",
+   "at": 1794434687638
+  },
+  {
+   "id": "paulomxn1_tv1",
+   "name": "@paulomxn1_tv1",
+   "at": 1794434687639
+  },
+  {
+   "id": "majles47",
+   "name": "@majles47",
+   "at": 1794434687640
   }
  ]
 }
