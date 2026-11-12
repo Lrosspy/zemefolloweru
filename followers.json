@@ -1,6 +1,6 @@
 {
- "updated": 1794485127276,
- "changedAt": 1794485127276,
+ "updated": 1794495912378,
+ "changedAt": 1794495912378,
  "followers": [
   {
    "id": "lubikosuch",
@@ -683,7 +683,9 @@
   {
    "id": "uzi_vatelneexistuje",
    "name": "@uzi_vatelneexistuje",
-   "at": 1793634959106
+   "at": 1793634959106,
+   "left": true,
+   "leftAt": 1794495912378
   },
   {
    "id": "j.pospisiil",
@@ -1419,6 +1421,36 @@
    "id": "pepex_freeze",
    "name": "@pepex_freeze",
    "at": 1794485127531
+  },
+  {
+   "id": "ondra_mrvik3",
+   "name": "@ondra_mrvik3",
+   "at": 1794495912378
+  },
+  {
+   "id": "soolver1",
+   "name": "@soolver1",
+   "at": 1794495912379
+  },
+  {
+   "id": "herot.pavel",
+   "name": "@herot.pavel",
+   "at": 1794495912380
+  },
+  {
+   "id": "ho.nza669",
+   "name": "@ho.nza669",
+   "at": 1794495912381
+  },
+  {
+   "id": "j.pavlu19",
+   "name": "@j.pavlu19",
+   "at": 1794495912382
+  },
+  {
+   "id": "stepa4672",
+   "name": "@stepa4672",
+   "at": 1794495912383
   }
  ]
 }
