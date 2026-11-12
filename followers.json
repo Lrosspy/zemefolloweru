@@ -1,6 +1,6 @@
 {
- "updated": 1794474284735,
- "changedAt": 1794474284735,
+ "updated": 1794485127276,
+ "changedAt": 1794485127276,
  "followers": [
   {
    "id": "lubikosuch",
@@ -1414,6 +1414,11 @@
    "id": "nikolas_rodrigo12",
    "name": "@nikolas_rodrigo12",
    "at": 1794474284736
+  },
+  {
+   "id": "pepex_freeze",
+   "name": "@pepex_freeze",
+   "at": 1794485127531
   }
  ]
 }
