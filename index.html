@@ -129,6 +129,8 @@ body.playing .admin-key{display:none}
 .boss-sword svg{transform-origin:50% 85%;transition:transform .09s}
 .boss-sword.hit svg{animation:bossSwing .16s ease-out}
 .boss-sword:disabled{opacity:.45;cursor:default}
+.boss-sword.gold svg{filter:sepia(1) saturate(5) hue-rotate(-8deg) brightness(1.15) drop-shadow(0 0 14px #ffd23a)}
+.boss-wheel{font-size:13px;line-height:1.45;color:#cfeeff;margin:8px 0 0}
 @keyframes bossSwing{40%{transform:rotate(-32deg) scale(1.08)}100%{transform:none}}
 .boss-pop{position:absolute;left:50%;top:28%;font-weight:900;color:#ff6b4a;font-size:24px;pointer-events:none;animation:bossPop .7s ease-out forwards}
 @keyframes bossPop{to{transform:translate(var(--dx),-70px);opacity:0}}
@@ -210,6 +212,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
       <svg width="74" height="170" viewBox="0 0 74 170" aria-hidden="true"><path d="M37 4 L49 22 L49 112 L25 112 L25 22 Z" fill="#dfe6f2" stroke="#8a95ab" stroke-width="3" stroke-linejoin="round"/><path d="M37 10 L37 108" stroke="#aab4c8" stroke-width="3"/><rect x="6" y="112" width="62" height="12" rx="6" fill="#ffc300" stroke="#a87b00" stroke-width="3"/><rect x="30" y="124" width="14" height="30" rx="4" fill="#7a3b1f" stroke="#4a210f" stroke-width="3"/><circle cx="37" cy="160" r="8" fill="#ffc300" stroke="#a87b00" stroke-width="3"/></svg>
     </button>
     <p class="boss-info" id="bossInfo"></p>
+    <p class="boss-wheel" id="bossWheel"></p>
     <p class="boss-msg" id="bossMsg" role="status" aria-live="polite"></p>
   </div>
 </section>
@@ -379,7 +382,8 @@ SITES.burger={title:'Mekáč planety',dir:MYSTERY.dir,r:.16}; // winner of the s
 SITES.temple={title:'Chrám planety',dir:ringDir(120,.9),r:.13};
 SITES.post={title:'Pošta',dir:ringDir(315,.88),r:.1};
 SITES.radio={title:'Rádiová stanice',dir:ringDir(12,1.0),r:.1,always:true};
-SITES.mayor={title:'Radnice',dir:ringDir(128,.62),r:.1}; // town hall next to the barbershop; the mayor (role 'mayor') won the election in the comments // next to the stadium, beams radio waves into space; belongs to the whole planet
+SITES.mayor={title:'Radnice',dir:ringDir(128,.62),r:.1};
+SITES.castle={title:'Hrad 500. obyvatele',dir:ringDir(240,.95),r:.11}; // goes to the 500th resident ("Starosta mrzne" challenge) // town hall next to the barbershop; the mayor (role 'mayor') won the election in the comments // next to the stadium, beams radio waves into space; belongs to the whole planet
 const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // Boss ze záhrobí (used to be the UFO base), far side of the planet
 function ringDir(deg,c){const a=deg*Math.PI/180;return START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*c)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*c)).normalize()}
 PADS=[...Object.values(SITES),MYSTERY,BASE].map(S=>({dir:S.dir,r:S.r,h:terrain0(S.dir)}));
@@ -388,12 +392,22 @@ const WORKER_OF={paramedic:'doctor'};
 // a resident can run a second building on top of their own role
 const EXTRA_ROLES={'lukygg.12_oficiap':['studio'],'kubicek_cernousek':['burger'],'unknown_username002':['temple'],'jakubkolbe':['post']};
 const JET_OWNER='adam.morgi';  // asked for a fighter jet on his house (17 likes)
-const FOX_OWNER='kvxtjnu';     // a little orange fox with a glowing aura that runs around town
+const FOX_OWNER='kvxtjnu';
+// "Starosta mrzne": every new resident warms the frozen mayor by 1 °C; at 500 he melts,
+// the ice castle opens, the 500th resident gets a castle and a wheel of fortune picks the owner of a 2x sword
+const MRAZ_GOAL=500,MRAZ_START=286,MRAZ_FROM=Date.UTC(2026,10,13,16,0);
+const SWORD_OWNER=''; // winner of the wheel of fortune (filled in after the draw at 500)     // a little orange fox with a glowing aura that runs around town
 const hasRole=(r,k)=>r.role===k||(EXTRA_ROLES[r.id]||[]).includes(k);
+function aliveCount(){let n=0;for(const r of residents)if(!r.left)n++;return n}
+function castle500Owner(){const al=residents.filter(r=>!r.left).sort((a,b)=>a.at-b.at);return al.length>=MRAZ_GOAL?al[MRAZ_GOAL-1]:null}
+// 0 = warm, 1 = frozen solid: depends on how many residents are still missing and on how long it has taken
+function frostLevel(){const n=aliveCount();if(n>=MRAZ_GOAL)return 0;
+  const need=Math.min(1,(MRAZ_GOAL-n)/(MRAZ_GOAL-MRAZ_START)),days=Math.max(0,(Date.now()-MRAZ_FROM)/864e5);
+  return Math.max(0,Math.min(1,need*(.6+Math.min(.4,days*.06))))}
 function siteKeyOf(role){return role?(SITES[role]?role:(WORKER_OF[role]||null)):null}
 function siteMembers(k){return residents.filter(r=>hasRole(r,k)||WORKER_OF[r.role]===k).sort((a,b)=>a.at-b.at)}
-const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡',mayor:'👑'};
-const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta',radio:'Tichá rádiová stanice',mayor:'Opuštěná radnice'};
+const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡',mayor:'👑',castle:'🏰'};
+const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta',radio:'Tichá rádiová stanice',mayor:'Opuštěná radnice',castle:'Opuštěný hrad'};
 (function(){
   const g=Math.PI*(3-Math.sqrt(5));
   for(let i=0;i<SLOTS;i++){
@@ -1034,7 +1048,26 @@ const icePlanet=new THREE.Group();icePlanet.position.copy(START.clone().multiply
   ring.rotation.set(.45,0,.2);icePlanet.add(ring);
   icePlanet.userData={ball,ring};
 })();
-function animateIce(now){const T=now/1000;icePlanet.userData.ball.rotation.y=T*.03;icePlanet.userData.ring.rotation.y=T*.02}
+(function(){ // the ice castle from the expedition, on the side facing our planet
+  const g=new THREE.Group(),n=icePlanet.position.clone().negate().normalize();
+  g.position.copy(n.clone().multiplyScalar(4.85));g.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n);g.scale.setScalar(1.6);
+  const ice=new THREE.MeshLambertMaterial({color:'#8fd0f5',emissive:'#1f5d8f',emissiveIntensity:.45,flatShading:true});
+  const iceD=new THREE.MeshLambertMaterial({color:'#5fa8dc',emissive:'#163f66',emissiveIntensity:.35,flatShading:true});
+  const hill=new THREE.Mesh(new THREE.ConeGeometry(1.1,.7,7),iceD);hill.position.y=.2;g.add(hill);
+  const keep=new THREE.Mesh(new THREE.CylinderGeometry(.32,.38,1.2,7),ice);keep.position.y=1.1;g.add(keep);
+  for(let i=0;i<5;i++){const s=new THREE.Mesh(new THREE.ConeGeometry(.07,.28,4),ice);const a=i/5*6.28;s.position.set(Math.cos(a)*.28,1.8,Math.sin(a)*.28);g.add(s)}
+  for(const [x,z,h] of [[-.6,.2,.8],[.6,.15,.9],[0,-.55,.7]]){const t=new THREE.Mesh(new THREE.CylinderGeometry(.16,.19,h,6),iceD);t.position.set(x,.5+h/2,z);g.add(t);
+    const c=new THREE.Mesh(new THREE.ConeGeometry(.2,.4,6),ice);c.position.set(x,.5+h+.2,z);g.add(c)}
+  const gateM=new THREE.MeshBasicMaterial({color:'#123a5c'});const gate=new THREE.Mesh(new THREE.CircleGeometry(.16,12,0,Math.PI),gateM);
+  const gb=new THREE.Mesh(new THREE.PlaneGeometry(.32,.2),gateM);gb.position.y=-.1;gate.add(gb);gate.position.set(0,.72,.37);g.add(gate);
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({color:'#ffd06a',transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));glow.scale.set(1.4,1.4,1);glow.position.set(0,.7,.45);g.add(glow);
+  const lock=new THREE.Sprite(new THREE.SpriteMaterial({map:textTex('🔒 při 500','#081e3a','#cfeeff',420,110,'900 56px system-ui,sans-serif'),transparent:true,depthWrite:false}));
+  lock.scale.set(1.15,.3,1);lock.position.set(0,2.6,0);g.add(lock);
+  icePlanet.add(g);icePlanet.userData.castle={gate,glow,lock,gateM};
+})();
+function animateIce(now){const T=now/1000;icePlanet.userData.ball.rotation.y=T*.03;icePlanet.userData.ring.rotation.y=T*.02;
+  const c=icePlanet.userData.castle,open=aliveCount()>=MRAZ_GOAL;
+  c.lock.visible=!open;c.gateM.color.set(open?'#ffd06a':'#123a5c');c.glow.material.opacity=open?.55+Math.sin(T*2)*.15:0}
 
 function animateComet(now){
   const c=comet.userData;
@@ -1932,6 +1965,40 @@ function animateAura(fig,T){
   a.ring.material.opacity=.35+.3*p;a.ring.rotation.z=T*.8;
   a.sparks.forEach(s=>{const u=(T*.45+s.userData.ph)%1,an=s.userData.ph*Math.PI*2+T*2.2;s.position.set(Math.cos(an)*.06,.01+u*.15,Math.sin(an)*.06);s.material.opacity=.9*(1-u)});
 }
+function buildCastle(owner){
+  const g=new THREE.Group(),alive=owner&&!owner.left;
+  const stone=mat(alive?'#e9dcc0':'#a39d92'),dark=mat('#6b5a44'),roofM=mat(alive?'#7a1f2b':'#5c6066');
+  const gold=new THREE.MeshLambertMaterial({color:alive?'#ffd23a':'#8a7a50',emissive:alive?'#a87a00':'#000',emissiveIntensity:.45,flatShading:true});
+  const wall=new THREE.Mesh(new THREE.BoxGeometry(.6,.2,.46),stone);wall.position.y=.1;g.add(wall);
+  for(let i=0;i<7;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(.05,.04,.05),stone);m.position.set(-.27+i*.09,.22,.23);g.add(m)}
+  const keep=new THREE.Mesh(new THREE.BoxGeometry(.24,.34,.22),stone);keep.position.set(0,.17,-.04);g.add(keep);
+  const kr=new THREE.Mesh(new THREE.ConeGeometry(.18,.2,4),roofM);kr.rotation.y=Math.PI/4;kr.position.set(0,.44,-.04);g.add(kr);
+  for(const [x,z] of [[-.3,.23],[.3,.23],[-.3,-.23],[.3,-.23]]){
+    const t=new THREE.Mesh(new THREE.CylinderGeometry(.065,.07,.32,8),stone);t.position.set(x,.16,z);g.add(t);
+    const r=new THREE.Mesh(new THREE.ConeGeometry(.085,.16,8),roofM);r.position.set(x,.4,z);g.add(r)}
+  const gate=new THREE.Mesh(new THREE.PlaneGeometry(.1,.13),dark);gate.position.set(0,.065,.231);g.add(gate);
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.16,5),mat('#555'));pole.position.set(0,.6,-.04);g.add(pole);
+  const flag=new THREE.Mesh(new THREE.PlaneGeometry(.09,.055),new THREE.MeshLambertMaterial({color:alive?'#ffd23a':'#777',side:THREE.DoubleSide}));flag.position.set(.047,.65,-.04);g.add(flag);
+  const ball=new THREE.Mesh(new THREE.SphereGeometry(.02,10,8),gold);ball.position.set(0,.55,-.04);g.add(ball);
+  if(alive){const nm=(owner.name||'@'+owner.id),cw=Math.max(320,Math.min(1400,120+nm.length*36));
+    const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:textTex('🏰 '+nm,'#7a1f2b','#ffd23a',cw,96,'900 52px system-ui,sans-serif'),transparent:true,depthWrite:false}));
+    tag.scale.set(.06*cw/96,.06,1);tag.position.y=.78;tag.renderOrder=5;g.add(tag)}
+  g.userData.anim=T=>{flag.rotation.y=Math.sin(T*3)*.25};
+  g.userData.height=.8;return g;
+}
+// thermometer above the frozen mayor: "-214 °C · 286 / 500"
+function thermoTex(n){
+  const c=document.createElement('canvas');c.width=640;c.height=200;const x=c.getContext('2d');
+  const rr=(a,b,w,h,r)=>{x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath()};
+  rr(6,6,628,188,40);x.fillStyle='rgba(8,30,58,.92)';x.fill();x.lineWidth=6;x.strokeStyle='#7fd8ff';x.stroke();
+  const done=n>=MRAZ_GOAL,t=Math.min(0,n-MRAZ_GOAL);
+  x.textAlign='center';x.textBaseline='middle';x.fillStyle=done?'#ffd23a':'#cfeeff';x.font='900 56px system-ui,sans-serif';
+  x.fillText(done?'🔥 Starosta roztál!':'🌡️ '+(t===0?'0':'−'+(-t))+' °C',320,64);
+  rr(40,116,560,50,25);x.fillStyle='#16304f';x.fill();
+  const w=Math.max(0,Math.min(1,n/MRAZ_GOAL))*560;if(w>4){x.save();rr(40,116,560,50,25);x.clip();const gr=x.createLinearGradient(40,0,600,0);gr.addColorStop(0,'#ff9a3d');gr.addColorStop(1,'#ff3b2e');x.fillStyle=gr;x.fillRect(40,116,w,50);x.restore()}
+  x.fillStyle='#fff';x.font='900 34px system-ui,sans-serif';x.fillText(Math.min(n,MRAZ_GOAL)+' / '+MRAZ_GOAL+' obyvatel',320,142);
+  return new THREE.CanvasTexture(c);
+}
 function buildTownHall(owner){
   const g=new THREE.Group(),alive=owner&&!owner.left;
   const stone=mat(alive?'#efe4cc':'#aaa293'),trim=mat(alive?'#f8f3e6':'#b9b3a8'),roofM=mat(alive?'#3f6f8f':'#5c6066');
@@ -1969,18 +2036,29 @@ function buildTownHall(owner){
     const nm=(owner.name||'@'+owner.id),cw=Math.max(320,Math.min(1400,120+nm.length*36));
     const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:textTex('👑 '+nm,'#7a1f2b','#ffd23a',cw,96,'900 52px system-ui,sans-serif'),transparent:true,depthWrite:false}));
     tag.scale.set(.05*cw/96,.05,1);tag.position.y=.21;tag.renderOrder=5;boss.add(tag);
+    boss.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&o.material.type==='MeshLambertMaterial'){o.material=o.material.clone();o.userData.base=o.material.color.clone()}});
+    const ice=new THREE.Mesh(new THREE.BoxGeometry(.13,.2,.11),new THREE.MeshLambertMaterial({color:'#bfeaff',emissive:'#3a7aa8',emissiveIntensity:.25,transparent:true,opacity:0,depthWrite:false,flatShading:true}));
+    ice.position.y=.09;boss.add(ice);boss.userData.ice=ice;
+    const th=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthWrite:false}));th.scale.set(.34,.106,1);th.position.y=.33;th.renderOrder=5;boss.add(th);boss.userData.thermo=th;
   }
+  const FROST=new THREE.Color('#d6f1ff');let walkA=0,lastT=null,frostN=-1,frost=0;
   g.userData.anim=T=>{
     if(!alive)return;
     const now=new Date();hw.rotation.z=-(now.getHours()%12+now.getMinutes()/60)/12*Math.PI*2;mw.rotation.z=-now.getMinutes()/60*Math.PI*2;
     flag.rotation.y=Math.sin(T*3)*.25;crown.rotation.y=T*.6;
-    const a=T*.16,st=Math.sin(T*7);
+    // frost: re-evaluated when the head count changes and slowly over time
+    const n=aliveCount();if(n!==frostN||Math.floor(T)%30===0){if(n!==frostN){frostN=n;const tx=boss.userData.thermo;if(tx.material.map)tx.material.map.dispose();tx.material.map=thermoTex(n);tx.material.needsUpdate=true}frost=frostLevel()}
+    const dt=lastT===null?0:Math.min(.1,T-lastT);lastT=T;walkA+=dt*.16*(1-frost*.92);
+    const a=walkA,st=Math.sin(T*7*(1-frost*.85))*(1-frost*.7);
+    boss.traverse(o=>{if(o.userData.base)o.material.color.copy(o.userData.base).lerp(FROST,frost*.75)});
+    boss.userData.ice.material.opacity=frost>.05?.15+frost*.4:0;
     boss.position.set(Math.sin(a)*R0,Math.abs(st)*.006,Math.cos(a)*R0);boss.rotation.y=a+Math.PI/2;
     const lL=boss.getObjectByName('legL'),lR=boss.getObjectByName('legR'),aL=boss.getObjectByName('armL'),aR=boss.getObjectByName('armR');
     if(lL){lL.rotation.x=st*.6;lR.rotation.x=-st*.6}
     if(aL)aL.rotation.set(-st*.5,0,-.12);
     if(aR)aR.rotation.set(st*.5,0,Math.PI+.12);
     animateAura(boss,T);
+    const au=boss.userData.aura;if(au&&frost>0){au.aura.material.opacity*=1-frost*.8;au.ring.material.opacity*=1-frost*.8;au.sparks.forEach(s=>s.material.opacity*=1-frost)}
   };
   g.userData.height=1.15;return g;
 }
@@ -2018,7 +2096,7 @@ function buildRadio(){ // radio station: lattice mast, a dish aimed at the sky a
   g.userData.height=1.2*S;return g;
 }
 
-const SITE_BUILD={doctor:buildHospital,farmer:buildFarm,builder:buildConstruction,tennis:buildTennis,gardener:buildGreenhouse,
+const SITE_BUILD={castle:buildCastle,doctor:buildHospital,farmer:buildFarm,builder:buildConstruction,tennis:buildTennis,gardener:buildGreenhouse,
   football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio,mayor:buildTownHall};
 function syncSites(animate){
   const sig=Object.keys(SITES).map(k=>k+':'+siteMembers(k).map(m=>m.id+':'+(m.role||'')+(m.left?'x':'')).join(',')).join('|');
@@ -2391,7 +2469,10 @@ function setResidents(list){
   dataLoaded=true;
   const prevLeft=new Map(residents.map(r=>[r.id,r.left]));
   const prev=new Set(residents.map(r=>r.id));
-  residents=list;groupHomes();figDirty=true;residentById=new Map(list.map(r=>[r.id,r]));
+  residents=list;
+  for(const k in EXTRA_ROLES)EXTRA_ROLES[k]=EXTRA_ROLES[k].filter(x=>x!=='castle');
+  {const c5=castle500Owner();if(c5)(EXTRA_ROLES[c5.id]=EXTRA_ROLES[c5.id]||[]).push('castle')}
+  groupHomes();figDirty=true;residentById=new Map(list.map(r=>[r.id,r]));
   const fresh=new Set(firstLoad?[]:list.filter(r=>!prev.has(r.id)).map(r=>r.id));
   syncHouses(!firstLoad);syncWanderers();syncSites(!firstLoad);syncGraves(!firstLoad);paintPlanet();updateHud();applyMe(firstLoad&&!!meId);
   const died=firstLoad?[]:list.filter(r=>r.left&&prevLeft.get(r.id)===false);
@@ -2830,9 +2911,12 @@ function bossRender(){
     ?`🏅 Odznak Zabiják bossů ${players===1?'dostal 1 hráč':players>1&&players<5?'dostali '+players+' hráči':'dostalo '+players+' hráčů'}. `+(mine>0?`Máš ho i ty (${bossFmt(mine)} ran)!`:'Ty jsi ho tentokrát nebouchl.')
     :`Každá rána mečem = 1 život. Tvoje rány: ${bossFmt(mine)} · Bojuje ${players} ${players===1?'hráč':players>1&&players<5?'hráči':'hráčů'}. Kdo bossa aspoň jednou bouchne, dostane po jeho smrti odznak 🏅 Zabiják bossů.`;
   bossSword.disabled=dead;
+  const n=aliveCount();document.getElementById('bossWheel').textContent=SWORD_OWNER
+    ?`🎡 Meč 2× DMG vyhrál v kole štěstí @${SWORD_OWNER}.`
+    :`🎡 Při ${MRAZ_GOAL} obyvatelích roztočíme kolo štěstí o meč, který dává 2× víc ran. Teď je nás ${n}/${MRAZ_GOAL}.`;
 }
 function openBoss(){
-  bossMg.hidden=false;bossRender();bossLoad();
+  bossMg.hidden=false;bossSword.classList.toggle('gold',!!SWORD_OWNER&&meId===SWORD_OWNER);bossRender();bossLoad();
   if(!meId)bossSay('Nejdřív zadej svoje jméno z Instagramu, ať víme, komu dát odznak.');
 }
 function bossHit(){
@@ -2841,8 +2925,8 @@ function bossHit(){
   if(!r||r.left){bossSay('Bossa můžou bouchat jen obyvatelé planety. Dej follow @planetafolloweru.');return}
   if(!bossSt.loaded){bossSay('Boss se ještě probouzí… zkus to za chvíli.');bossLoad();return}
   if(bossDead())return;
-  bossSt.pending++;bossSt.lastHit=performance.now();
-  const pop=document.createElement('span');pop.className='boss-pop';pop.textContent='−1';pop.style.setProperty('--dx',((Math.random()-.5)*90).toFixed(0)+'px');
+  const dmg=meId===SWORD_OWNER?2:1;bossSt.pending+=dmg;bossSt.lastHit=performance.now();
+  const pop=document.createElement('span');pop.className='boss-pop';pop.textContent='−'+dmg;pop.style.setProperty('--dx',((Math.random()-.5)*90).toFixed(0)+'px');
   bossSword.append(pop);setTimeout(()=>pop.remove(),700);
   bossSword.classList.remove('hit');void bossSword.offsetWidth;bossSword.classList.add('hit');
   if(bossDead())bossFlush();
