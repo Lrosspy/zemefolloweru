@@ -277,6 +277,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <button id="openList" type="button">Obyvatelé</button>
   <button id="whole" type="button">Celá planeta</button>
   <button id="town" type="button">Ke městu</button>
+  <button id="iceBtn" type="button">Ledová planeta ❄️</button>
 </div>
 
 <div class="play-ui" id="playUi" hidden>
@@ -1063,7 +1064,9 @@ const icePlanet=new THREE.Group();icePlanet.position.copy(START.clone().multiply
   const glow=new THREE.Sprite(new THREE.SpriteMaterial({color:'#ffd06a',transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));glow.scale.set(1.4,1.4,1);glow.position.set(0,.7,.45);g.add(glow);
   const lock=new THREE.Sprite(new THREE.SpriteMaterial({map:textTex('🔒 při 500','#081e3a','#cfeeff',420,110,'900 56px system-ui,sans-serif'),transparent:true,depthWrite:false}));
   lock.scale.set(1.15,.3,1);lock.position.set(0,2.6,0);g.add(lock);
-  icePlanet.add(g);icePlanet.userData.castle={gate,glow,lock,gateM};
+  for(let i=0;i<14;i++){const a=i/14*6.28+(i%3)*.3,d=1.0+(i%4)*.25,h=.3+(i%5)*.12;const k=new THREE.Mesh(new THREE.ConeGeometry(.08,h,4),i%2?ice:iceD);
+    k.position.set(Math.cos(a)*d,.25+h/2-(d-1)*.3,Math.sin(a)*d);k.rotation.set(Math.sin(i)*.4,i,Math.cos(i)*.4);g.add(k)}
+  icePlanet.add(g);icePlanet.userData.castle={group:g,gate,glow,lock,gateM};
 })();
 function animateIce(now){const T=now/1000;icePlanet.userData.ball.rotation.y=T*.03;icePlanet.userData.ring.rotation.y=T*.02;
   const c=icePlanet.userData.castle,open=aliveCount()>=MRAZ_GOAL;
@@ -2245,6 +2248,7 @@ function setControls(target,up,m){
   controls.enableDamping=true;controls.dampingFactor=.08;controls.enablePan=false;controls.rotateSpeed=.5;
   controls.target.copy(target);
   if(m==='surface'){controls.minDistance=1.2;controls.maxDistance=22;controls.maxPolarAngle=1.3;controls.autoRotateSpeed=.6}
+  else if(m==='ice'){controls.minDistance=3;controls.maxDistance=26;controls.autoRotateSpeed=.5}
   else{controls.minDistance=R+2.2;controls.maxDistance=70;controls.autoRotateSpeed=.35}
   controls.autoRotate=autoWas;
   if(!fly)controls.update();
@@ -2258,7 +2262,7 @@ function flyToSurface(dir,height){
   startFly(pos,target,n,'surface');
 }
 function flyToGlobe(dist){
-  const d=camera.position.clone().normalize();
+  const d=mode==='ice'?START.clone().add(SITE_T.clone().multiplyScalar(.35)).normalize():camera.position.clone().normalize();
   startFly(d.multiplyScalar(dist),new THREE.Vector3(),new THREE.Vector3(0,1,0),'globe');
 }
 function startFly(pos,target,up,m){
@@ -2279,6 +2283,15 @@ function townDist(){
 }
 document.getElementById('whole').onclick=()=>{flyToGlobe(42);setTimeout(()=>controls.autoRotate=!reduce,1500)};
 document.getElementById('town').onclick=()=>flyTo(townCenter(),townDist());
+// a trip to the frozen planet from the expedition: look at the ice castle
+function flyToIce(){
+  const c=icePlanet.userData.castle;if(!c)return;icePlanet.updateMatrixWorld(true);
+  const n=icePlanet.position.clone().negate().normalize(),tgt=new THREE.Vector3();c.group.getWorldPosition(tgt);tgt.add(n.clone().multiplyScalar(2.2));
+  const front=new THREE.Vector3();c.gate.getWorldPosition(front);front.sub(tgt).projectOnPlane(n).normalize();
+  const pos=tgt.clone().add(front.multiplyScalar(9)).add(n.clone().multiplyScalar(4.5));
+  startFly(pos,tgt,n,'ice');setTimeout(()=>controls.autoRotate=!reduce,1600);
+}
+document.getElementById('iceBtn').onclick=flyToIce;
 
 // ---------- picking ----------
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let downAt=null;
@@ -2358,7 +2371,8 @@ function loop(now){
     const dir=a.clone().lerp(b,e);if(dir.lengthSq()<1e-6)dir.copy(b);dir.normalize();
     const len=fly.fromPos.length()+(fly.toPos.length()-fly.fromPos.length())*e;
     const lift=Math.sin(e*Math.PI)*Math.min(6,a.angleTo(b)*6);
-    camera.position.copy(dir.multiplyScalar(Math.max(len+lift,R+0.8)));
+    if(fly.m==='ice'||mode==='ice')camera.position.copy(fly.fromPos.clone().lerp(fly.toPos,e).add(fly.toUp.clone().multiplyScalar(Math.sin(e*Math.PI)*4)));
+    else camera.position.copy(dir.multiplyScalar(Math.max(len+lift,R+0.8)));
     const tgt=fly.fromT.clone().lerp(fly.toT,e);
     camera.up.copy(fly.fromUp.clone().lerp(fly.toUp,e).normalize());
     camera.lookAt(tgt);
