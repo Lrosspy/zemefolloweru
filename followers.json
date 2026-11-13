@@ -1,6 +1,6 @@
 {
- "updated": 1794583816562,
- "changedAt": 1794583816562,
+ "updated": 1794593097647,
+ "changedAt": 1794593097647,
  "followers": [
   {
    "id": "lubikosuch",
@@ -364,7 +364,9 @@
    "id": "alexcico28",
    "name": "@alexcico28",
    "at": 1793603290150,
-   "role": "firefighter"
+   "role": "firefighter",
+   "left": true,
+   "leftAt": 1794593097647
   },
   {
    "id": "chameleon.5802566",
@@ -1315,7 +1317,9 @@
   {
    "id": "vitass.21",
    "name": "@vitass.21",
-   "at": 1794431129171
+   "at": 1794431129171,
+   "left": true,
+   "leftAt": 1794593097647
   },
   {
    "id": "elinq.weinfurt",
@@ -1575,12 +1579,19 @@
   {
    "id": "michal_muzik12",
    "name": "@michal_muzik12",
-   "at": 1794560839435
+   "at": 1794560839435,
+   "left": true,
+   "leftAt": 1794593097647
   },
   {
    "id": "zeman_david",
    "name": "@zeman_david",
    "at": 1794583816562
+  },
+  {
+   "id": "_jmeno_neznam",
+   "name": "@_jmeno_neznam",
+   "at": 1794593097647
   }
  ]
 }
