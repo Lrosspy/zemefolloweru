@@ -384,7 +384,7 @@ SITES.temple={title:'Chrám planety',dir:ringDir(120,.9),r:.13};
 SITES.post={title:'Pošta',dir:ringDir(315,.88),r:.1};
 SITES.radio={title:'Rádiová stanice',dir:ringDir(12,1.0),r:.1,always:true};
 SITES.mayor={title:'Radnice',dir:ringDir(128,.62),r:.1};
-SITES.kfc={title:'KFP – Křupavé kuře planety',dir:ringDir(60,.93),r:.1}; // fried-chicken bistro for the most-liked commenter across past reels (@unknown_username002)
+SITES.kfc={title:'KFP – Křupavé kuře planety',dir:ringDir(60,.93),r:.1}; // fried-chicken bistro, run by @adam.morgi
 SITES.castle={title:'Hrad 500. obyvatele',dir:ringDir(240,.95),r:.11}; // goes to the 500th resident ("Starosta mrzne" challenge) // town hall next to the barbershop; the mayor (role 'mayor') won the election in the comments // next to the stadium, beams radio waves into space; belongs to the whole planet
 const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // Boss ze záhrobí (used to be the UFO base), far side of the planet
 function ringDir(deg,c){const a=deg*Math.PI/180;return START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*c)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*c)).normalize()}
@@ -392,7 +392,7 @@ PADS=[...Object.values(SITES),MYSTERY,BASE].map(S=>({dir:S.dir,r:S.r,h:terrain0(
 // jobs that work in someone else's building
 const WORKER_OF={paramedic:'doctor'};
 // a resident can run a second building on top of their own role
-const EXTRA_ROLES={'lukygg.12_oficiap':['studio'],'kubicek_cernousek':['burger'],'unknown_username002':['temple','kfc'],'jakubkolbe':['post']};
+const EXTRA_ROLES={'lukygg.12_oficiap':['studio'],'kubicek_cernousek':['burger'],'unknown_username002':['temple'],'adam.morgi':['kfc'],'jakubkolbe':['post']};
 const JET_OWNER='adam.morgi';  // asked for a fighter jet on his house (17 likes)
 const FOX_OWNER='kvxtjnu';
 // "Starosta mrzne": every new resident warms the frozen mayor by 1 °C; at 500 he melts,
@@ -2595,7 +2595,7 @@ function applyMe(flyThere){
     const ex=EXTRA_ROLES[r.id]||[];
     const extra=(ex.includes('burger')?' A jsi šéf Mekáče planety 🍔 – vyhrál tvůj komentář v hlasování o tajné stavbě!':'')+
       (ex.includes('temple')?' A jsi velekněz Chrámu planety 🛕. Jednou se z tebe může stát bůh planety.':'')+
-      (ex.includes('kfc')?' A jsi šéf KFP – Křupavého kuřete planety 🍗, protože tvoje komentáře mají nejvíc lajků!':'')+
+      (ex.includes('kfc')?' A jsi šéf KFP – Křupavého kuřete planety 🍗.':'')+
       (ex.includes('post')?' A jsi poštmistr planety 📮, patří ti pošta.':'')+
       (r.id===JET_OWNER?' Na střeše vašeho domu parkuje tvoje stíhačka ✈️.':'')+
       (r.id===FOX_OWNER?' Po městě ti běhá tvůj zářící lišák 🦊.':'')+
