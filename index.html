@@ -384,6 +384,7 @@ SITES.temple={title:'Chrám planety',dir:ringDir(120,.9),r:.13};
 SITES.post={title:'Pošta',dir:ringDir(315,.88),r:.1};
 SITES.radio={title:'Rádiová stanice',dir:ringDir(12,1.0),r:.1,always:true};
 SITES.mayor={title:'Radnice',dir:ringDir(128,.62),r:.1};
+SITES.kfc={title:'KFP – Křupavé kuře planety',dir:ringDir(60,.93),r:.1}; // fried-chicken bistro for the most-liked commenter across past reels (@unknown_username002)
 SITES.castle={title:'Hrad 500. obyvatele',dir:ringDir(240,.95),r:.11}; // goes to the 500th resident ("Starosta mrzne" challenge) // town hall next to the barbershop; the mayor (role 'mayor') won the election in the comments // next to the stadium, beams radio waves into space; belongs to the whole planet
 const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // Boss ze záhrobí (used to be the UFO base), far side of the planet
 function ringDir(deg,c){const a=deg*Math.PI/180;return START.clone().add(SITE_T.clone().multiplyScalar(Math.cos(a)*c)).add(SITE_B.clone().multiplyScalar(Math.sin(a)*c)).normalize()}
@@ -391,7 +392,7 @@ PADS=[...Object.values(SITES),MYSTERY,BASE].map(S=>({dir:S.dir,r:S.r,h:terrain0(
 // jobs that work in someone else's building
 const WORKER_OF={paramedic:'doctor'};
 // a resident can run a second building on top of their own role
-const EXTRA_ROLES={'lukygg.12_oficiap':['studio'],'kubicek_cernousek':['burger'],'unknown_username002':['temple'],'jakubkolbe':['post']};
+const EXTRA_ROLES={'lukygg.12_oficiap':['studio'],'kubicek_cernousek':['burger'],'unknown_username002':['temple','kfc'],'jakubkolbe':['post']};
 const JET_OWNER='adam.morgi';  // asked for a fighter jet on his house (17 likes)
 const FOX_OWNER='kvxtjnu';
 // "Starosta mrzne": every new resident warms the frozen mayor by 1 °C; at 500 he melts,
@@ -407,8 +408,8 @@ function frostLevel(){const n=aliveCount();if(n>=MRAZ_GOAL)return 0;
   return Math.max(0,Math.min(1,need*(.6+Math.min(.4,days*.06))))}
 function siteKeyOf(role){return role?(SITES[role]?role:(WORKER_OF[role]||null)):null}
 function siteMembers(k){return residents.filter(r=>hasRole(r,k)||WORKER_OF[r.role]===k).sort((a,b)=>a.at-b.at)}
-const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡',mayor:'👑',castle:'🏰'};
-const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta',radio:'Tichá rádiová stanice',mayor:'Opuštěná radnice',castle:'Opuštěný hrad'};
+const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡',mayor:'👑',castle:'🏰',kfc:'🍗'};
+const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta',radio:'Tichá rádiová stanice',mayor:'Opuštěná radnice',castle:'Opuštěný hrad',kfc:'Zavřené kuřecí bistro'};
 (function(){
   const g=Math.PI*(3-Math.sqrt(5));
   for(let i=0;i<SLOTS;i++){
@@ -1750,6 +1751,40 @@ function buildBurger(owner){ // "Mekáč planety": a burger joint with a giant b
   g.userData.height=.95*S;return g;
 }
 
+function buildKfc(owner){ // "KFP – Křupavé kuře planety": chicken bistro with a giant bucket on the roof
+  const g=new THREE.Group(),alive=owner&&!owner.left,S=1.5,b=new THREE.Group();b.scale.setScalar(S);g.add(b);
+  const orange=mat(alive?'#e8742a':'#8a6a55'),cream=mat(alive?'#fff1d6':'#b8ad98'),brown=mat(alive?'#7a3e17':'#5a4a40'),dark=mat('#2b2b30');
+  const lot=new THREE.Mesh(new THREE.CylinderGeometry(.42,.44,.02,28),mat('#55555c'));lot.position.y=-.004;b.add(lot);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.46,.24,.32),cream);body.position.y=.12;b.add(body);
+  for(let i=0;i<6;i++){const st=new THREE.Mesh(new THREE.BoxGeometry(.04,.24,.004),orange);st.position.set(-.2+i*.08,.12,.162);b.add(st)}
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(.5,.03,.36),brown);roof.position.y=.255;b.add(roof);
+  const glass=new THREE.Mesh(new THREE.BoxGeometry(.26,.1,.006),alive?winMat:darkWin);glass.position.set(-.06,.12,.166);b.add(glass);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(.07,.14,.006),mat('#c9eaff'));door.position.set(.15,.07,.166);b.add(door);
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(.44,.07),new THREE.MeshBasicMaterial({map:textTex('KŘUPAVÉ KUŘE',alive?'#7a3e17':'#555','#fff1d6',1024,160,'900 92px system-ui,sans-serif')}));sign.position.set(0,.215,.168);b.add(sign);
+  // giant striped bucket of chicken on the roof
+  const bucket=new THREE.Group();bucket.position.y=.27;b.add(bucket);
+  const N=12;for(let i=0;i<N;i++){const a0=i/N*Math.PI*2,seg=new THREE.Mesh(new THREE.CylinderGeometry(.13,.1,.18,3,1,true,a0,Math.PI*2/N),i%2?cream:orange);seg.material=seg.material.clone();seg.material.side=THREE.DoubleSide;seg.position.y=.09;bucket.add(seg)}
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(.13,.008,6,24),cream);rim.rotation.x=Math.PI/2;rim.position.y=.18;bucket.add(rim);
+  const crust=mat(alive?'#c8792b':'#8a7058'),bone=mat('#f5ead2');
+  const leg=(x,z,ry,rz)=>{const d=new THREE.Group();const m=new THREE.Mesh(new THREE.SphereGeometry(.045,10,8),crust);m.scale.set(1,1.35,1);d.add(m);const bn=new THREE.Mesh(new THREE.CylinderGeometry(.01,.01,.07,6),bone);bn.position.y=.08;d.add(bn);const k=new THREE.Mesh(new THREE.SphereGeometry(.016,8,6),bone);k.position.y=.12;d.add(k);d.position.set(x,.2,z);d.rotation.set(0,ry,rz);bucket.add(d)};
+  leg(0,0,0,0);leg(.06,.03,.5,-.45);leg(-.06,.02,1,.45);leg(.01,-.06,2,.4);leg(-.03,.06,3,-.3);
+  // drumstick sign on a pole
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,.3,6),dark);pole.position.set(.32,.15,.2);b.add(pole);
+  const ds=new THREE.Group();ds.position.set(.32,.33,.2);b.add(ds);
+  const dm=new THREE.Mesh(new THREE.SphereGeometry(.05,10,8),crust);dm.scale.set(1.4,1,1);ds.add(dm);
+  const db=new THREE.Mesh(new THREE.CylinderGeometry(.01,.01,.06,6),bone);db.rotation.z=Math.PI/2;db.position.x=.09;ds.add(db);
+  const dk=new THREE.Mesh(new THREE.SphereGeometry(.017,8,6),bone);dk.position.x=.125;ds.add(dk);
+  // outdoor tables
+  for(const [x,z] of [[-.32,.2],[-.33,-.1]]){
+    const t=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.008,12),cream);t.position.set(x,.05,z);b.add(t);
+    const l=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.12,5),dark);l.position.set(x,.06,z);b.add(l);
+    const um=new THREE.Mesh(new THREE.ConeGeometry(.07,.035,10),orange);um.position.set(x,.13,z);b.add(um);
+  }
+  ownerFig(g,owner,'#e8742a','cap',.12,.42,0);
+  g.userData.anim=T=>{bucket.rotation.y=T*.35;bucket.position.y=.27+Math.abs(Math.sin(T*1.4))*.012;ds.rotation.y=Math.sin(T*1.1)*.5};
+  g.userData.height=.62*S;return g;
+}
+
 function buildKebab(owner){
   const g=new THREE.Group(),alive=owner&&!owner.left;
   const body=new THREE.Mesh(new THREE.BoxGeometry(.46,.28,.34),mat(alive?'#f3d9a6':'#b8a888'));body.position.y=.14;g.add(body);
@@ -2100,7 +2135,7 @@ function buildRadio(){ // radio station: lattice mast, a dish aimed at the sky a
 }
 
 const SITE_BUILD={castle:buildCastle,doctor:buildHospital,farmer:buildFarm,builder:buildConstruction,tennis:buildTennis,gardener:buildGreenhouse,
-  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio,mayor:buildTownHall};
+  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio,mayor:buildTownHall,kfc:buildKfc};
 function syncSites(animate){
   const sig=Object.keys(SITES).map(k=>k+':'+siteMembers(k).map(m=>m.id+':'+(m.role||'')+(m.left?'x':'')).join(',')).join('|');
   if(sig===siteSig)return;siteSig=sig;
@@ -2560,6 +2595,7 @@ function applyMe(flyThere){
     const ex=EXTRA_ROLES[r.id]||[];
     const extra=(ex.includes('burger')?' A jsi šéf Mekáče planety 🍔 – vyhrál tvůj komentář v hlasování o tajné stavbě!':'')+
       (ex.includes('temple')?' A jsi velekněz Chrámu planety 🛕. Jednou se z tebe může stát bůh planety.':'')+
+      (ex.includes('kfc')?' A jsi šéf KFP – Křupavého kuřete planety 🍗, protože tvoje komentáře mají nejvíc lajků!':'')+
       (ex.includes('post')?' A jsi poštmistr planety 📮, patří ti pošta.':'')+
       (r.id===JET_OWNER?' Na střeše vašeho domu parkuje tvoje stíhačka ✈️.':'')+
       (r.id===FOX_OWNER?' Po městě ti běhá tvůj zářící lišák 🦊.':'')+
