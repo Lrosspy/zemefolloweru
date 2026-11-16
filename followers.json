@@ -1,6 +1,6 @@
 {
- "updated": 1794812838516,
- "changedAt": 1794812838516,
+ "updated": 1794819890450,
+ "changedAt": 1794819890450,
  "followers": [
   {
    "id": "lubikosuch",
@@ -1729,6 +1729,11 @@
    "id": "lukas_auer11",
    "name": "@lukas_auer11",
    "at": 1794812838522
+  },
+  {
+   "id": "patrisa_czsk",
+   "name": "@patrisa_czsk",
+   "at": 1794819890450
   }
  ]
 }
