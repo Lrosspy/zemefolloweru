@@ -399,7 +399,7 @@ const FOX_OWNER='kvxtjnu';
 // "Starosta mrzne": every new resident warms the frozen mayor by 1 °C; at 500 he melts,
 // the ice castle opens, the 500th resident gets a castle and a wheel of fortune picks the owner of a 2x sword
 const MRAZ_GOAL=500,MRAZ_START=286,MRAZ_FROM=Date.UTC(2026,10,13,16,0);
-const SWORD_OWNER=''; // winner of the wheel of fortune (filled in after the draw at 500)     // a little orange fox with a glowing aura that runs around town
+const SWORD_OWNER='___1kelly1___'; // won the Zubatý meč in the random draw among everyone who hit Boss ze záhrobí     // a little orange fox with a glowing aura that runs around town
 const hasRole=(r,k)=>r.role===k||(EXTRA_ROLES[r.id]||[]).includes(k);
 function aliveCount(){let n=0;for(const r of residents)if(!r.left)n++;return n}
 function castle500Owner(){const al=residents.filter(r=>!r.left).sort((a,b)=>a.at-b.at);return al.length>=MRAZ_GOAL?al[MRAZ_GOAL-1]:null}
@@ -1097,6 +1097,34 @@ function flyToResident(r,h){
   if(r.home==null&&siteKeyOf(r.role)){flyToSurface(SITES[siteKeyOf(r.role)].dir,h+.6);return}
   selected='h'+r.home;const P=PLOTS[r.home];if(P)flyTo(P.v,R+h);
 }
+// Zubatý meč ze záhrobí: forged from the boss's beak, won in the boss draw, deals 2× damage in every monster clicker
+function makeBossSword(){
+  const s=new THREE.Group();
+  const L=(c,e,ei)=>new THREE.MeshLambertMaterial({color:c,emissive:e||'#000',emissiveIntensity:ei||0,flatShading:true});
+  const bone=L('#e3cc9a','#3a2a10',.15),boneD=L('#c2a473'),rib=L('#c9573a','#4a1206',.2),ribD=L('#a2412c'),grip=L('#5a3d26'),tooth=L('#f6eedb');
+  const add=(m,x,y,z,rx,ry,rz)=>{m.position.set(x||0,y||0,z||0);m.rotation.set(rx||0,ry||0,rz||0);s.add(m);return m};
+  // blade = the boss's beak: long, curved, bone coloured, with teeth on one edge
+  const blade=add(new THREE.Mesh(new THREE.ConeGeometry(.0125,.09,6),bone),0,.062,0,0,0,.06);blade.scale.z=.42;
+  add(new THREE.Mesh(new THREE.ConeGeometry(.006,.07,4),boneD),-.002,.055,.0035,0,0,.06).scale.z=.4;
+  for(let k=0;k<6;k++){const y=.03+k*.011,x=.0105-k*.0016;add(new THREE.Mesh(new THREE.ConeGeometry(.0024,.008,4),tooth),x,y,0,0,0,-1.25)}
+  // guard = the boss's ribbed red belly plates, with two spikes
+  for(let k=0;k<3;k++)add(new THREE.Mesh(new THREE.TorusGeometry(.0085-k*.001,.0032,4,10),k%2?ribD:rib),0,.011+k*.006,0,Math.PI/2);
+  add(new THREE.Mesh(new THREE.BoxGeometry(.038,.006,.009),ribD),0,.008,0);
+  for(const sd of [-1,1])add(new THREE.Mesh(new THREE.ConeGeometry(.0035,.014,4),boneD),sd*.023,.012,0,0,0,-sd*.9);
+  add(new THREE.Mesh(new THREE.CylinderGeometry(.0034,.0038,.016,6),grip),0,-.002,0);
+  for(let k=0;k<2;k++)add(new THREE.Mesh(new THREE.TorusGeometry(.0039,.0011,3,8),ribD),0,-.007+k*.007,0,Math.PI/2);
+  // pommel = a glowing green eye of the boss
+  add(new THREE.Mesh(new THREE.SphereGeometry(.0058,10,8),new THREE.MeshBasicMaterial({color:'#7dff9e'})),0,-.013,0);
+  // ghostly green glow and wisps rising along the blade ("ze záhrobí")
+  const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');const gr=x.createRadialGradient(32,32,0,32,32,32);
+  gr.addColorStop(0,'rgba(125,255,158,1)');gr.addColorStop(.4,'rgba(125,255,158,.35)');gr.addColorStop(1,'rgba(125,255,158,0)');x.fillStyle=gr;x.fillRect(0,0,64,64);
+  const tex=new THREE.CanvasTexture(c);
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:.55,depthWrite:false,blending:THREE.AdditiveBlending}));glow.scale.set(.06,.13,1);glow.position.y=.06;s.add(glow);
+  const eg=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending}));eg.scale.set(.03,.03,1);eg.position.y=-.013;s.add(eg);
+  const wm=new THREE.SpriteMaterial({map:tex,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending});
+  for(let i=0;i<14;i++){const w=new THREE.Sprite(wm);const t=i/14,a=i*2.4;w.position.set(Math.cos(a)*.012*(1+t),.02+t*.11,Math.sin(a)*.012*(1+t));w.scale.setScalar(.008+.006*(1-t));s.add(w)}
+  s.scale.setScalar(.85);return s;
+}
 function makePerson(m,shirtColor,hat,skinColor){
   const pr=rnd(hash(m.id));
   const fig=new THREE.Group();fig.userData.memberId=m.id;
@@ -1137,6 +1165,7 @@ function makePerson(m,shirtColor,hat,skinColor){
   const right=new THREE.Group();right.name='armR';right.position.set(.029,.074,0);const ra=new THREE.Mesh(armGeo,shirt.material);ra.position.y=.022;right.add(ra);
   const hand=new THREE.Mesh(new THREE.SphereGeometry(.008,6,4),skin);hand.position.y=.048;right.add(hand);fig.add(right);
   siteArms.push({arm:right,ph:pr()*6.28,sp:6+pr()*3});
+  if(SWORD_OWNER&&m.id===SWORD_OWNER){const sword=makeBossSword();sword.position.y=.05;sword.rotation.x=1.9;right.add(sword)}
   return fig;
 }
 function windowsOn(g,w,h,z,rows,cols,lit,y0=.1){
@@ -2994,7 +3023,7 @@ function bossRender(){
     :`Každá rána mečem = 1 život. Tvoje rány: ${bossFmt(mine)} · Bojuje ${players} ${players===1?'hráč':players>1&&players<5?'hráči':'hráčů'}. Kdo bossa aspoň jednou bouchne, dostane po jeho smrti odznak 🏅 Zabiják bossů.`;
   bossSword.disabled=dead;
   const n=aliveCount();document.getElementById('bossWheel').textContent=SWORD_OWNER
-    ?`🎡 Meč 2× DMG vyhrál v kole štěstí @${SWORD_OWNER}.`
+    ?`🗡️ Zubatý meč ze záhrobí (2× DMG) vyhrál v losování @${SWORD_OWNER}.`
     :`🎡 Při ${MRAZ_GOAL} obyvatelích roztočíme kolo štěstí o meč, který dává 2× víc ran. Teď je nás ${n}/${MRAZ_GOAL}.`;
 }
 function openBoss(){
