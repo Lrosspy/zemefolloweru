@@ -2537,7 +2537,7 @@ canvas.addEventListener('pointerup',e=>{
   const hit=ray.intersectObjects([planet,townGroup],true)[0];
   const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){openBoss();return}
   const qh=questNpc&&ray.intersectObject(questNpc,true)[0];if(qh&&(!hit||qh.distance<hit.distance+.01)){questOpen();return}
-  if(hit&&hit.object.userData.bed&&!play){toast(waterFresh(hit.object.userData.bed)?'🌸 Tyhle kytky jsou zalité.':'🥀 Kytky usychají! Klikni na „Hrát za postavu“, dojdi k nim a zalij je.')}
+  if(hit&&hit.object.userData.bed){const bk=hit.object.userData.bed,wt=waterWait(bk);toast(wt>0?`🌸 Kytky jsou zalité. Znovu je půjde zalít za ${fmtWait(wt)}.`:waterFresh(bk)?'🌸 Kytky jsou zalité a už se dají zalít znovu.':(play?'🥀 Kytky usychají! Dojdi k nim a zalij je.':'🥀 Kytky usychají! Klikni na „Hrát za postavu“, dojdi k nim a zalij je.'));return}
   selected=hit&&hit.object.userData.house?hit.object.userData.house.userData.id:null;
 });
 
@@ -3004,9 +3004,9 @@ document.getElementById('lvlBox').addEventListener('keydown',e=>{if(e.key==='Esc
 document.getElementById('lvlBox').addEventListener('click',e=>{if(e.target.id==='lvlBox')e.target.hidden=true});
 
 // ---------- watering: every house's flower bed wilts after a day without water; any signed-in player can water it ----------
-// /water/<houseKey> = {t: server time, n: nick}. One bed can be watered once an hour (checked by the database rules);
+// /water/<houseKey> = {t: server time, n: nick}. One bed can be watered once every 15 minutes (checked by the database rules);
 // /waterings/<nick> counts how many beds a player watered (for the coming economy).
-const WATER_FRESH=24*60*60*1000,WATER_COOLDOWN=60*60*1000;
+const WATER_FRESH=24*60*60*1000,WATER_COOLDOWN=15*60*1000; // one bed can be watered every 15 minutes
 const water={beds:{},near:null,anim:new Map(),skew:0,mine:0};
 function waterFresh(k){const w=water.beds[k];return !!(w&&w.t&&Date.now()+water.skew-w.t<WATER_FRESH)}
 const WILT={stem:mat('#a89a3c'),bloom:[mat('#b8a03a'),mat('#9c7b2e'),mat('#c9b04a')]}; // yellow, brownish, rotting
@@ -3028,13 +3028,15 @@ async function waterLoad(){
 waterLoad();setInterval(waterLoad,60000);setInterval(()=>houses.forEach((_,k)=>waterLook(k)),5*60000);
 function toast(t){let el=document.getElementById('toast');if(!el){el=document.createElement('div');el.id='toast';el.className='toast';el.setAttribute('role','status');document.body.append(el)}
   el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),3500)}
+function waterWait(k){const w=water.beds[k];if(!w||!w.t)return 0;return Math.max(0,w.t+WATER_COOLDOWN-(Date.now()+water.skew))}
+const fmtWait=ms=>{const m=Math.floor(ms/60000),sec=Math.ceil(ms%60000/1000);return m?`${m} min${sec&&m<5?' '+sec+' s':''}`:`${sec} s`};
 function waterSay(t){if(play)sayPlay(t,3500);else toast(t)}
 const WATER_TIME=5000;
 function waterStart(k){
   if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Kytky můžeš zalévat, až se přihlásíš.');return}
   if(water.job)return;
   const w=water.beds[k],now=Date.now()+water.skew;
-  if(w&&w.t&&now-w.t<WATER_COOLDOWN){waterSay(`Tyhle kytky už zalil${w.n?' @'+w.n:'i'} před ${Math.max(1,Math.round((now-w.t)/60000))} min. Zkus jiné.`);return}
+  if(waterWait(k)>0){waterSay(`Tyhle kytky už zalil${w.n?' @'+w.n:'i'}. Znovu je půjde zalít za ${fmtWait(waterWait(k))}.`);return}
   water.job={k,t0:performance.now()};waterAnim(k,false,WATER_TIME);
 }
 function waterCancel(msg){
@@ -3093,8 +3095,8 @@ function updateWater(now){
       if(el>=WATER_TIME){const k=water.job.k;water.job=null;water.near=undefined;waterBed(k)}
       return}
   }
-  if(near!==water.near){water.near=near;b.hidden=!near;b.disabled=false;b.style.setProperty('--p','0%');
-    if(near)b.textContent=waterFresh(near)?'🌸 Kytky jsou zalité':'💧 Zalít kytky'+(touchUI()?'':' (F)')}
+  const wt=near?waterWait(near):0,lbl=!near?'':wt>0?'🌸 Zalité · znovu za '+fmtWait(wt):'💧 Zalít kytky'+(touchUI()?'':' (F)');
+  if(near!==water.near||b.textContent!==lbl){water.near=near;b.hidden=!near;b.disabled=wt>0;b.style.setProperty('--p','0%');if(near)b.textContent=lbl}
 }
 document.getElementById('waterBtn').onclick=()=>{if(water.near&&!water.job)waterStart(water.near)};
 
@@ -3131,7 +3133,22 @@ function questUi(){
   const txt=a?`🌱 Zahradník · zalito ${a.done}/${a.n} · odměna ${a.xp} XP`:'';
   chip.hidden=line.hidden=!a;chip.textContent=line.textContent=txt;
   if(questNpc){const m=questNpc.getObjectByName('questMark');if(m)m.visible=!a&&questsToday()<QUEST_DAY_MAX}
-  meTag.textContent=a?'TY · 🌱 zahradník':'TY';
+  meTag.textContent=a?'TY · 🌱 zahradník':'TY';questHat();
+}
+function questHatMesh(){
+  const g=new THREE.Group();g.name='questHat';
+  const brim=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.005,12),mat('#f2d06b'));brim.position.y=.12;g.add(brim);
+  const top=new THREE.Mesh(new THREE.CylinderGeometry(.019,.023,.02,10),mat('#f2d06b'));top.position.y=.131;g.add(top);
+  const band=new THREE.Mesh(new THREE.CylinderGeometry(.0235,.0235,.006,10),mat('#e05a8a'));band.position.y=.125;g.add(band);
+  return g;
+}
+function questHat(){
+  const on=!!quest.active;
+  for(const f of [meFig,play&&play.av&&play.av.fig]){
+    if(!f)continue;const h=f.getObjectByName('questHat');
+    if(on&&!h){const hm=questHatMesh();const ar=f.getObjectByName('armR');(ar&&ar.parent||f).add(hm)}
+    else if(!on&&h)h.parent.remove(h);
+  }
 }
 function questOpen(){
   if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Úkoly od zahradnice dostanou jen přihlášení hráči.');return}
@@ -3139,6 +3156,7 @@ function questOpen(){
   const btn=(t,cls,fn)=>{const b=document.createElement('button');b.type='button';if(cls)b.className=cls;b.textContent=t;b.onclick=fn;act.append(b);return b};
   if(quest.active){
     const a=quest.active;say.replaceChildren('Jak to jde? Zatím jsi zalil ',Object.assign(document.createElement('b'),{textContent:`${a.done} z ${a.n}`}),' záhonků. Kytky u domů čekají!');
+    const pr=document.createElement('p');pr.className='inv-who';pr.textContent=`Dnes splněno ${questsToday()}/${QUEST_DAY_MAX} úkolů · po tomhle ještě ${Math.max(0,QUEST_DAY_MAX-questsToday()-1)}×`;say.append(pr);
     btn('Pokračovat','primary',questClose);btn('Vzdát úkol','',()=>{questDrop();toast('Úkol jsi vzdal. Roli zahradníka už nemáš.');questClose()});
   }else if(questsToday()>=QUEST_DAY_MAX){
     say.replaceChildren('Děkuju, dneska jsi mi pomohl už ',Object.assign(document.createElement('b'),{textContent:QUEST_DAY_MAX+'×'}),'. Další úkoly mám zase zítra!');
@@ -3146,6 +3164,7 @@ function questOpen(){
   }else{
     if(!quest.offer)quest.offer=QUESTS[Math.floor(Math.random()*QUESTS.length)];
     const o=quest.offer;say.replaceChildren('Ahoj! Kytky po městě usychají. Zalij ',Object.assign(document.createElement('b'),{textContent:`${o.n}× záhonek`}),' u domů a dám ti ',Object.assign(document.createElement('b'),{textContent:`${o.xp} XP`}),'.');
+    const pr=document.createElement('p');pr.className='inv-who';pr.textContent=`Dnes splněno ${questsToday()}/${QUEST_DAY_MAX} úkolů · můžeš ještě ${QUEST_DAY_MAX-questsToday()}×`;say.append(pr);
     btn('Beru to 🌱','primary',()=>{quest.active={...o,done:0};quest.offer=null;questUi();questClose();toast(`🌱 Jsi zahradník! Zalij ${o.n}× záhonek.`);if(!play&&!playBtn.hidden)startPlay()});
     btn('Teď ne','',questClose);
   }
@@ -3159,6 +3178,7 @@ function questWatered(){
   else{questUi();waterSay(`💧 Zalito ${a.done}/${a.n}`)}
 }
 function updateQuest(){ // in play mode: offer a button when standing next to the gardener
+  if(quest.active&&play&&play.av&&play.av.fig&&!play.av.fig.getObjectByName('questHat'))questHat();
   let near=false;
   if(play&&questNpc&&acct.user)near=questNpc.userData.pos.distanceTo(play.p)<.025;
   if(near!==quest.near){quest.near=near;const b=document.getElementById('questBtn');b.hidden=!near;b.textContent=(quest.active?'🌱 Můj úkol':'🌱 Úkol od zahradnice')+(touchUI()?'':' (F)')}
