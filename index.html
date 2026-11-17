@@ -179,7 +179,7 @@ body.playing .admin-key{display:none}
 .inv-slot .lb{font-size:10px;font-weight:800;color:var(--ink-dim);text-align:center;line-height:1.1}
 .inv-slot.full{border-style:solid;border-color:rgba(255,255,255,.35);background:#262048}
 .inv-slot.full .ic{opacity:1;filter:none;font-size:28px}
-.inv-slot.legend{border-color:#7dff9e;box-shadow:0 0 14px rgba(125,255,158,.35) inset}
+
 .inv-slot.sel{outline:3px solid var(--sun);outline-offset:1px}
 .inv-slot.gap{visibility:hidden;pointer-events:none}
 .coin{display:inline-block;width:22px;height:22px;border-radius:50%;flex:none}
@@ -1349,6 +1349,32 @@ function flyToResident(r,h){
   selected='h'+r.home;const P=PLOTS[r.home];if(P)flyTo(P.v,R+h);
 }
 // Zubatý meč ze záhrobí: forged from the boss's beak, won in the boss draw, deals 2× damage in every monster clicker
+// Item rarity: colour in the inventory, chance an item of that tier shows up in the shop's daily offer (divine never does)
+const RARITY={
+  common:{name:'Základní',color:'#9aa1ad',chance:50},
+  uncommon:{name:'Obyčejný',color:'#3fbf5f',chance:30},
+  rare:{name:'Vzácný',color:'#3a8dff',chance:15},
+  epic:{name:'Epický',color:'#a24bff',chance:5},
+  legend:{name:'Legendární',color:'#ffc300',chance:.1},
+  divine:{name:'Božský',color:'#ffffff',chance:0}
+};
+function makeBasicSword(tier){ // "Obyčejný meč": a plain straight sword; the green tier adds a green gem, green grip wrap and a faint glow
+  const g=new THREE.Group(),green=tier==='uncommon';
+  const steel=mat(green?'#d9e6e0':'#c9ced6'),edge=mat('#eef2f6'),guardM=mat(green?'#5a6b60':'#6d6f78'),grip=mat(green?'#2f8a4a':'#6b4428'),pom=mat(green?'#3fbf5f':'#8a8d96');
+  const blade=new THREE.Mesh(new THREE.BoxGeometry(.012,.11,.0035),steel);blade.position.y=.07;g.add(blade);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(.0085,.022,4),edge);tip.rotation.y=Math.PI/4;tip.scale.z=.35;tip.position.y=.136;g.add(tip);
+  if(!green){const fuller=new THREE.Mesh(new THREE.BoxGeometry(.003,.085,.004),mat('#a9afba'));fuller.position.y=.068;g.add(fuller)}
+  const guard=new THREE.Mesh(new THREE.BoxGeometry(.05,.007,.01),guardM);guard.position.y=.013;g.add(guard);
+  for(const x of [-.025,.025]){const k=new THREE.Mesh(new THREE.SphereGeometry(.0055,8,6),guardM);k.position.set(x,.013,0);g.add(k)}
+  const gr=new THREE.Mesh(new THREE.CylinderGeometry(.0045,.0045,.028,8),grip);gr.position.y=-.004;g.add(gr);
+  if(green)for(let i=0;i<4;i++){const w=new THREE.Mesh(new THREE.TorusGeometry(.005,.0013,4,10),mat('#1f5a32'));w.rotation.x=Math.PI/2;w.position.y=-.014+i*.0065;g.add(w)}
+  const p=new THREE.Mesh(new THREE.SphereGeometry(.0075,10,8),pom);p.position.y=-.021;g.add(p);
+  if(green){
+    const gem=new THREE.Mesh(new THREE.OctahedronGeometry(.0065),new THREE.MeshBasicMaterial({color:'#5dff8a'}));gem.position.set(0,.013,.006);g.add(gem);
+    for(const z of [-.0022,.0022]){const rune=new THREE.Mesh(new THREE.BoxGeometry(.0026,.07,.0006),new THREE.MeshBasicMaterial({color:'#5dff8a'}));rune.position.set(0,.07,z);g.add(rune)} // glowing green fuller
+  }
+  g.scale.setScalar(.85);return g;
+}
 function makeBossSword(){
   const s=new THREE.Group();
   const L=(c,e,ei)=>new THREE.MeshLambertMaterial({color:c,emissive:e||'#000',emissiveIntensity:ei||0,flatShading:true});
@@ -3389,8 +3415,10 @@ const INV_SLOTS=[ // [key, label, empty icon, grid cell 1–12 (3 columns)]
 const INV_BAG=['bag1','bag2','bag3','bag4','bag5'];
 const invBagN=id=>{try{const L=lvlOf(id);return 3+(L>=10?1:0)+(L>=20?1:0)}catch(_){return 3}}; // L10 and L20 each open one more bag slot
 const ITEMS={
-  boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',legend:true,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery.'},
-  herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,desc:'Roste u zalitých kytek: šance 15 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
+  boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',rarity:'rare',dmg:2,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery.'},
+  basic_sword:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'common',dmg:1.2,desc:'Klasický ocelový meč. 1,2× DMG v klikačkách na příšery.'},
+  basic_sword_g:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'uncommon',dmg:1.3,desc:'Klasický meč se zeleným kamenem. 1,3× DMG v klikačkách na příšery.'},
+  herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 15 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
 // money: /money/<nick> = silver coins in total (100 silver = 1 gold); /diamonds/<nick> = diamonds (bought for real money, set by the admin for now)
@@ -3410,6 +3438,7 @@ function invState(id){ // {slot: itemId} with every owned item either worn or in
     const free=!saved&&sl!=='bag'&&!st[sl]?sl:INV_BAG.slice(0,invBagN(id)).find(b=>!st[b]);if(free){st[free]=it;used.add(it)}}
   return st;
 }
+function weaponMult(id){try{const it=ITEMS[invState(id).weapon];return it&&it.dmg||1}catch(_){return 1}}
 function invWears(id,item){try{const st=invState(id);return Object.entries(st).some(([sl,it])=>it===item&&!INV_BAG.includes(sl))}catch(_){return true}} // figures built before the inventory code runs wear what they own
 function invRefreshFigs(id){
   scene.traverse(o=>{if(o.userData&&o.userData.memberId===id){const sw=o.getObjectByName('bossSword');if(sw)sw.visible=invWears(id,'boss_sword')}});
@@ -3426,7 +3455,7 @@ invLoad();
 function invCell(key,label,icon,item,cls){
   const b=document.createElement('button');b.type='button';b.className='inv-slot'+(cls||'');b.dataset.slot=key;
   const it=item&&ITEMS[item];
-  if(it){b.classList.add('full');if(it.legend)b.classList.add('legend');b.setAttribute('aria-label',label+': '+it.name)}
+  if(it){b.classList.add('full');const ry=RARITY[it.rarity||'common'];b.style.borderColor=ry.color;b.style.boxShadow=`0 0 14px ${ry.color}55 inset`;b.setAttribute('aria-label',label+': '+it.name+', '+ry.name)}
   else b.setAttribute('aria-label',label+': prázdné');
   const ic=document.createElement('span');ic.className='ic';ic.textContent=it?it.icon:icon;ic.setAttribute('aria-hidden','true');
   const lb=document.createElement('span');lb.className='lb';lb.textContent=it?(it.stack?it.name.split(' ').pop()+' ×'+herbCount(meId):it.name.split(' ')[0]):label;
@@ -3466,7 +3495,7 @@ async function invClick(key){
   if(INV_BAG.includes(key)){const was=next[it.slot];next[it.slot]=item;if(was)next[key]=was;else delete next[key]}
   else{const free=INV_BAG.slice(0,invBagN(meId)).find(b=>!next[b]);if(!free){det.textContent='Batoh je plný.';return}next[free]=item;delete next[key]}
   const saved=inv.equip[invKey(meId)];inv.equip[invKey(meId)]=next;invRender();invRefreshFigs(meId);
-  det.replaceChildren();const b=document.createElement('b');b.textContent=it.name;det.append(b,' · '+it.desc+(invWears(meId,item)?' Máš ho na sobě.':' Je v batohu.'));
+  det.replaceChildren();const b=document.createElement('b');b.textContent=it.name;const ry=RARITY[it.rarity||'common'],rb=document.createElement('b');rb.textContent=ry.name;rb.style.color=ry.color;det.append(b,' · ',rb,' · '+it.desc+(invWears(meId,item)?' Máš ho na sobě.':' Je v batohu.'));
   if(!await invSave(next)){if(saved)inv.equip[invKey(meId)]=saved;else delete inv.equip[invKey(meId)];invRender();invRefreshFigs(meId);det.textContent='Nepodařilo se uložit. Zkus to znovu.'}
 }
 function openInv(){if(!meId)return;keys.clear();inv.sel=null;document.getElementById('invDetail').textContent='Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.';invRender();document.getElementById('inv').hidden=false;document.getElementById('invClose').focus()}
@@ -3817,7 +3846,7 @@ function bossHit(){
   if(!r||r.left){bossSay('Bossa můžou bouchat jen obyvatelé planety. Dej follow @planetafolloweru.');return}
   if(!bossSt.loaded){bossSay('Boss se ještě probouzí… zkus to za chvíli.');bossLoad();return}
   if(bossDead())return;
-  const dmg=meId===SWORD_OWNER&&invWears(meId,'boss_sword')?2:1; // the sword only hits when it's in your hand, not in the bagbossSt.pending+=dmg;bossSt.lastHit=performance.now();
+  bossSt.frac=(bossSt.frac||0)+weaponMult(meId);const dmg=Math.floor(bossSt.frac);bossSt.frac-=dmg; // the weapon in your hand multiplies each click (1,2× → every 5th click hits for 2)bossSt.pending+=dmg;bossSt.lastHit=performance.now();
   const pop=document.createElement('span');pop.className='boss-pop';pop.textContent='−'+dmg;pop.style.setProperty('--dx',((Math.random()-.5)*90).toFixed(0)+'px');
   bossSword.append(pop);setTimeout(()=>pop.remove(),700);
   bossSword.classList.remove('hit');void bossSword.offsetWidth;bossSword.classList.add('hit');
