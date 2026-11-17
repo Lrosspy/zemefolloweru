@@ -123,6 +123,17 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .label.bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff}
 .admin-key{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:6;width:44px;height:44px;padding:0;border-radius:50%;font-size:19px;line-height:1;display:grid;place-items:center;opacity:.75}
 .admin-key:hover{opacity:1}
+.set-btn{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 66px);z-index:7;width:44px;height:44px;padding:0;border-radius:50%;display:grid;place-items:center;opacity:.75}
+.set-btn:hover,.set-btn[aria-expanded="true"]{opacity:1}
+body.playing .set-btn{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 64px);right:max(16px,env(safe-area-inset-right,0px));z-index:9}
+.set-panel{position:fixed;right:calc(max(16px,env(safe-area-inset-right,0px)) + 54px);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:9;width:min(280px,calc(100% - 32px));box-sizing:border-box;padding:14px 14px 10px;display:flex;flex-direction:column;gap:4px;border-radius:16px}
+.set-panel[hidden]{display:none}
+body.playing .set-panel{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 116px)}
+.set-panel b{font-size:14px;margin-bottom:4px}
+.set-row{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer}
+.set-row input{width:20px;height:20px;accent-color:var(--sun);flex:none;margin:0}
+body.hide-nicks .label:not(.site):not(.me-tag):not(.bubble):not(.boss):not(.gate){display:none!important}
+body.hide-players .label.player{display:none!important}
 @media (max-width:700px){.bar{padding-right:72px}}
 body.playing .admin-key{display:none}
 .inv{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
@@ -237,6 +248,12 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 </div>
 
 <button class="admin-key" id="adminKey" type="button" aria-label="Admin panel">🔑</button>
+<button class="set-btn" id="setBtn" type="button" aria-label="Nastavení" aria-expanded="false" aria-controls="setPanel"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+<div class="set-panel card" id="setPanel" hidden role="group" aria-labelledby="setTitle">
+  <b id="setTitle">Nastavení</b>
+  <label class="set-row"><input type="checkbox" id="setPlayers" checked><span>Ukazovat postavy ostatních hráčů</span></label>
+  <label class="set-row"><input type="checkbox" id="setNicks" checked><span>Ukazovat nicky hráčů</span></label>
+</div>
 <section class="boss-mg" id="bossMg" hidden aria-labelledby="bossTitle">
   <div class="boss-card">
     <header><h2 id="bossTitle">💀 Boss ze záhrobí</h2><button type="button" id="bossClose">Zavřít</button></header>
@@ -3550,6 +3567,20 @@ try{const t=JSON.parse(sessionStorage.getItem('planeta-admin')||'null');if(t&&(t
 const $id=id=>document.getElementById(id);
 function adminShow(){adm.el.hidden=false;const ok=!!adm.token;adm.login.hidden=ok;adm.stats.hidden=!ok;if(ok)adminLoad();else setTimeout(()=>$id('adminEmail').focus(),0)}
 $id('adminKey').onclick=adminShow;
+// ---------- settings (gear next to the key): hide other players' characters / hide player nicks; remembered in this browser ----------
+const setv={players:true,nicks:true};
+try{Object.assign(setv,JSON.parse(localStorage.getItem('planeta-set')||'{}'))}catch(_){}
+function setApply(){
+  playerGroup.visible=setv.players;
+  document.body.classList.toggle('hide-players',!setv.players);document.body.classList.toggle('hide-nicks',!setv.nicks);
+  $id('setPlayers').checked=setv.players;$id('setNicks').checked=setv.nicks;
+  try{localStorage.setItem('planeta-set',JSON.stringify(setv))}catch(_){}
+}
+setApply();
+$id('setPlayers').onchange=e=>{setv.players=e.target.checked;setApply()};
+$id('setNicks').onchange=e=>{setv.nicks=e.target.checked;setApply()};
+$id('setBtn').onclick=()=>{const p=$id('setPanel'),open=p.hidden;p.hidden=!open;$id('setBtn').setAttribute('aria-expanded',String(open))};
+addEventListener('pointerdown',e=>{const p=$id('setPanel');if(!p.hidden&&!p.contains(e.target)&&!$id('setBtn').contains(e.target)){p.hidden=true;$id('setBtn').setAttribute('aria-expanded','false')}},true);
 $id('adminClose').onclick=()=>{adm.el.hidden=true};
 adm.el.addEventListener('click',e=>{if(e.target===adm.el)adm.el.hidden=true});
 adm.el.addEventListener('keydown',e=>{if(e.key==='Escape')adm.el.hidden=true;e.stopPropagation()});
