@@ -235,6 +235,20 @@ body.playing .admin-key{display:none}
 .boss-msg{min-height:18px;font-size:13px;font-weight:800;color:var(--sun);margin:8px 0 0}
 .label.boss{pointer-events:auto;cursor:pointer;font:inherit;font-weight:800;font-size:12px;background:#3a1220;color:#ffe2d6;border-color:#c9573a}
 .admin{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
+.admin-gift{margin-top:16px;padding:14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--panel-line);display:flex;flex-direction:column;gap:10px}
+.admin-gift h3{margin:0;font-size:15px}
+.admin-gift label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-dim)}
+.admin-gift input{font:inherit;font-size:16px;padding:9px 11px;border-radius:10px;border:1px solid var(--panel-line);background:rgba(0,0,0,.35);color:var(--ink)}
+.gift-player{display:flex;gap:14px;align-items:center}
+.gift-player[hidden],.gift-send[hidden]{display:none}
+.gift-player img{width:120px;height:150px;border-radius:12px;background:#1d1838;flex:none}
+.gift-info{display:flex;flex-direction:column;gap:4px;font-size:13px;min-width:0}
+.gift-info b{font-size:16px;color:var(--sun);overflow-wrap:anywhere}
+.gift-ok{color:#7fe0a0;font-weight:800}
+.gift-no{color:#ff9a7a;font-weight:800}
+.gift-send{display:flex;gap:8px;align-items:flex-end}
+.gift-send label{flex:1}
+.gift-send button{min-height:44px}
 .admin-card{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#15122b;border:1px solid var(--panel-line);border-radius:18px;padding:18px 18px 20px;box-sizing:border-box;color:var(--ink)}
 .admin-card header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 .admin-card h2{margin:0;font-family:var(--display);font-weight:400;font-size:20px}
@@ -396,7 +410,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 </section>
 <section class="admin" id="admin" hidden aria-labelledby="adminTitle">
   <div class="admin-card">
-    <header><h2 id="adminTitle">Admin · statistiky</h2><button type="button" id="adminClose">Zavřít</button></header>
+    <header><h2 id="adminTitle">Admin</h2><button type="button" id="adminClose">Zavřít</button></header>
     <form class="admin-form" id="adminLogin">
       <label for="adminEmail">E-mail<input id="adminEmail" type="email" autocomplete="username" required></label>
       <label for="adminPass">Heslo<input id="adminPass" type="password" autocomplete="current-password" required></label>
@@ -417,6 +431,24 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
         <small style="font-size:11px;color:var(--ink-dim)">lidé za posledních 7 dní</small>
       </div>
       <div class="admin-days"><h3>Lidé za den (14 dní)</h3><div class="admin-chart" id="stChart"></div></div>
+      <div class="admin-gift">
+        <h3>💎 Poslat diamanty</h3>
+        <label for="giftNick">Jméno postavy<input id="giftNick" list="giftList" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="@nick hráče"></label>
+        <datalist id="giftList"></datalist>
+        <div class="gift-player" id="giftPlayer" hidden>
+          <img id="giftImg" alt="" width="120" height="150">
+          <div class="gift-info">
+            <b id="giftName"></b>
+            <span id="giftState"></span>
+            <span id="giftHas"></span>
+          </div>
+        </div>
+        <form class="gift-send" id="giftForm" hidden>
+          <label for="giftAmount">Počet diamantů<input id="giftAmount" type="number" min="1" max="100000" step="1" inputmode="numeric" required></label>
+          <button class="primary" type="submit">Poslat 💎</button>
+        </form>
+        <p class="admin-msg" id="giftMsg" role="status"></p>
+      </div>
       <div class="admin-foot"><span id="stUpdated"></span><span style="display:flex;gap:8px"><button type="button" id="adminRefresh">Obnovit</button><button type="button" id="adminOut">Odhlásit</button></span></div>
     </div>
   </div>
@@ -4020,6 +4052,47 @@ adm.login.addEventListener('submit',async e=>{
 });
 $id('adminOut').onclick=()=>{try{if(window.firebase&&firebase.apps.length)firebase.auth().signOut()}catch(_){}adm.token=null;adm.refresh=null;try{sessionStorage.removeItem('planeta-admin')}catch(_){}adminShow()};
 $id('adminRefresh').onclick=()=>adminLoad();
+// ---------- admin: send diamonds to a player who signed in with Google ----------
+const gift={id:null,key:null,has:0};
+function giftList(){const dl=$id('giftList');if(dl.childElementCount)return;for(const r of residents.filter(x=>!x.left)){const o=document.createElement('option');o.value=r.name;dl.append(o)}}
+$id('giftNick').addEventListener('focus',giftList);
+function giftPortrait(r){
+  try{const cv=document.createElement('canvas');cv.width=240;cv.height=300;const rr=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true,preserveDrawingBuffer:true});
+    const sc=new THREE.Scene();sc.add(new THREE.HemisphereLight('#ffffff','#556',1));const dl=new THREE.DirectionalLight('#fff',.7);dl.position.set(1,2,2);sc.add(dl);
+    const f=makeAvatar(r).fig;sc.add(f);const cam=new THREE.PerspectiveCamera(30,.8,.01,10);cam.position.set(0,.09,.42);cam.lookAt(0,.07,0);rr.render(sc,cam);
+    const url=cv.toDataURL('image/png');rr.dispose();return url}catch(_){return ''}
+}
+let giftT=0;
+$id('giftNick').addEventListener('input',()=>{clearTimeout(giftT);giftT=setTimeout(giftLookup,350)});
+async function giftLookup(){
+  const raw=$id('giftNick').value.trim().replace(/^@+/,''),id=nickId(raw),msg=$id('giftMsg');
+  $id('giftPlayer').hidden=true;$id('giftForm').hidden=true;msg.textContent='';gift.id=null;
+  if(!raw)return;
+  const r=residents.find(x=>x.id===id);
+  if(!r){msg.textContent='Takový obyvatel na planetě není.';return}
+  const tok=await adminToken();if(!tok){msg.textContent='Přihlášení vypršelo, přihlas se znovu.';return}
+  const key=liveKey(id);
+  try{
+    const [uid,d]=await Promise.all([fetch(LIVE_DB+'/nicks/'+key+'.json?auth='+encodeURIComponent(tok)).then(x=>x.json()),fetch(LIVE_DB+'/diamonds/'+key+'.json').then(x=>x.json())]);
+    $id('giftName').textContent=r.name+' · L'+lvlOf(id);$id('giftImg').src=giftPortrait(r);$id('giftImg').alt='Postava '+r.name;
+    gift.has=Math.max(0,Math.floor(+d||0));$id('giftHas').textContent='Má teď '+gift.has+' 💎';
+    const st=$id('giftState');$id('giftPlayer').hidden=false;
+    if(uid){st.className='gift-ok';st.textContent='✓ Přihlášený přes Google';gift.id=id;gift.key=key;$id('giftForm').hidden=false;$id('giftAmount').focus()}
+    else{st.className='gift-no';st.textContent='Zatím se nepřihlásil přes Google';msg.textContent='Diamanty jde poslat jen hráčům, kteří se přihlásili.'}
+  }catch(_){msg.textContent='Nepodařilo se načíst hráče.'}
+}
+$id('giftForm').addEventListener('submit',async e=>{
+  e.preventDefault();const msg=$id('giftMsg'),n=Math.floor(+$id('giftAmount').value||0);
+  if(!gift.id||n<1){msg.textContent='Zadej počet diamantů.';return}
+  const tok=await adminToken();if(!tok){msg.textContent='Přihlášení vypršelo, přihlas se znovu.';return}
+  try{
+    const cur=Math.max(0,Math.floor(+(await fetch(LIVE_DB+'/diamonds/'+gift.key+'.json').then(x=>x.json()))||0));
+    const r=await fetch(LIVE_DB+'/diamonds/'+gift.key+'.json?auth='+encodeURIComponent(tok),{method:'PUT',body:JSON.stringify(cur+n)});
+    if(!r.ok){msg.textContent='Nepovedlo se. Zkontroluj pravidla ve Firebase.';return}
+    gift.has=cur+n;$id('giftHas').textContent='Má teď '+gift.has+' 💎';msg.textContent=`Posláno +${n} 💎 hráči @${gift.id}.`;$id('giftAmount').value='';
+    if(typeof inv!=='undefined'){inv.dia=inv.dia||{};inv.dia[gift.key]=gift.has}
+  }catch(_){msg.textContent='Nepodařilo se spojit se serverem.'}
+});
 // Google login uses the official Firebase Auth library, loaded only when needed
 const FB_SDK='https://www.gstatic.com/firebasejs/10.12.2/';
 let fbReady=null;
