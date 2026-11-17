@@ -3165,7 +3165,7 @@ const INV_BAG=['bag1','bag2','bag3','bag4','bag5'];
 const invBagN=id=>{try{const L=lvlOf(id);return 3+(L>=10?1:0)+(L>=20?1:0)}catch(_){return 3}}; // L10 and L20 each open one more bag slot
 const ITEMS={
   boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',legend:true,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery.'},
-  herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,desc:'Roste u zalitých kytek (šance 15 %). V lékárně z ní budou léky.'}
+  herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,desc:'Roste u zalitých kytek: šance 15 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
 const herbCount=id=>+((inv.herbs[liveKey(id)]||{}).c)||0;
@@ -3209,8 +3209,9 @@ function invCell(key,label,icon,item,cls){
 async function herbRoll(){
   if(Math.random()>=.15||!acct.user||!meId)return;
   const k=liveKey(meId);
-  try{const cur=await acctGet('/herbs/'+k),c=(+(cur&&cur.c)||0)+1;
-    if(await acctPut('/herbs/'+k,{c,t:{'.sv':'timestamp'}})){inv.herbs[k]={c,t:Date.now()};toast('🌿 Našel jsi léčivou bylinu! Je v inventáři ('+c+'×).');if(!document.getElementById('inv').hidden)invRender()}
+  const got=Math.random()<.5?1:2; // a find is always 1–2 herbs
+  try{const cur=await acctGet('/herbs/'+k),c=(+(cur&&cur.c)||0)+got;
+    if(await acctPut('/herbs/'+k,{c,t:{'.sv':'timestamp'}})){inv.herbs[k]={c,t:Date.now()};toast('🌿 Našel jsi '+(got===2?'2 léčivé byliny':'léčivou bylinu')+'! V inventáři máš '+c+'×.');if(!document.getElementById('inv').hidden)invRender()}
   }catch(_){}
 }
 function invRender(){
