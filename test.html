@@ -122,9 +122,11 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .water-btn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 150px);padding:12px 20px;border-radius:999px;background:#3a9be0;color:#fff;border:2px solid rgba(255,255,255,.6);font-weight:900;font-size:16px;pointer-events:auto;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .water-btn[hidden]{display:none}
 .quest-btn{background:#3f9a6a}
+.hp-chip{background:#4a1520!important;color:#ffd6dc}
 .quest-chip{background:#1f5a3a!important;color:#d8ffe6}
 .quest-line{margin:6px 0 0;padding:6px 8px;border-radius:10px;background:rgba(63,154,106,.2);color:#bff5d3;font-weight:800;font-size:12px}
 .quest-line[hidden]{display:none}
+.hp-line{margin:6px 0 0;font-size:12px;font-weight:800;color:#ffb3bf}
 .quest-say{margin:6px 0 14px;font-size:15px;line-height:1.5}
 .quest-say b{color:var(--sun)}
 .quest-actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -206,6 +208,12 @@ body.playing .admin-key{display:none}
 .shop-purse span{display:inline-flex;align-items:center;gap:6px}
 .shop-bag{grid-template-columns:repeat(5,minmax(0,1fr))}
 .shop-btn{background:#c98f45}
+.lab-btn{background:#2a9a6a}
+.lab-recipe{display:flex;align-items:center;justify-content:center;gap:16px;margin:10px 0;padding:14px;border-radius:14px;background:rgba(47,179,106,.12);border:1px solid rgba(47,179,106,.4)}
+.lab-recipe span{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:30px}
+.lab-recipe small{font-size:12px;color:var(--ink-dim);font-weight:800}
+.lab-arrow{font-size:26px;color:var(--sun)}
+#labBrew{width:100%;min-height:44px}
 .inv-money{border-radius:14px;background:linear-gradient(#3a2a10,#24190a);border:1.5px solid #ffc300;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:2px}
 .inv-money .inv-coin{font-size:28px;line-height:1}
 .inv-money b{font-size:20px;color:#ffd23a}
@@ -355,6 +363,15 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     <h3 class="inv-sub">V batohu</h3>
     <div class="inv-bag" id="invBag" aria-label="Batoh"></div>
     <p class="inv-detail" id="invDetail" role="status" aria-live="polite">Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.</p>
+  </div>
+</section>
+<section class="inv" id="labBox" hidden aria-labelledby="labTitle">
+  <div class="inv-card">
+    <header><h2 id="labTitle">⚗️ Lékárnický stůl</h2><button type="button" id="labClose">Zavřít</button></header>
+    <div class="lab-recipe"><span class="lab-in">🌿🌿🌿<small>3× léčivá bylina</small></span><span class="lab-arrow" aria-hidden="true">→</span><span class="lab-out">💊<small>Antibiotika · hodnota 1 zlatý</small></span></div>
+    <p class="inv-who" id="labHave"></p>
+    <button class="primary" type="button" id="labBrew">Uvařit antibiotika (1 min)</button>
+    <p class="inv-detail" id="labNote"></p>
   </div>
 </section>
 <section class="inv" id="shopBox" hidden aria-labelledby="shopTitle">
@@ -510,6 +527,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <div class="me-top"><b id="meName"></b><button class="link" type="button" id="meChange">odhlásit</button></div>
   <div id="meInfo" class="me-info"></div>
   <p class="quest-line" id="meQuest" hidden></p>
+  <p class="hp-line" id="meHp">❤️ Životy 100/100</p>
   <button class="lvl" id="meLvl" type="button" hidden aria-label="Level a žebříček"><span class="lvl-top"><b id="meLvlN">Level 1</b><span id="meLvlXp">0/100 XP</span></span><span class="lvl-bar"><i id="meLvlFill"></i></span></button>
 </aside>
 
@@ -525,7 +543,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 </div>
 
 <div class="play-ui" id="playUi" hidden>
-  <div class="play-top"><span class="card live-chip" id="liveChip">Hraješ</span><span class="card live-chip quest-chip" id="questChip" hidden></span><button id="playExit" type="button">Konec hry</button></div>
+  <div class="play-top"><span class="card live-chip" id="liveChip">Hraješ</span><span class="card live-chip hp-chip" id="hpChip">❤️ 100/100</span><span class="card live-chip quest-chip" id="questChip" hidden></span><button id="playExit" type="button">Konec hry</button></div>
   <div class="play-help" id="playHelp"></div>
   <div class="abduct-flash" id="abductFlash" aria-hidden="true"></div>
   <div class="joy" id="joy" hidden aria-label="Joystick pro chůzi"><i id="joyKnob"></i></div>
@@ -534,6 +552,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <button class="water-btn" id="waterBtn" type="button" hidden>💧 Zalít kytky</button>
   <button class="water-btn quest-btn" id="questBtn" type="button" hidden>🌱 Mluvit se zahradnicí</button>
   <button class="water-btn shop-btn" id="shopBtn" type="button" hidden>🛒 Otevřít obchod</button>
+  <button class="water-btn lab-btn" id="labBtn" type="button" hidden>⚗️ Lékárnický stůl</button>
 </div>
 
 <div class="chat" id="chat" aria-label="Chat planety">
@@ -2133,8 +2152,21 @@ function buildPharmacy(owner){ // "Lékárna planety": white shop, glowing green
   const bench=new THREE.Mesh(new THREE.BoxGeometry(.12,.02,.04),mat('#8a5a3a'));bench.position.set(-.27,.05,.2);b.add(bench);
   const pl=new THREE.Mesh(new THREE.CylinderGeometry(.03,.025,.05,10),teal);pl.position.set(.3,.025,.05);b.add(pl);
   const bush=new THREE.Mesh(new THREE.SphereGeometry(.04,8,6),green);bush.position.set(.3,.08,.05);b.add(bush);
+  // lab table where anyone can brew medicine from herbs
+  const lab=new THREE.Group();lab.position.set(.3,0,.24);lab.name='labTable';b.add(lab);
+  const top=new THREE.Mesh(new THREE.BoxGeometry(.13,.01,.07),mat('#8a5a3a'));top.position.y=.06;lab.add(top);
+  for(const [x,z] of [[-.055,-.025],[.055,-.025],[-.055,.025],[.055,.025]]){const l=new THREE.Mesh(new THREE.BoxGeometry(.008,.06,.008),mat('#6a4428'));l.position.set(x,.03,z);lab.add(l)}
+  const pot=new THREE.Mesh(new THREE.CylinderGeometry(.022,.017,.026,14),dark);pot.position.set(-.025,.078,0);lab.add(pot);
+  const brew=new THREE.Mesh(new THREE.CircleGeometry(.02,14),new THREE.MeshBasicMaterial({color:'#5dff8a'}));brew.rotation.x=-Math.PI/2;brew.position.set(-.025,.09,0);lab.add(brew);
+  const flask=new THREE.Mesh(new THREE.SphereGeometry(.012,10,8),new THREE.MeshLambertMaterial({color:'#bfe9ff',transparent:true,opacity:.7}));flask.position.set(.03,.076,.008);lab.add(flask);
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.018,6),flask.material);neck.position.set(.03,.093,.008);lab.add(neck);
+  const mortar=new THREE.Mesh(new THREE.CylinderGeometry(.012,.009,.012,10),mat('#cfc6b8'));mortar.position.set(.04,.071,-.02);lab.add(mortar);
+  const bubbles=new THREE.Group();lab.add(bubbles);const bm=new THREE.MeshBasicMaterial({color:'#9dffb8',transparent:true,opacity:.7,depthWrite:false});
+  for(let i=0;i<10;i++){const q=new THREE.Mesh(new THREE.SphereGeometry(.004,6,4),bm);q.userData.ph=i/10;q.userData.x=((i*7)%5-2)*.004;bubbles.add(q)}
+  bubbles.visible=false;g.userData.lab={lab,bubbles,brew};
   ownerFig(g,owner,'#2fb36a','cap',.1,.4,0);
-  g.userData.anim=T=>{pill.rotation.y=T*.8;pill.position.y=.37+Math.sin(T*1.6)*.012;cross.rotation.y=Math.sin(T*.9)*.4;if(alive)cm.color.setHSL(.40,.9,.5+Math.sin(T*3)*.08)};
+  g.userData.anim=T=>{const L=g.userData.lab;if(L.bubbles.visible){L.bubbles.children.forEach(q=>{const u=(T*.7+q.userData.ph)%1;q.position.set(-.025+q.userData.x+Math.sin(T*3+q.userData.ph*9)*.004,.09+u*.12,Math.cos(q.userData.ph*7)*.006);q.scale.setScalar(1+u*2.5)});bm.opacity=.75;L.brew.material.color.setHSL(.38,1,.55+Math.sin(T*8)*.12)}else L.brew.material.color.set('#5dff8a');
+  pill.rotation.y=T*.8;pill.position.y=.37+Math.sin(T*1.6)*.012;cross.rotation.y=Math.sin(T*.9)*.4;if(alive)cm.color.setHSL(.40,.9,.5+Math.sin(T*3)*.08)};
   g.userData.height=.6*S;return g;
 }
 
@@ -2818,7 +2850,7 @@ function loop(now){
   }
   animateFountain(now);
   updateWalker(now);
-  updatePlay(now);updateWater(now);updateQuest();updateShop();
+  updatePlay(now);updateWater(now);updateQuest();updateShop();updateLab();
   updateRemotes(now);
   updateWanderers(now);
   updateFox(now);
@@ -3029,7 +3061,7 @@ async function acctFetch(path,opt){
 }
 async function acctGet(path){const r=await acctFetch(path);if(!r.ok)throw new Error(r.status);return r.json()}
 function acctPut(path,val){return acctFetch(path,{method:'PUT',body:JSON.stringify(val)}).then(r=>r.ok)}
-function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true);setTimeout(()=>{try{xpDailyLogin()}catch(_){}},1500)}
+function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true);setTimeout(()=>{try{xpDailyLogin()}catch(_){}try{launchGift()}catch(_){}},1500)}
 async function acctLogout(msg){
   try{questDrop()}catch(_){}
   clearTimeout(acct.timer);try{localStorage.removeItem(LOGIN_AT)}catch(_){}
@@ -3375,6 +3407,72 @@ function updateQuest(){ // in play mode: offer a button when standing next to th
 }
 document.getElementById('questBtn').onclick=questOpen;
 
+// ---------- health: every player starts each visit with 100 HP (damage comes later); medicine heals what's missing ----------
+const hp={cur:100,max:100};
+function hpUi(){const t=`❤️ ${hp.cur}/${hp.max}`;document.getElementById('hpChip').textContent=t;document.getElementById('meHp').textContent='❤️ Životy '+hp.cur+'/'+hp.max}
+async function medUse(){
+  const det=document.getElementById('invDetail');
+  if(hp.cur>=hp.max){det.textContent='💊 Antibiotika ×'+medCount(meId)+' · máš plné zdraví, teď je nepotřebuješ.';return}
+  const k=liveKey(meId),c=medCount(meId);if(c<1)return;
+  if(await acctPut('/meds/'+k,{c:c-1,t:{'.sv':'timestamp'}})){inv.meds[k]={c:c-1,t:Date.now()};const healed=hp.max-hp.cur;hp.cur=hp.max;hpUi();invRender();det.textContent=`💊 Vyléčeno +${healed} HP. Máš zase ${hp.max}/${hp.max}.`}
+  else det.textContent='Nepodařilo se použít lék. Zkus to znovu.';
+}
+hpUi();
+
+// ---------- the pharmacy's lab table: 3 herbs → 1 antibiotics, brewing takes a minute and you have to stay by the table ----------
+const MED_HERBS=3,MED_TIME=60000;
+const lab={near:false,job:null};
+function labGroup(){const g=siteGroup.children.find(c=>c.userData.site==='pharmacy');return g&&g.userData.lab?g:null}
+function labPos(){const g=labGroup();if(!g)return null;const w=new THREE.Vector3();g.userData.lab.lab.getWorldPosition(w);return w.normalize()}
+function labOpen(){
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Léky můžou vařit jen přihlášení hráči.');return}
+  const h=herbCount(meId),box=document.getElementById('labBox');
+  document.getElementById('labHave').textContent=`Máš ${h}× 🌿 léčivou bylinu · ${medCount(meId)}× 💊 antibiotika`;
+  const b=document.getElementById('labBrew');b.disabled=h<MED_HERBS||!!lab.job;
+  document.getElementById('labNote').textContent=h<MED_HERBS?`Potřebuješ aspoň ${MED_HERBS} byliny. Najdeš je při zalévání kytek.`:'Vaření trvá 1 minutu a musíš u stolu zůstat. Když odejdeš, byliny ti zůstanou a nic se neuvaří.';
+  keys.clear();box.hidden=false;document.getElementById('labClose').focus();
+}
+function labStart(){
+  if(herbCount(meId)<MED_HERBS||lab.job)return;
+  document.getElementById('labBox').hidden=true;
+  lab.job={t0:performance.now()};const g=labGroup();if(g)g.userData.lab.bubbles.visible=true;
+  toast('⚗️ Vaříš antibiotika. Zůstaň u stolu 1 minutu.');
+}
+function labStop(msg){lab.job=null;const g=labGroup();if(g)g.userData.lab.bubbles.visible=false;lab.near=undefined;if(msg)waterSay(msg)}
+async function labFinish(){
+  const k=liveKey(meId),h=herbCount(meId),m=medCount(meId);
+  const tok=await acct.user.getIdToken();
+  const body={};body['herbs/'+k]={c:h-MED_HERBS,t:{'.sv':'timestamp'}};body['meds/'+k]={c:m+1,t:{'.sv':'timestamp'}};
+  try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});
+    if(r.ok){inv.herbs[k]={c:h-MED_HERBS,t:Date.now()};inv.meds[k]={c:m+1,t:Date.now()};labStop();toast('💊 Antibiotika jsou hotová! Najdeš je v inventáři.');return}}catch(_){}
+  labStop('Vaření se nepovedlo uložit. Byliny ti zůstaly.');
+}
+function updateLab(){
+  const b=document.getElementById('labBtn'),pos=play&&acct.user?labPos():null,near=!!(pos&&pos.distanceTo(play.p)<.025);
+  if(lab.job){
+    if(!near){labStop('Odešel jsi od stolu, vaření se přerušilo. Byliny ti zůstaly.');b.hidden=true;return}
+    const el=performance.now()-lab.job.t0,left=Math.max(0,Math.ceil((MED_TIME-el)/1000));
+    b.hidden=false;b.disabled=true;b.textContent='⚗️ Vaří se… '+left+' s';b.style.setProperty('--p',Math.min(100,el/MED_TIME*100)+'%');
+    if(el>=MED_TIME){lab.job.done=true;const j=lab.job;lab.job={t0:-1e12,saving:true};if(!j.saving)labFinish()}
+    return;
+  }
+  if(near!==lab.near){lab.near=near;b.hidden=!near;b.disabled=false;b.style.setProperty('--p','0%');b.textContent='⚗️ Lékárnický stůl'+(touchUI()?'':' (F)')}
+}
+document.getElementById('labBtn').onclick=()=>{if(lab.near&&!lab.job)labOpen()};
+document.getElementById('labBrew').onclick=labStart;
+document.getElementById('labClose').onclick=()=>{document.getElementById('labBox').hidden=true};
+document.getElementById('labBox').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('labBox').hidden=true;e.stopPropagation()});
+document.getElementById('labBox').addEventListener('click',e=>{if(e.target.id==='labBox')e.target.hidden=true});
+
+// ---------- launch gift: everyone who signs in on 18. 11. 2026 between 18:00 and midnight gets the green Obyčejný meč ----------
+const GIFT_FROM=1795021200000,GIFT_TO=1795042800000;
+async function launchGift(){
+  if(!meId||!acct.user)return;const now=Date.now()+(typeof water!=='undefined'?water.skew:0);
+  if(now<GIFT_FROM||now>=GIFT_TO)return;
+  const k=liveKey(meId);if(((inv.gifts||{})[k]||{}).launch)return;
+  try{if(await acctPut('/gifts/'+k+'/launch',{'.sv':'timestamp'})){inv.gifts=inv.gifts||{};inv.gifts[k]={launch:Date.now()};toast('🎁 Dárek k updatu: Obyčejný meč (zelený, 1,3× DMG)! Najdeš ho v inventáři.')}}catch(_){}
+}
+
 // ---------- the shop: only reachable on foot; 3 daily offers (coming soon), a golden "own plot" offer, and your inventory to sell from ----------
 const shop={near:false};
 function shopDoor(){const S=SITES.shop;return slerpDir(S.dir,START,.07/S.dir.angleTo(START))}
@@ -3419,17 +3517,21 @@ const ITEMS={
   boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',rarity:'rare',dmg:2,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery.'},
   basic_sword:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'common',dmg:1.2,desc:'Klasický ocelový meč. 1,2× DMG v klikačkách na příšery.'},
   basic_sword_g:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'uncommon',dmg:1.3,desc:'Klasický meč se zeleným kamenem. 1,3× DMG v klikačkách na příšery.'},
+  meds:{name:'Antibiotika',slot:'bag',icon:'💊',stack:true,rarity:'uncommon',use:'heal',desc:'Uvařená v lékárně ze 3 léčivých bylin. Vyléčí chybějící životy. Hodnota 1 zlatý.'},
   herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 15 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
 // money: /money/<nick> = silver coins in total (100 silver = 1 gold); /diamonds/<nick> = diamonds (bought for real money, set by the admin for now)
 const wallet=id=>{const k=liveKey(id||''),s=Math.max(0,Math.floor(+inv.money[k]||0));return {gold:Math.floor(s/100),silver:s%100,dia:Math.max(0,Math.floor(+((inv.dia||{})[k])||0))}};
+const medCount=id=>+((inv.meds||{})[liveKey(id||'')]||{}).c||0;
 const herbCount=id=>+((inv.herbs[liveKey(id)]||{}).c)||0;
 const invKey=id=>liveKey(id);
 function invOwned(id){
   const own=Object.keys(inv.items[invKey(id)]||{}).filter(k=>ITEMS[k]);
   if(SWORD_OWNER&&id===SWORD_OWNER&&!own.includes('boss_sword'))own.push('boss_sword');
   if(herbCount(id)>0&&!own.includes('herb'))own.push('herb');
+  if(medCount(id)>0&&!own.includes('meds'))own.push('meds');
+  if(((inv.gifts||{})[liveKey(id)]||{}).launch&&!own.includes('basic_sword_g'))own.push('basic_sword_g');
   return own;
 }
 function invState(id){ // {slot: itemId} with every owned item either worn or in the bag
@@ -3447,8 +3549,8 @@ function invRefreshFigs(id){
 }
 async function invLoad(){
   try{
-    const [it,eq,mo,hb,di]=await Promise.all(['items','equip','money','herbs','diamonds'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
-    inv.items=it||{};inv.equip=eq||{};inv.money=mo||{};inv.herbs=hb||{};inv.dia=di||{};inv.loaded=true;
+    const [it,eq,mo,hb,di,md,gf]=await Promise.all(['items','equip','money','herbs','diamonds','meds','gifts'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
+    inv.items=it||{};inv.equip=eq||{};inv.money=mo||{};inv.herbs=hb||{};inv.dia=di||{};inv.meds=md||{};inv.gifts=gf||{};inv.loaded=true;
     if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);
   }catch(_){}
 }
@@ -3459,7 +3561,7 @@ function invCell(key,label,icon,item,cls){
   if(it){b.classList.add('full');const ry=RARITY[it.rarity||'common'];b.style.borderColor=ry.color;b.style.boxShadow=`0 0 14px ${ry.color}55 inset`;b.setAttribute('aria-label',label+': '+it.name+', '+ry.name)}
   else b.setAttribute('aria-label',label+': prázdné');
   const ic=document.createElement('span');ic.className='ic';ic.textContent=it?it.icon:icon;ic.setAttribute('aria-hidden','true');
-  const lb=document.createElement('span');lb.className='lb';lb.textContent=it?(it.stack?it.name.split(' ').pop()+' ×'+herbCount(meId):it.name.split(' ')[0]):label;
+  const lb=document.createElement('span');lb.className='lb';lb.textContent=it?(it.stack?it.name.split(' ').pop()+' ×'+(item==='meds'?medCount(meId):herbCount(meId)):it.name.split(' ')[0]):label;
   b.append(ic,lb);if(inv.sel===key)b.classList.add('sel');
   b.onclick=()=>invClick(key);return b;
 }
@@ -3492,7 +3594,7 @@ async function invClick(key){
   const st=invState(meId),item=st[key],det=document.getElementById('invDetail');
   if(!item){const lbl=(INV_SLOTS.find(x=>x[0]===key)||[0,'Slot v batohu'])[1];det.textContent=INV_BAG.includes(key)?'Volný slot v batohu.':`${lbl}: prázdné. Věc sem dáš klepnutím na ni v batohu.`;return}
   const it=ITEMS[item],next={...st};
-  if(it.slot==='bag'){det.replaceChildren();const bb=document.createElement('b');bb.textContent=it.name+(it.stack?' ×'+herbCount(meId):'');det.append(bb,' · '+it.desc);return}
+  if(it.slot==='bag'){if(it.use==='heal'){medUse();return}det.replaceChildren();const bb=document.createElement('b');bb.textContent=it.name+(it.stack?' ×'+herbCount(meId):'');det.append(bb,' · '+it.desc);return}
   if(INV_BAG.includes(key)){const was=next[it.slot];next[it.slot]=item;if(was)next[key]=was;else delete next[key]}
   else{const free=INV_BAG.slice(0,invBagN(meId)).find(b=>!next[b]);if(!free){det.textContent='Batoh je plný.';return}next[free]=item;delete next[key]}
   const saved=inv.equip[invKey(meId)];inv.equip[invKey(meId)]=next;invRender();invRefreshFigs(meId);
@@ -3743,7 +3845,7 @@ addEventListener('keydown',e=>{
   if(e.target&&e.target.closest&&e.target.closest('input,textarea,select'))return;
   const move=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code);
   if(!play){ // pressing W A S D starts the game when you have a character
-    if(move&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&welcome.hidden&&sheet.hidden&&document.getElementById('inv').hidden&&document.getElementById('shopBox').hidden&&!playBtn.hidden)startPlay();
+    if(move&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&welcome.hidden&&sheet.hidden&&document.getElementById('inv').hidden&&document.getElementById('shopBox').hidden&&document.getElementById('labBox').hidden&&!playBtn.hidden)startPlay();
     if(!play)return;
   }
   if(e.code==='Escape'){stopPlay();return}
@@ -3751,6 +3853,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyF'&&!e.repeat&&water.near&&!water.job){waterStart(water.near);return}
   if(e.code==='KeyF'&&!e.repeat&&quest.near){questOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&shop.near){shopOpen();return}
+  if(e.code==='KeyF'&&!e.repeat&&lab.near&&!lab.job){labOpen();return}
   keys.add(e.code);
   if(move||e.code==='Space')e.preventDefault();
 });
