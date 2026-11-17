@@ -3046,7 +3046,7 @@ async function waterBed(k){
   try{
     const ok=await acctPut('/water/'+k,{t:{'.sv':'timestamp'},n:meId});
     if(!ok){await waterLoad();waterSay('Tyhle kytky už někdo zalil. Zkus jiné.');return}
-    water.mine++;const qd=!!quest.active;questWatered();
+    water.mine++;const qd=!!quest.active;questWatered();herbRoll();
     acctFetch('/waterings/'+liveKey(meId),{method:'PUT',body:JSON.stringify({'.sv':{increment:1}})}).catch(()=>{});
     if(!qd)waterSay('💧 Zalito! Kytky jsou zase svěží. Za XP si vezmi úkol od zahradnice v Zahradnictví.');
   }catch(_){waterSay('Nepodařilo se spojit se serverem.')}
@@ -3164,20 +3164,23 @@ const INV_SLOTS=[ // [key, label, empty icon, grid cell 1–12 (3 columns)]
 const INV_BAG=['bag1','bag2','bag3','bag4','bag5'];
 const invBagN=id=>{try{const L=lvlOf(id);return 3+(L>=10?1:0)+(L>=20?1:0)}catch(_){return 3}}; // L10 and L20 each open one more bag slot
 const ITEMS={
-  boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',legend:true,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery.'}
+  boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',legend:true,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery.'},
+  herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,desc:'Roste u zalitých kytek (šance 15 %). V lékárně z ní budou léky.'}
 };
-const inv={items:{},equip:{},money:{},loaded:false,sel:null};
+const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
+const herbCount=id=>+((inv.herbs[liveKey(id)]||{}).c)||0;
 const invKey=id=>liveKey(id);
 function invOwned(id){
   const own=Object.keys(inv.items[invKey(id)]||{}).filter(k=>ITEMS[k]);
   if(SWORD_OWNER&&id===SWORD_OWNER&&!own.includes('boss_sword'))own.push('boss_sword');
+  if(herbCount(id)>0&&!own.includes('herb'))own.push('herb');
   return own;
 }
 function invState(id){ // {slot: itemId} with every owned item either worn or in the bag
   const own=invOwned(id),saved=inv.equip[invKey(id)],st={},used=new Set();
   if(saved)for(const [sl,it] of Object.entries(saved))if(own.includes(it)&&!used.has(it)&&(INV_BAG.includes(sl)||ITEMS[it].slot===sl)){st[sl]=it;used.add(it)}
   for(const it of own){if(used.has(it))continue;const sl=ITEMS[it].slot;
-    const free=!saved&&!st[sl]?sl:INV_BAG.slice(0,invBagN(id)).find(b=>!st[b]);if(free){st[free]=it;used.add(it)}}
+    const free=!saved&&sl!=='bag'&&!st[sl]?sl:INV_BAG.slice(0,invBagN(id)).find(b=>!st[b]);if(free){st[free]=it;used.add(it)}}
   return st;
 }
 function invWears(id,item){try{const st=invState(id);return Object.entries(st).some(([sl,it])=>it===item&&!INV_BAG.includes(sl))}catch(_){return true}} // figures built before the inventory code runs wear what they own
@@ -3187,8 +3190,8 @@ function invRefreshFigs(id){
 }
 async function invLoad(){
   try{
-    const [it,eq,mo]=await Promise.all(['items','equip','money'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
-    inv.items=it||{};inv.equip=eq||{};inv.money=mo||{};inv.loaded=true;
+    const [it,eq,mo,hb]=await Promise.all(['items','equip','money','herbs'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
+    inv.items=it||{};inv.equip=eq||{};inv.money=mo||{};inv.herbs=hb||{};inv.loaded=true;
     if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);
   }catch(_){}
 }
@@ -3199,9 +3202,16 @@ function invCell(key,label,icon,item,cls){
   if(it){b.classList.add('full');if(it.legend)b.classList.add('legend');b.setAttribute('aria-label',label+': '+it.name)}
   else b.setAttribute('aria-label',label+': prázdné');
   const ic=document.createElement('span');ic.className='ic';ic.textContent=it?it.icon:icon;ic.setAttribute('aria-hidden','true');
-  const lb=document.createElement('span');lb.className='lb';lb.textContent=it?it.name.split(' ')[0]:label;
+  const lb=document.createElement('span');lb.className='lb';lb.textContent=it?(it.stack?it.name.split(' ').pop()+' ×'+herbCount(meId):it.name.split(' ')[0]):label;
   b.append(ic,lb);if(inv.sel===key)b.classList.add('sel');
   b.onclick=()=>invClick(key);return b;
+}
+async function herbRoll(){
+  if(Math.random()>=.15||!acct.user||!meId)return;
+  const k=liveKey(meId);
+  try{const cur=await acctGet('/herbs/'+k),c=(+(cur&&cur.c)||0)+1;
+    if(await acctPut('/herbs/'+k,{c,t:{'.sv':'timestamp'}})){inv.herbs[k]={c,t:Date.now()};toast('🌿 Našel jsi léčivou bylinu! Je v inventáři ('+c+'×).');if(!document.getElementById('inv').hidden)invRender()}
+  }catch(_){}
 }
 function invRender(){
   const st=invState(meId),doll=document.getElementById('invDoll'),bag=document.getElementById('invBag');
@@ -3224,6 +3234,7 @@ async function invClick(key){
   const st=invState(meId),item=st[key],det=document.getElementById('invDetail');
   if(!item){const lbl=(INV_SLOTS.find(x=>x[0]===key)||[0,'Slot v batohu'])[1];det.textContent=INV_BAG.includes(key)?'Volný slot v batohu.':`${lbl}: prázdné. Věc sem dáš klepnutím na ni v batohu.`;return}
   const it=ITEMS[item],next={...st};
+  if(it.slot==='bag'){det.replaceChildren();const bb=document.createElement('b');bb.textContent=it.name+(it.stack?' ×'+herbCount(meId):'');det.append(bb,' · '+it.desc);return}
   if(INV_BAG.includes(key)){const was=next[it.slot];next[it.slot]=item;if(was)next[key]=was;else delete next[key]}
   else{const free=INV_BAG.slice(0,invBagN(meId)).find(b=>!next[b]);if(!free){det.textContent='Batoh je plný.';return}next[free]=item;delete next[key]}
   const saved=inv.equip[invKey(meId)];inv.equip[invKey(meId)]=next;invRender();invRefreshFigs(meId);
