@@ -246,8 +246,15 @@ body.playing .admin-key{display:none}
 .gift-info b{font-size:16px;color:var(--sun);overflow-wrap:anywhere}
 .gift-ok{color:#7fe0a0;font-weight:800}
 .gift-no{color:#ff9a7a;font-weight:800}
-.gift-send{display:flex;gap:8px;align-items:flex-end}
-.gift-send label{flex:1}
+.gift-rows{display:flex;flex-direction:column;gap:12px}
+.gift-rows[hidden]{display:none}
+.gift-send{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.gift-send label span{display:inline-flex;align-items:center;gap:5px}
+.gift-send .coin{width:14px;height:14px}
+.gift-kind{flex:0 0 auto!important}
+.gift-send select{font:inherit;font-size:16px;padding:9px 8px;border-radius:10px;border:1px solid var(--panel-line);background:rgba(0,0,0,.35);color:var(--ink)}
+#giftReset.armed{background:#c9573a;color:#fff}
+.gift-send label{flex:1 1 90px;min-width:0}
 .gift-send button{min-height:44px}
 .admin-card{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#15122b;border:1px solid var(--panel-line);border-radius:18px;padding:18px 18px 20px;box-sizing:border-box;color:var(--ink)}
 .admin-card header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
@@ -432,7 +439,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
       </div>
       <div class="admin-days"><h3>Lidé za den (14 dní)</h3><div class="admin-chart" id="stChart"></div></div>
       <div class="admin-gift">
-        <h3>💎 Diamanty hráče</h3>
+        <h3>🛠️ Úprava hráče</h3>
         <label for="giftNick">Jméno postavy<input id="giftNick" list="giftList" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="@nick hráče"></label>
         <datalist id="giftList"></datalist>
         <div class="gift-player" id="giftPlayer" hidden>
@@ -441,13 +448,29 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
             <b id="giftName"></b>
             <span id="giftState"></span>
             <span id="giftHas"></span>
+            <span id="giftCoins"></span>
+            <span id="giftLvl"></span>
           </div>
         </div>
-        <form class="gift-send" id="giftForm" hidden>
-          <label for="giftAmount">Počet diamantů<input id="giftAmount" type="number" min="1" max="100000" step="1" inputmode="numeric" required></label>
-          <button class="primary" type="submit" value="add">Přidat 💎</button>
-          <button type="submit" value="sub">Odebrat</button>
-        </form>
+        <div class="gift-rows" id="giftRows" hidden>
+          <form class="gift-send" id="giftDia">
+            <label for="giftAmount">💎 Diamanty<input id="giftAmount" type="number" min="1" max="100000" step="1" inputmode="numeric" placeholder="počet" required></label>
+            <button class="primary" type="submit" value="add">Přidat</button>
+            <button type="submit" value="sub">Odebrat</button>
+          </form>
+          <form class="gift-send" id="giftMoney">
+            <label for="giftGold"><span><span class="coin g" aria-hidden="true"></span> Zlaté</span><input id="giftGold" type="number" min="0" max="100000" step="1" inputmode="numeric" placeholder="0"></label>
+            <label for="giftSilver"><span><span class="coin s" aria-hidden="true"></span> Stříbrné</span><input id="giftSilver" type="number" min="0" max="99999" step="1" inputmode="numeric" placeholder="0"></label>
+            <button class="primary" type="submit" value="add">Přidat</button>
+            <button type="submit" value="sub">Odebrat</button>
+          </form>
+          <form class="gift-send" id="giftXp">
+            <label for="giftXpN">⭐ Level a XP<input id="giftXpN" type="number" min="1" max="100000" step="1" inputmode="numeric" placeholder="počet" required></label>
+            <label for="giftXpKind" class="gift-kind"><span>Co</span><select id="giftXpKind"><option value="xp">XP</option><option value="lvl">levelů</option></select></label>
+            <button class="primary" type="submit" value="add">Přidat</button>
+            <button type="button" id="giftReset">Reset na L1</button>
+          </form>
+        </div>
         <p class="admin-msg" id="giftMsg" role="status"></p>
       </div>
       <div class="admin-foot"><span id="stUpdated"></span><span style="display:flex;gap:8px"><button type="button" id="adminRefresh">Obnovit</button><button type="button" id="adminOut">Odhlásit</button></span></div>
@@ -3069,7 +3092,7 @@ function xpOf(id){
   const e=+(xp.earned[k]&&xp.earned[k].x)||0,b=+xp.bonus[k]||0;
   const days=r&&!r.left&&r.at?Math.max(0,Math.floor((Date.now()-r.at)/86400000)):0;
   let boss=0;try{const h=bossHitsOf(id);if(h>0)boss=Math.min(600,(bossBadge(id)?100:0)+Math.floor(h/100))}catch(_){}
-  return e+(k===liveKey(meId||'')?xp.pending:0)+b+days*5+boss;
+  return Math.max(0,e+(k===liveKey(meId||'')?xp.pending:0)+b+days*5+boss); // admin bonus can be negative (level reset)
 }
 function lvlOf(id){return lvlOfXp(xpOf(id))}
 const xpDay=()=>Math.floor((Date.now()+(typeof water!=='undefined'?water.skew:0))/86400000);
@@ -4067,36 +4090,74 @@ let giftT=0;
 $id('giftNick').addEventListener('input',()=>{clearTimeout(giftT);giftT=setTimeout(giftLookup,350)});
 async function giftLookup(){
   const raw=$id('giftNick').value.trim().replace(/^@+/,''),id=nickId(raw),msg=$id('giftMsg');
-  $id('giftPlayer').hidden=true;$id('giftForm').hidden=true;msg.textContent='';gift.id=null;
+  $id('giftPlayer').hidden=true;$id('giftRows').hidden=true;msg.textContent='';gift.id=null;
   if(!raw)return;
   const r=residents.find(x=>x.id===id);
   if(!r){msg.textContent='Takový obyvatel na planetě není.';return}
   const tok=await adminToken();if(!tok){msg.textContent='Přihlášení vypršelo, přihlas se znovu.';return}
   const key=liveKey(id);
   try{
-    const [uid,d]=await Promise.all([fetch(LIVE_DB+'/nicks/'+key+'.json?auth='+encodeURIComponent(tok)).then(x=>x.json()),fetch(LIVE_DB+'/diamonds/'+key+'.json').then(x=>x.json())]);
-    $id('giftName').textContent=r.name+' · L'+lvlOf(id);$id('giftImg').src=giftPortrait(r);$id('giftImg').alt='Postava '+r.name;
-    gift.has=Math.max(0,Math.floor(+d||0));$id('giftHas').textContent='Má teď '+gift.has+' 💎';
+    const [uid,d,mo,xb,xe]=await Promise.all([fetch(LIVE_DB+'/nicks/'+key+'.json?auth='+encodeURIComponent(tok)).then(x=>x.json()),...['diamonds','money','xpbonus','xp'].map(k=>fetch(LIVE_DB+'/'+k+'/'+key+'.json').then(x=>x.json()).catch(()=>null))]);
+    inv.money[key]=+mo||0;if(xb!=null)xp.bonus[key]=+xb||0;else delete xp.bonus[key];if(xe)xp.earned[key]=xe;
+    $id('giftName').textContent=r.name;$id('giftImg').src=giftPortrait(r);$id('giftImg').alt='Postava '+r.name;
+    gift.has=Math.max(0,Math.floor(+d||0));giftShow();
     const st=$id('giftState');$id('giftPlayer').hidden=false;
-    if(uid){st.className='gift-ok';st.textContent='✓ Přihlášený přes Google';gift.id=id;gift.key=key;$id('giftForm').hidden=false;$id('giftAmount').focus()}
-    else{st.className='gift-no';st.textContent='Zatím se nepřihlásil přes Google';msg.textContent='Diamanty jde poslat jen hráčům, kteří se přihlásili.'}
+    if(uid){st.className='gift-ok';st.textContent='✓ Přihlášený přes Google';gift.id=id;gift.key=key;$id('giftRows').hidden=false;giftShow()}
+    else{st.className='gift-no';st.textContent='Zatím se nepřihlásil přes Google';msg.textContent='Upravovat jde jen hráče, kteří se přihlásili.'}
   }catch(_){msg.textContent='Nepodařilo se načíst hráče.'}
 }
-$id('giftForm').addEventListener('submit',async e=>{
+function giftShow(){
+  if(!gift.key)return;const id=gift.id||gift.key,w=wallet(id),x=xpOf(id),L=lvlOfXp(x);
+  $id('giftHas').textContent='💎 '+gift.has+' diamantů';
+  $id('giftCoins').textContent=`🪙 ${w.gold} zlatých · ${w.silver} stříbrných`;
+  $id('giftLvl').textContent=`⭐ Level ${L} · ${x.toLocaleString('cs-CZ')} XP`;
+}
+async function giftPut(path,val){
+  const tok=await adminToken();if(!tok){$id('giftMsg').textContent='Přihlášení vypršelo, přihlas se znovu.';return false}
+  try{const r=await fetch(LIVE_DB+'/'+path+'/'+gift.key+'.json?auth='+encodeURIComponent(tok),{method:'PUT',body:JSON.stringify(val)});
+    if(!r.ok){$id('giftMsg').textContent='Nepovedlo se. Zkontroluj pravidla ve Firebase.';return false}return true}
+  catch(_){$id('giftMsg').textContent='Nepodařilo se spojit se serverem.';return false}
+}
+const freshNum=async path=>{try{return +(await fetch(LIVE_DB+'/'+path+'/'+gift.key+'.json').then(x=>x.json()))||0}catch(_){return 0}};
+$id('giftDia').addEventListener('submit',async e=>{
   e.preventDefault();const msg=$id('giftMsg'),n=Math.floor(+$id('giftAmount').value||0),sub=e.submitter&&e.submitter.value==='sub';
   if(!gift.id||n<1){msg.textContent='Zadej počet diamantů.';return}
-  const tok=await adminToken();if(!tok){msg.textContent='Přihlášení vypršelo, přihlas se znovu.';return}
-  try{
-    const cur=Math.max(0,Math.floor(+(await fetch(LIVE_DB+'/diamonds/'+gift.key+'.json').then(x=>x.json()))||0));
-    if(sub&&cur===0){msg.textContent=`@${gift.id} nemá žádné diamanty, není co odebrat.`;return}
-    const next=sub?Math.max(0,cur-n):cur+n,diff=Math.abs(next-cur);
-    const r=await fetch(LIVE_DB+'/diamonds/'+gift.key+'.json?auth='+encodeURIComponent(tok),{method:'PUT',body:JSON.stringify(next)});
-    if(!r.ok){msg.textContent='Nepovedlo se. Zkontroluj pravidla ve Firebase.';return}
-    gift.has=next;$id('giftHas').textContent='Má teď '+gift.has+' 💎';
-    msg.textContent=sub?`Odebráno −${diff} 💎 hráči @${gift.id}`+(diff<n?` (víc neměl).`:'.'):`Přidáno +${n} 💎 hráči @${gift.id}.`;$id('giftAmount').value='';
-    if(typeof inv!=='undefined'){inv.dia=inv.dia||{};inv.dia[gift.key]=gift.has}
-  }catch(_){msg.textContent='Nepodařilo se spojit se serverem.'}
+  const cur=Math.max(0,Math.floor(await freshNum('diamonds')));
+  if(sub&&cur===0){msg.textContent=`@${gift.id} nemá žádné diamanty, není co odebrat.`;return}
+  const next=sub?Math.max(0,cur-n):cur+n,diff=Math.abs(next-cur);
+  if(!await giftPut('diamonds',next))return;
+  gift.has=next;inv.dia=inv.dia||{};inv.dia[gift.key]=next;giftShow();$id('giftAmount').value='';
+  msg.textContent=sub?`Odebráno −${diff} 💎 hráči @${gift.id}`+(diff<n?' (víc neměl).':'.'):`Přidáno +${n} 💎 hráči @${gift.id}.`;
 });
+$id('giftMoney').addEventListener('submit',async e=>{
+  e.preventDefault();const msg=$id('giftMsg'),sub=e.submitter&&e.submitter.value==='sub';
+  const n=Math.floor(+$id('giftGold').value||0)*100+Math.floor(+$id('giftSilver').value||0);
+  if(!gift.id||n<1){msg.textContent='Zadej počet zlatých nebo stříbrných.';return}
+  const cur=Math.max(0,Math.floor(await freshNum('money')));
+  if(sub&&cur===0){msg.textContent=`@${gift.id} nemá žádné peníze, není co odebrat.`;return}
+  const next=sub?Math.max(0,cur-n):cur+n,diff=Math.abs(next-cur),f=v=>`${Math.floor(v/100)} zl. ${v%100} st.`;
+  if(!await giftPut('money',next))return;
+  inv.money[gift.key]=next;giftShow();$id('giftGold').value='';$id('giftSilver').value='';
+  msg.textContent=(sub?`Odebráno ${f(diff)}`+(diff<n?' (víc neměl)':''):`Přidáno ${f(n)}`)+` hráči @${gift.id}.`;
+});
+$id('giftXp').addEventListener('submit',async e=>{
+  e.preventDefault();const msg=$id('giftMsg'),n=Math.floor(+$id('giftXpN').value||0),kind=$id('giftXpKind').value;
+  if(!gift.id||n<1){msg.textContent='Zadej počet.';return}
+  const b0=await freshNum('xpbonus');xp.bonus[gift.key]=b0;
+  const x=xpOf(gift.id),L=lvlOfXp(x);let add=n;
+  if(kind==='lvl'){const L2=Math.min(LVL_MAX,L+n);add=lvlNeed(L2)+(x-lvlNeed(L))-x;if(L2>=LVL_MAX)add=lvlNeed(LVL_MAX)-x;if(add<=0){msg.textContent=`@${gift.id} už má maximální level.`;return}}
+  if(!await giftPut('xpbonus',b0+add))return;
+  xp.bonus[gift.key]=b0+add;giftShow();$id('giftXpN').value='';
+  msg.textContent=`Přidáno +${add.toLocaleString('cs-CZ')} XP hráči @${gift.id} · teď level ${lvlOf(gift.id)}.`;
+});
+$id('giftReset').onclick=async()=>{
+  const b=$id('giftReset'),msg=$id('giftMsg');if(!gift.id)return;
+  if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Opravdu resetovat?';setTimeout(()=>{b.classList.remove('armed');b.textContent='Reset na L1'},4000);return}
+  b.classList.remove('armed');b.textContent='Reset na L1';
+  const b0=await freshNum('xpbonus');xp.bonus[gift.key]=b0;const x=xpOf(gift.id);
+  if(!await giftPut('xpbonus',b0-x))return;
+  xp.bonus[gift.key]=b0-x;giftShow();msg.textContent=`@${gift.id} je zpátky na levelu 1 (0 XP). Další XP sbírá od teď.`;
+};
 // Google login uses the official Firebase Auth library, loaded only when needed
 const FB_SDK='https://www.gstatic.com/firebasejs/10.12.2/';
 let fbReady=null;
