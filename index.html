@@ -118,6 +118,14 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .water-btn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 150px);padding:12px 20px;border-radius:999px;background:#3a9be0;color:#fff;border:2px solid rgba(255,255,255,.6);font-weight:900;font-size:16px;pointer-events:auto;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .water-btn[hidden]{display:none}
+.quest-btn{background:#3f9a6a}
+.quest-chip{background:#1f5a3a!important;color:#d8ffe6}
+.quest-line{margin:6px 0 0;padding:6px 8px;border-radius:10px;background:rgba(63,154,106,.2);color:#bff5d3;font-weight:800;font-size:12px}
+.quest-line[hidden]{display:none}
+.quest-say{margin:6px 0 14px;font-size:15px;line-height:1.5}
+.quest-say b{color:var(--sun)}
+.quest-actions{display:flex;gap:8px;flex-wrap:wrap}
+.quest-actions button{flex:1;min-height:44px}
 .water-btn{background-image:linear-gradient(90deg,#1f6fb0 var(--p,0%),transparent var(--p,0%))}
 .water-btn:disabled{opacity:1;cursor:default}
 .jump-btn{position:fixed;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 52px);width:88px;height:88px;border-radius:50%;padding:0;background:rgba(255,204,102,.9);color:#2b1d0e;border:2px solid rgba(255,255,255,.5);font-size:15px;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
@@ -302,6 +310,14 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     <p class="inv-detail" id="invDetail" role="status" aria-live="polite">Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.</p>
   </div>
 </section>
+<section class="inv" id="questBox" hidden aria-labelledby="questTitle">
+  <div class="inv-card">
+    <header><h2 id="questTitle">🌱 Zahradnice</h2><button type="button" id="questClose">Zavřít</button></header>
+    <p class="quest-say" id="questSay"></p>
+    <div class="quest-actions" id="questActions"></div>
+    <p class="inv-who" id="questNote">Dokud plníš úkol, jsi zahradník. Když hru zavřeš nebo se odhlásíš, úkol i postup propadnou.</p>
+  </div>
+</section>
 <section class="inv" id="lvlBox" hidden aria-labelledby="lvlTitle">
   <div class="inv-card">
     <header><h2 id="lvlTitle">⭐ Level a žebříček</h2><button type="button" id="lvlClose">Zavřít</button></header>
@@ -310,7 +326,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     <p class="inv-who" id="lvlToday"></p>
     <h3 class="inv-sub">Jak získat XP</h3>
     <ul class="lvl-list">
-      <li><b>+10 XP</b> zalití záhonku u domu</li>
+      <li><b>+5 až +50 XP</b> úkoly od zahradnice v Zahradnictví</li>
       <li><b>+20 XP</b> první přihlášení za den</li>
       <li><b>+5 XP</b> za každý den, co followuješ @planetafolloweru</li>
       <li><b>až +600 XP</b> za boj s bossem (odznak a údery)</li>
@@ -380,6 +396,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 <aside class="me card" id="meCard" hidden aria-live="polite">
   <div class="me-top"><b id="meName"></b><button class="link" type="button" id="meChange">odhlásit</button></div>
   <div id="meInfo" class="me-info"></div>
+  <p class="quest-line" id="meQuest" hidden></p>
   <button class="lvl" id="meLvl" type="button" hidden aria-label="Level a žebříček"><span class="lvl-top"><b id="meLvlN">Level 1</b><span id="meLvlXp">0/100 XP</span></span><span class="lvl-bar"><i id="meLvlFill"></i></span></button>
 </aside>
 
@@ -395,12 +412,13 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 </div>
 
 <div class="play-ui" id="playUi" hidden>
-  <div class="play-top"><span class="card live-chip" id="liveChip">Hraješ</span><button id="playExit" type="button">Konec hry</button></div>
+  <div class="play-top"><span class="card live-chip" id="liveChip">Hraješ</span><span class="card live-chip quest-chip" id="questChip" hidden></span><button id="playExit" type="button">Konec hry</button></div>
   <div class="play-help" id="playHelp"></div>
   <div class="abduct-flash" id="abductFlash" aria-hidden="true"></div>
   <div class="joy" id="joy" hidden aria-label="Joystick pro chůzi"><i id="joyKnob"></i></div>
   <button class="jump-btn" id="jumpBtn" type="button" hidden>Skok</button>
   <button class="water-btn" id="waterBtn" type="button" hidden>💧 Zalít kytky</button>
+  <button class="water-btn quest-btn" id="questBtn" type="button" hidden>🌱 Mluvit se zahradnicí</button>
 </div>
 
 <div class="chat" id="chat" aria-label="Chat planety">
@@ -2515,6 +2533,7 @@ canvas.addEventListener('pointerup',e=>{
   ray.setFromCamera(mouse,camera);
   const hit=ray.intersectObjects([planet,townGroup],true)[0];
   const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){openBoss();return}
+  const qh=questNpc&&ray.intersectObject(questNpc,true)[0];if(qh&&(!hit||qh.distance<hit.distance+.01)){questOpen();return}
   if(hit&&hit.object.userData.bed&&!play){toast(waterFresh(hit.object.userData.bed)?'🌸 Tyhle kytky jsou zalité.':'🥀 Kytky usychají! Klikni na „Hrát za postavu“, dojdi k nim a zalij je.')}
   selected=hit&&hit.object.userData.house?hit.object.userData.house.userData.id:null;
 });
@@ -2606,7 +2625,7 @@ function loop(now){
   }
   animateFountain(now);
   updateWalker(now);
-  updatePlay(now);updateWater(now);
+  updatePlay(now);updateWater(now);updateQuest();
   updateRemotes(now);
   updateWanderers(now);
   updateFox(now);
@@ -2819,6 +2838,7 @@ async function acctGet(path){const r=await acctFetch(path);if(!r.ok)throw new Er
 function acctPut(path,val){return acctFetch(path,{method:'PUT',body:JSON.stringify(val)}).then(r=>r.ok)}
 function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true);setTimeout(()=>{try{xpDailyLogin()}catch(_){}},1500)}
 async function acctLogout(msg){
+  try{questDrop()}catch(_){}
   clearTimeout(acct.timer);try{localStorage.removeItem(LOGIN_AT)}catch(_){}
   if(play)stopPlay();
   const was=acct.user;acct.user=null;
@@ -3026,9 +3046,9 @@ async function waterBed(k){
   try{
     const ok=await acctPut('/water/'+k,{t:{'.sv':'timestamp'},n:meId});
     if(!ok){await waterLoad();waterSay('Tyhle kytky už někdo zalil. Zkus jiné.');return}
-    water.mine++;xpGain(10,'zalití');
+    water.mine++;const qd=!!quest.active;questWatered();
     acctFetch('/waterings/'+liveKey(meId),{method:'PUT',body:JSON.stringify({'.sv':{increment:1}})}).catch(()=>{});
-    waterSay('💧 Zalito! Kytky jsou zase svěží.');
+    if(!qd)waterSay('💧 Zalito! Kytky jsou zase svěží. Za XP si vezmi úkol od zahradnice v Zahradnictví.');
   }catch(_){waterSay('Nepodařilo se spojit se serverem.')}
 }
 const WCAN=(()=>{ // a small floating watering can used for the effect
@@ -3073,6 +3093,63 @@ function updateWater(now){
     if(near)b.textContent=waterFresh(near)?'🌸 Kytky jsou zalité':'💧 Zalít kytky'+(touchUI()?'':' (F)')}
 }
 document.getElementById('waterBtn').onclick=()=>{if(water.near&&!water.job)waterStart(water.near)};
+
+// ---------- gardener's quests: an NPC at the Zahradnictví hands out random watering jobs ----------
+// While a quest runs the player is a "zahradník". It lives only in this page: close it, reload it or sign out and the quest,
+// its progress and the role are gone. Watering gives XP only through finished quests.
+const QUESTS=[{n:2,xp:5},{n:5,xp:10},{n:8,xp:15},{n:10,xp:20},{n:15,xp:50}];
+const quest={active:null,offer:null,near:false};
+let questNpc=null;
+function questBuildNpc(){
+  if(questNpc)return;
+  const parts=makeGardener({id:'npc-zahradnice'});questNpc=parts.fig;questNpc.userData.npc=true;
+  const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');
+  x.fillStyle='#ffc300';x.beginPath();x.arc(64,64,54,0,7);x.fill();x.lineWidth=8;x.strokeStyle='#2b1d0e';x.stroke();
+  x.fillStyle='#2b1d0e';x.font='900 84px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('!',64,70);
+  const mark=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));mark.scale.setScalar(.06);mark.position.y=.2;mark.name='questMark';questNpc.add(mark);
+  const pos=gardenDoor().add(SITE_B.clone().multiplyScalar(.012)).normalize();
+  placeOn(questNpc,pos,0,0);faceToward(questNpc,pos,START.clone().sub(pos));questNpc.userData.pos=pos;
+  scene.add(questNpc);
+}
+setTimeout(questBuildNpc,0);
+function questUi(){
+  const a=quest.active,chip=document.getElementById('questChip'),line=document.getElementById('meQuest');
+  const txt=a?`🌱 Zahradník · zalito ${a.done}/${a.n} · odměna ${a.xp} XP`:'';
+  chip.hidden=line.hidden=!a;chip.textContent=line.textContent=txt;
+  if(questNpc){const m=questNpc.getObjectByName('questMark');if(m)m.visible=!a}
+  meTag.textContent=a?'TY · 🌱 zahradník':'TY';
+}
+function questOpen(){
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Úkoly od zahradnice dostanou jen přihlášení hráči.');return}
+  const say=document.getElementById('questSay'),act=document.getElementById('questActions');act.replaceChildren();
+  const btn=(t,cls,fn)=>{const b=document.createElement('button');b.type='button';if(cls)b.className=cls;b.textContent=t;b.onclick=fn;act.append(b);return b};
+  if(quest.active){
+    const a=quest.active;say.replaceChildren('Jak to jde? Zatím jsi zalil ',Object.assign(document.createElement('b'),{textContent:`${a.done} z ${a.n}`}),' záhonků. Kytky u domů čekají!');
+    btn('Pokračovat','primary',questClose);btn('Vzdát úkol','',()=>{questDrop();toast('Úkol jsi vzdal. Roli zahradníka už nemáš.');questClose()});
+  }else{
+    if(!quest.offer)quest.offer=QUESTS[Math.floor(Math.random()*QUESTS.length)];
+    const o=quest.offer;say.replaceChildren('Ahoj! Kytky po městě usychají. Zalij ',Object.assign(document.createElement('b'),{textContent:`${o.n}× záhonek`}),' u domů a dám ti ',Object.assign(document.createElement('b'),{textContent:`${o.xp} XP`}),'.');
+    btn('Beru to 🌱','primary',()=>{quest.active={...o,done:0};quest.offer=null;questUi();questClose();toast(`🌱 Jsi zahradník! Zalij ${o.n}× záhonek.`);if(!play&&!playBtn.hidden)startPlay()});
+    btn('Teď ne','',questClose);
+  }
+  document.getElementById('questBox').hidden=false;
+}
+function questClose(){document.getElementById('questBox').hidden=true}
+function questDrop(){quest.active=null;quest.offer=null;questUi()}
+function questWatered(){
+  const a=quest.active;if(!a)return;a.done++;
+  if(a.done>=a.n){quest.active=null;questUi();xpGain(a.xp,'úkol');toast(`🌸 Úkol splněn! +${a.xp} XP. Pro další úkol zajdi za zahradnicí.`)}
+  else{questUi();waterSay(`💧 Zalito ${a.done}/${a.n}`)}
+}
+function updateQuest(){ // in play mode: offer a button when standing next to the gardener
+  let near=false;
+  if(play&&questNpc&&acct.user)near=questNpc.userData.pos.distanceTo(play.p)<.025;
+  if(near!==quest.near){quest.near=near;const b=document.getElementById('questBtn');b.hidden=!near;b.textContent=(quest.active?'🌱 Můj úkol':'🌱 Úkol od zahradnice')+(touchUI()?'':' (F)')}
+}
+document.getElementById('questBtn').onclick=questOpen;
+document.getElementById('questClose').onclick=questClose;
+document.getElementById('questBox').addEventListener('keydown',e=>{if(e.key==='Escape')questClose();e.stopPropagation()});
+document.getElementById('questBox').addEventListener('click',e=>{if(e.target.id==='questBox')questClose()});
 
 // ---------- inventory: equipment slots on the character, a 3-slot bag and a money box ----------
 // Owned items: /items/<nick>/<itemId> = true (set by the admin) plus items the game grants in code (Zubatý meč).
@@ -3402,6 +3479,7 @@ addEventListener('keydown',e=>{
   if(e.code==='Escape'){stopPlay();return}
   if(e.code==='Space'){e.preventDefault();if(!e.repeat)startJump();return}
   if(e.code==='KeyF'&&!e.repeat&&water.near&&!water.job){waterStart(water.near);return}
+  if(e.code==='KeyF'&&!e.repeat&&quest.near){questOpen();return}
   keys.add(e.code);
   if(move||e.code==='Space')e.preventDefault();
 });
