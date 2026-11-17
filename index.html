@@ -121,6 +121,31 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .admin-key:hover{opacity:1}
 @media (max-width:700px){.bar{padding-right:72px}}
 body.playing .admin-key{display:none}
+.inv{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
+.inv[hidden]{display:none}
+.inv-card{width:min(460px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#15122b;border:1px solid var(--panel-line);border-radius:18px;padding:18px 18px 20px;box-sizing:border-box;color:var(--ink)}
+.inv-card header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+.inv-card h2{margin:0;font-size:18px}
+.inv-who{margin:0 0 12px;font-size:13px;color:var(--ink-dim)}
+.inv-main{display:flex;gap:18px;align-items:flex-start}
+.inv-doll{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;flex:1;min-width:0}
+.inv-side{width:88px;flex:none;display:flex;flex-direction:column;gap:8px}
+.inv-slot{position:relative;aspect-ratio:1;min-height:56px;border-radius:12px;border:1.5px dashed rgba(255,255,255,.22);background:#1d1838;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px;color:var(--ink);font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.inv-slot .ic{font-size:24px;line-height:1;opacity:.35;filter:grayscale(1)}
+.inv-slot .lb{font-size:10px;font-weight:800;color:var(--ink-dim);text-align:center;line-height:1.1}
+.inv-slot.full{border-style:solid;border-color:rgba(255,255,255,.35);background:#262048}
+.inv-slot.full .ic{opacity:1;filter:none;font-size:28px}
+.inv-slot.legend{border-color:#7dff9e;box-shadow:0 0 14px rgba(125,255,158,.35) inset}
+.inv-slot.sel{outline:3px solid var(--sun);outline-offset:1px}
+.inv-slot.gap{visibility:hidden;pointer-events:none}
+.inv-money{border-radius:14px;background:linear-gradient(#3a2a10,#24190a);border:1.5px solid #ffc300;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.inv-money .inv-coin{font-size:28px;line-height:1}
+.inv-money b{font-size:20px;color:#ffd23a}
+.inv-money span:last-child{font-size:11px;font-weight:800;color:#e8c98a}
+.inv-sub{margin:16px 0 8px;font-size:14px}
+.inv-bag{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.inv-detail{min-height:36px;font-size:13px;line-height:1.4;color:var(--ink-dim);margin:12px 0 0}
+.inv-detail b{color:var(--ink)}
 .boss-mg{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
 .boss-mg[hidden]{display:none}
 .boss-card{width:min(420px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#15122b;border:1px solid var(--panel-line);border-radius:18px;padding:18px 18px 20px;box-sizing:border-box;color:var(--ink);text-align:center}
@@ -220,6 +245,21 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     <p class="boss-msg" id="bossMsg" role="status" aria-live="polite"></p>
   </div>
 </section>
+<section class="inv" id="inv" hidden aria-labelledby="invTitle">
+  <div class="inv-card">
+    <header><h2 id="invTitle">🎒 Inventář</h2><button type="button" id="invClose">Zavřít</button></header>
+    <p class="inv-who" id="invWho"></p>
+    <div class="inv-main">
+      <div class="inv-doll" id="invDoll" aria-label="Vybavení na postavě"></div>
+      <aside class="inv-side">
+        <div class="inv-money" id="invMoney"><span class="inv-coin" aria-hidden="true">🪙</span><b id="invCoins">0</b><span>peníze</span></div>
+      </aside>
+    </div>
+    <h3 class="inv-sub">Batoh</h3>
+    <div class="inv-bag" id="invBag" aria-label="Batoh"></div>
+    <p class="inv-detail" id="invDetail" role="status" aria-live="polite">Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.</p>
+  </div>
+</section>
 <section class="admin" id="admin" hidden aria-labelledby="adminTitle">
   <div class="admin-card">
     <header><h2 id="adminTitle">Admin · statistiky</h2><button type="button" id="adminClose">Zavřít</button></header>
@@ -284,6 +324,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 <div class="bar" id="bar">
   <button id="playBtn" class="primary" type="button" hidden>Hrát za postavu 🎮</button>
   <button id="meBtn" type="button" hidden>Moje postava</button>
+  <button id="invBtn" type="button" hidden>Inventář 🎒</button>
   <button id="games" type="button">Minihry</button>
   <button id="openList" type="button">Obyvatelé</button>
   <button id="whole" type="button">Celá planeta</button>
@@ -1176,7 +1217,7 @@ function makePerson(m,shirtColor,hat,skinColor){
   const right=new THREE.Group();right.name='armR';right.position.set(.029,.074,0);const ra=new THREE.Mesh(armGeo,shirt.material);ra.position.y=.022;right.add(ra);
   const hand=new THREE.Mesh(new THREE.SphereGeometry(.008,6,4),skin);hand.position.y=.048;right.add(hand);fig.add(right);
   siteArms.push({arm:right,ph:pr()*6.28,sp:6+pr()*3});
-  if(SWORD_OWNER&&m.id===SWORD_OWNER){const sword=makeBossSword();sword.position.y=.05;sword.rotation.x=1.9;right.add(sword)}
+  if(SWORD_OWNER&&m.id===SWORD_OWNER){const sword=makeBossSword();sword.name='bossSword';sword.position.y=.05;sword.rotation.x=1.9;sword.visible=invWears(m.id,'boss_sword');right.add(sword)}
   return fig;
 }
 function windowsOn(g,w,h,z,rows,cols,lit,y0=.1){
@@ -2644,6 +2685,7 @@ const ROLE_TEXT={
 function applyMe(flyThere){
   if(meFig){meFig.scale.setScalar(1);meFig.remove(meMarker);meFig=null}
   meTag.hidden=true;playBtn.hidden=true;
+  document.getElementById('invBtn').hidden=!meId;
   if(!meId){meCard.hidden=true;meBtn.hidden=true;return}
   meCard.hidden=false;document.getElementById('meName').textContent='@'+meNick.replace(/^@+/,'');
   if(!dataLoaded){setMeInfo([noData?'Planetu se teď nepodařilo načíst.':'Hledám tvůj dům…']);meBtn.hidden=true;return}
@@ -2782,6 +2824,90 @@ setTimeout(()=>{
 },0);
 meBtn.onclick=()=>applyMe(true);
 document.getElementById('games').onclick=()=>openBoss();
+
+// ---------- inventory: equipment slots on the character, a 3-slot bag and a money box ----------
+// Owned items: /items/<nick>/<itemId> = true (set by the admin) plus items the game grants in code (Zubatý meč).
+// What is worn where: /equip/<nick> = {slot: itemId}, written only by the signed-in owner of that nick.
+// Money: /money/<nick> = number (set by the admin until the economy exists).
+// New wearable slot later = one more line in INV_SLOTS (it lands in the next free cell of the grid).
+const INV_SLOTS=[ // [key, label, empty icon, grid cell 1–12 (3 columns)]
+  ['talisman','Talisman','🧿',1],['helmet','Helma','⛑️',2],['necklace','Náhrdelník','📿',3],
+  ['weapon','Zbraň','🗡️',4],['armor','Brnění / vesta','🦺',5],['shield','Štít','🛡️',6],
+  ['gloves','Rukavice','🧤',7],['pants','Kalhoty','👖',8],['bracelet','Náramek','⌚',9],
+  ['boots','Boty','🥾',11]];
+const INV_BAG=['bag1','bag2','bag3'];
+const ITEMS={
+  boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',legend:true,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery.'}
+};
+const inv={items:{},equip:{},money:{},loaded:false,sel:null};
+const invKey=id=>liveKey(id);
+function invOwned(id){
+  const own=Object.keys(inv.items[invKey(id)]||{}).filter(k=>ITEMS[k]);
+  if(SWORD_OWNER&&id===SWORD_OWNER&&!own.includes('boss_sword'))own.push('boss_sword');
+  return own;
+}
+function invState(id){ // {slot: itemId} with every owned item either worn or in the bag
+  const own=invOwned(id),saved=inv.equip[invKey(id)],st={},used=new Set();
+  if(saved)for(const [sl,it] of Object.entries(saved))if(own.includes(it)&&!used.has(it)&&(INV_BAG.includes(sl)||ITEMS[it].slot===sl)){st[sl]=it;used.add(it)}
+  for(const it of own){if(used.has(it))continue;const sl=ITEMS[it].slot;
+    const free=!saved&&!st[sl]?sl:INV_BAG.find(b=>!st[b]);if(free){st[free]=it;used.add(it)}}
+  return st;
+}
+function invWears(id,item){try{const st=invState(id);return Object.entries(st).some(([sl,it])=>it===item&&!INV_BAG.includes(sl))}catch(_){return true}} // figures built before the inventory code runs wear what they own
+function invRefreshFigs(id){
+  scene.traverse(o=>{if(o.userData&&o.userData.memberId===id){const sw=o.getObjectByName('bossSword');if(sw)sw.visible=invWears(id,'boss_sword')}});
+  if(play&&play.av&&play.av.fig){const sw=play.av.fig.getObjectByName('bossSword');if(sw&&meId===id)sw.visible=invWears(id,'boss_sword')}
+}
+async function invLoad(){
+  try{
+    const [it,eq,mo]=await Promise.all(['items','equip','money'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
+    inv.items=it||{};inv.equip=eq||{};inv.money=mo||{};inv.loaded=true;
+    if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);
+  }catch(_){}
+}
+invLoad();
+function invCell(key,label,icon,item,cls){
+  const b=document.createElement('button');b.type='button';b.className='inv-slot'+(cls||'');b.dataset.slot=key;
+  const it=item&&ITEMS[item];
+  if(it){b.classList.add('full');if(it.legend)b.classList.add('legend');b.setAttribute('aria-label',label+': '+it.name)}
+  else b.setAttribute('aria-label',label+': prázdné');
+  const ic=document.createElement('span');ic.className='ic';ic.textContent=it?it.icon:icon;ic.setAttribute('aria-hidden','true');
+  const lb=document.createElement('span');lb.className='lb';lb.textContent=it?it.name.split(' ')[0]:label;
+  b.append(ic,lb);if(inv.sel===key)b.classList.add('sel');
+  b.onclick=()=>invClick(key);return b;
+}
+function invRender(){
+  const st=invState(meId),doll=document.getElementById('invDoll'),bag=document.getElementById('invBag');
+  doll.replaceChildren();bag.replaceChildren();
+  const cells=[];for(const [k,l,i,c] of INV_SLOTS)cells[c]=[k,l,i];
+  const last=Math.max(...INV_SLOTS.map(x=>x[3]));
+  for(let c=1;c<=Math.ceil(last/3)*3;c++){
+    if(!cells[c]){const g=document.createElement('div');g.className='inv-slot gap';g.setAttribute('aria-hidden','true');doll.append(g);continue}
+    const [k,l,i]=cells[c];doll.append(invCell(k,l,i,st[k]));
+  }
+  INV_BAG.forEach((k,n)=>bag.append(invCell(k,'Slot '+(n+1),'＋',st[k])));
+  const coins=+inv.money[invKey(meId)]||0;document.getElementById('invCoins').textContent=coins.toLocaleString('cs-CZ');
+  document.getElementById('invWho').textContent='@'+meNick.replace(/^@+/,'')+(invOwned(meId).length?'':' · zatím nemáš žádné věci. Brzy je půjde získat ve hře.');
+}
+async function invSave(st){
+  if(!acct.user)return false;
+  try{return await acctPut('/equip/'+invKey(meId),st)}catch(_){return false}
+}
+async function invClick(key){
+  const st=invState(meId),item=st[key],det=document.getElementById('invDetail');
+  if(!item){const lbl=(INV_SLOTS.find(x=>x[0]===key)||[0,'Slot v batohu'])[1];det.textContent=INV_BAG.includes(key)?'Volný slot v batohu.':`${lbl}: prázdné. Věc sem dáš klepnutím na ni v batohu.`;return}
+  const it=ITEMS[item],next={...st};
+  if(INV_BAG.includes(key)){const was=next[it.slot];next[it.slot]=item;if(was)next[key]=was;else delete next[key]}
+  else{const free=INV_BAG.find(b=>!next[b]);if(!free){det.textContent='Batoh je plný.';return}next[free]=item;delete next[key]}
+  const saved=inv.equip[invKey(meId)];inv.equip[invKey(meId)]=next;invRender();invRefreshFigs(meId);
+  det.replaceChildren();const b=document.createElement('b');b.textContent=it.name;det.append(b,' · '+it.desc+(invWears(meId,item)?' Máš ho na sobě.':' Je v batohu.'));
+  if(!await invSave(next)){if(saved)inv.equip[invKey(meId)]=saved;else delete inv.equip[invKey(meId)];invRender();invRefreshFigs(meId);det.textContent='Nepodařilo se uložit. Zkus to znovu.'}
+}
+function openInv(){if(!meId)return;if(play)stopPlay();inv.sel=null;document.getElementById('invDetail').textContent='Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.';invRender();document.getElementById('inv').hidden=false;document.getElementById('invClose').focus()}
+document.getElementById('invBtn').onclick=openInv;
+document.getElementById('invClose').onclick=()=>{document.getElementById('inv').hidden=true};
+document.getElementById('inv').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('inv').hidden=true;e.stopPropagation()});
+document.getElementById('inv').addEventListener('click',e=>{if(e.target.id==='inv')e.target.hidden=true});
 
 // ---------- play: walk your own character around the planet ----------
 // PC: WASD / arrows, Shift to run, Q/E or drag to turn the camera, wheel to zoom.
@@ -3020,7 +3146,7 @@ addEventListener('keydown',e=>{
   if(e.target&&e.target.closest&&e.target.closest('input,textarea,select'))return;
   const move=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code);
   if(!play){ // pressing W A S D starts the game when you have a character
-    if(move&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&welcome.hidden&&sheet.hidden&&!playBtn.hidden)startPlay();
+    if(move&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&welcome.hidden&&sheet.hidden&&document.getElementById('inv').hidden&&!playBtn.hidden)startPlay();
     if(!play)return;
   }
   if(e.code==='Escape'){stopPlay();return}
@@ -3112,7 +3238,7 @@ function bossRender(){
     :`🎡 Při ${MRAZ_GOAL} obyvatelích roztočíme kolo štěstí o meč, který dává 2× víc ran. Teď je nás ${n}/${MRAZ_GOAL}.`;
 }
 function openBoss(){
-  bossMg.hidden=false;bossSword.classList.toggle('gold',!!SWORD_OWNER&&meId===SWORD_OWNER);bossRender();bossLoad();
+  bossMg.hidden=false;bossSword.classList.toggle('gold',!!SWORD_OWNER&&meId===SWORD_OWNER&&invWears(meId,'boss_sword'));bossRender();bossLoad();
   if(!meId)bossSay('Nejdřív zadej svoje jméno z Instagramu, ať víme, komu dát odznak.');
 }
 function bossHit(){
@@ -3121,7 +3247,7 @@ function bossHit(){
   if(!r||r.left){bossSay('Bossa můžou bouchat jen obyvatelé planety. Dej follow @planetafolloweru.');return}
   if(!bossSt.loaded){bossSay('Boss se ještě probouzí… zkus to za chvíli.');bossLoad();return}
   if(bossDead())return;
-  const dmg=meId===SWORD_OWNER?2:1;bossSt.pending+=dmg;bossSt.lastHit=performance.now();
+  const dmg=meId===SWORD_OWNER&&invWears(meId,'boss_sword')?2:1; // the sword only hits when it's in your hand, not in the bagbossSt.pending+=dmg;bossSt.lastHit=performance.now();
   const pop=document.createElement('span');pop.className='boss-pop';pop.textContent='−'+dmg;pop.style.setProperty('--dx',((Math.random()-.5)*90).toFixed(0)+'px');
   bossSword.append(pop);setTimeout(()=>pop.remove(),700);
   bossSword.classList.remove('hit');void bossSword.offsetWidth;bossSword.classList.add('hit');
