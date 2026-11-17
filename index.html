@@ -118,6 +118,8 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .water-btn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 150px);padding:12px 20px;border-radius:999px;background:#3a9be0;color:#fff;border:2px solid rgba(255,255,255,.6);font-weight:900;font-size:16px;pointer-events:auto;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .water-btn[hidden]{display:none}
+.water-btn{background-image:linear-gradient(90deg,#1f6fb0 var(--p,0%),transparent var(--p,0%))}
+.water-btn:disabled{opacity:1;cursor:default}
 .jump-btn{position:fixed;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 52px);width:88px;height:88px;border-radius:50%;padding:0;background:rgba(255,204,102,.9);color:#2b1d0e;border:2px solid rgba(255,255,255,.5);font-size:15px;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
 .label.bubble{background:#fff;color:#1b1530;border:0;font-weight:700;font-size:12px;white-space:normal;max-width:190px;width:max-content;text-align:center;padding:6px 10px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,.35);transition:opacity .4s;margin-top:-8px}
 .label.bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff}
@@ -752,6 +754,7 @@ function makeHouse(home){
     const fl=new THREE.Group();fl.position.set(bedX+(k%2?.018:-.018),.024,-.09+k*.042);
     const st=new THREE.Mesh(new THREE.CylinderGeometry(.003,.003,.04,4),stemM);st.position.y=.02;fl.add(st);
     const bl=new THREE.Mesh(new THREE.SphereGeometry(.013,6,4),mat(FL[Math.floor(rr()*FL.length)]));bl.position.y=.045;fl.add(bl);
+    st.userData.orig=st.material;bl.userData.orig=bl.material;fl.userData.stem=st;fl.userData.bloom=bl;
     g.add(fl);flowers.push(fl);
   }
   g.userData={id:home.key,height:h+.3,waveArms,flowers,bedAt:new THREE.Vector3(bedX,0,.02),standAt:new THREE.Vector3(bedX-.11,0,.1)};
@@ -2512,7 +2515,7 @@ canvas.addEventListener('pointerup',e=>{
   ray.setFromCamera(mouse,camera);
   const hit=ray.intersectObjects([planet,townGroup],true)[0];
   const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){openBoss();return}
-  if(hit&&hit.object.userData.bed){waterBed(hit.object.userData.bed);return}
+  if(hit&&hit.object.userData.bed&&!play){toast(waterFresh(hit.object.userData.bed)?'🌸 Tyhle kytky jsou zalité.':'🥀 Kytky usychají! Klikni na „Hrát za postavu“, dojdi k nim a zalij je.')}
   selected=hit&&hit.object.userData.house?hit.object.userData.house.userData.id:null;
 });
 
@@ -2982,9 +2985,16 @@ document.getElementById('lvlBox').addEventListener('click',e=>{if(e.target.id===
 const WATER_FRESH=24*60*60*1000,WATER_COOLDOWN=60*60*1000;
 const water={beds:{},near:null,anim:new Map(),skew:0,mine:0};
 function waterFresh(k){const w=water.beds[k];return !!(w&&w.t&&Date.now()+water.skew-w.t<WATER_FRESH)}
-function waterLook(k){ // fresh: upright; thirsty: flowers droop and shrink
+const WILT={stem:mat('#a89a3c'),bloom:[mat('#b8a03a'),mat('#9c7b2e'),mat('#c9b04a')]}; // yellow, brownish, rotting
+function flowerLook(f,i,fresh){
+  const st=f.userData.stem,bl=f.userData.bloom;
+  if(st)st.material=fresh?st.userData.orig:WILT.stem;
+  if(bl){bl.material=fresh?bl.userData.orig:WILT.bloom[i%3];bl.scale.set(1,fresh?1:.7,1)}
+  f.rotation.set(fresh?0:.35*(i%2?1:-1),0,fresh?0:.55*(i%3?1:-1));f.scale.setScalar(fresh?1:.82);
+}
+function waterLook(k){ // fresh: as they always looked; thirsty (24 h without water): yellow, rotting, drooping
   const h=houses.get(k);if(!h)return;const fresh=waterFresh(k);
-  h.g.userData.flowers.forEach((f,i)=>{if(water.anim.has(k))return;f.rotation.set(fresh?0:.35*(i%2?1:-1),0,fresh?0:.55*(i%3?1:-1));f.scale.setScalar(fresh?1:.78)});
+  h.g.userData.flowers.forEach((f,i)=>{if(water.anim.has(k))return;flowerLook(f,i,fresh)});
 }
 async function waterLoad(){
   try{const r=await fetch(LIVE_DB+'/water.json');if(!r.ok)return;const j=await r.json()||{};
@@ -2995,11 +3005,23 @@ waterLoad();setInterval(waterLoad,60000);setInterval(()=>houses.forEach((_,k)=>w
 function toast(t){let el=document.getElementById('toast');if(!el){el=document.createElement('div');el.id='toast';el.className='toast';el.setAttribute('role','status');document.body.append(el)}
   el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),3500)}
 function waterSay(t){if(play)sayPlay(t,3500);else toast(t)}
+const WATER_TIME=5000;
+function waterStart(k){
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Kytky můžeš zalévat, až se přihlásíš.');return}
+  if(water.job)return;
+  const w=water.beds[k],now=Date.now()+water.skew;
+  if(w&&w.t&&now-w.t<WATER_COOLDOWN){waterSay(`Tyhle kytky už zalil${w.n?' @'+w.n:'i'} před ${Math.max(1,Math.round((now-w.t)/60000))} min. Zkus jiné.`);return}
+  water.job={k,t0:performance.now()};waterAnim(k,false,WATER_TIME);
+}
+function waterCancel(msg){
+  const j=water.job;if(!j)return;water.job=null;
+  const a=water.anim.get(j.k);if(a){a.h.g.remove(a.can,a.drops);water.anim.delete(j.k);waterLook(j.k)}
+  if(msg)waterSay(msg);water.near=undefined;
+}
 async function waterBed(k){
   if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Kytky můžeš zalévat, až se přihlásíš.');return}
   const w=water.beds[k],now=Date.now()+water.skew;
   if(w&&w.t&&now-w.t<WATER_COOLDOWN){waterAnim(k,true);waterSay(`Tyhle kytky už zalil${w.n?' @'+w.n:'i'} před ${Math.max(1,Math.round((now-w.t)/60000))} min. Zkus jiné.`);return}
-  waterAnim(k);
   water.beds[k]={t:now,n:meId};waterLook(k);
   try{
     const ok=await acctPut('/water/'+k,{t:{'.sv':'timestamp'},n:meId});
@@ -3018,13 +3040,13 @@ const WCAN=(()=>{ // a small floating watering can used for the effect
   for(let i=0;i<12;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(.005,4,3),dm);d.userData.ph=i/12;d.userData.x=((i*7)%5-2)*.006;drops.add(d)}
   return {g,drops};
 })();
-function waterAnim(k,short){
+function waterAnim(k,short,ms){
   const h=houses.get(k);if(!h)return;
   const can=WCAN.g.clone(true),drops=WCAN.drops.clone(true);
   can.position.copy(h.g.userData.bedAt).add(new THREE.Vector3(.06,.14,-.05));can.rotation.set(.8,-Math.PI/2,0);
   drops.position.copy(h.g.userData.bedAt);
   h.g.add(can,drops);
-  water.anim.set(k,{can,drops,h,until:performance.now()+(short?900:2600),short});
+  const dur=ms||(short?900:2600);water.anim.set(k,{can,drops,h,until:performance.now()+dur,dur,short});
 }
 function updateWater(now){
   const T=now/1000;
@@ -3032,17 +3054,25 @@ function updateWater(now){
     const left=a.until-now;
     a.drops.children.forEach(d=>{const u=(T*2.4+d.userData.ph)%1;d.position.set(.04+d.userData.x-u*.02,.12*(1-u*u),d.userData.x*2);d.visible=!a.short});
     a.can.position.y=a.h.g.userData.bedAt.y+.14+Math.sin(T*3)*.01;
-    if(!a.short)a.h.g.userData.flowers.forEach((f,i)=>{const q=Math.min(1,(2600-left)/1800);f.rotation.x*=.92;f.rotation.z*=.92;f.scale.setScalar(.78+.22*q+.18*Math.sin(q*Math.PI)*(.7+.3*Math.sin(i*1.7+T*5)))});
-    if(left<=0){a.h.g.remove(a.can,a.drops);water.anim.delete(k);waterLook(k)}
+    if(!a.short)a.h.g.userData.flowers.forEach((f,i)=>{const q=Math.min(1,(a.dur-left)/a.dur);if(q>.6&&!f.userData.fresh){flowerLook(f,i,true);f.userData.fresh=1}f.rotation.x*=.95;f.rotation.z*=.95;f.scale.setScalar(.82+.18*q+.15*Math.sin(q*Math.PI)*(.7+.3*Math.sin(i*1.7+T*5)))});
+    if(left<=0){a.h.g.remove(a.can,a.drops);water.anim.delete(k);a.h.g.userData.flowers.forEach(f=>delete f.userData.fresh);waterLook(k)}
   }
   // in play mode: offer the button when standing next to a bed
   let near=null;
   if(play&&acct.user){let best=.03;const w=new THREE.Vector3();
     houses.forEach((h,k)=>{w.copy(h.g.userData.bedAt);h.g.localToWorld(w);const d=w.normalize().distanceTo(play.p);if(d<best){best=d;near=k}})}
-  if(near!==water.near){water.near=near;const b=document.getElementById('waterBtn');b.hidden=!near;
-    if(near){const thirsty=!waterFresh(near);b.textContent=thirsty?'💧 Zalít kytky'+(touchUI()?'':' (F)'):'🌸 Kytky jsou svěží'+(touchUI()?'':' (F)')}}
+  const b=document.getElementById('waterBtn');
+  if(water.job){
+    if(near!==water.job.k){waterCancel('Odešel jsi od kytek, zalévání se přerušilo.');}
+    else{const el=performance.now()-water.job.t0,left=Math.ceil((WATER_TIME-el)/1000);
+      b.hidden=false;b.disabled=true;b.textContent='💧 Zalévám… '+Math.max(0,left)+' s';b.style.setProperty('--p',Math.min(100,el/WATER_TIME*100)+'%');
+      if(el>=WATER_TIME){const k=water.job.k;water.job=null;water.near=undefined;waterBed(k)}
+      return}
+  }
+  if(near!==water.near){water.near=near;b.hidden=!near;b.disabled=false;b.style.setProperty('--p','0%');
+    if(near)b.textContent=waterFresh(near)?'🌸 Kytky jsou zalité':'💧 Zalít kytky'+(touchUI()?'':' (F)')}
 }
-document.getElementById('waterBtn').onclick=()=>{if(water.near)waterBed(water.near)};
+document.getElementById('waterBtn').onclick=()=>{if(water.near&&!water.job)waterStart(water.near)};
 
 // ---------- inventory: equipment slots on the character, a 3-slot bag and a money box ----------
 // Owned items: /items/<nick>/<itemId> = true (set by the admin) plus items the game grants in code (Zubatý meč).
@@ -3371,7 +3401,7 @@ addEventListener('keydown',e=>{
   }
   if(e.code==='Escape'){stopPlay();return}
   if(e.code==='Space'){e.preventDefault();if(!e.repeat)startJump();return}
-  if(e.code==='KeyF'&&!e.repeat&&water.near){waterBed(water.near);return}
+  if(e.code==='KeyF'&&!e.repeat&&water.near&&!water.job){waterStart(water.near);return}
   keys.add(e.code);
   if(move||e.code==='Space')e.preventDefault();
 });
