@@ -209,6 +209,7 @@ body.playing .admin-key{display:none}
 .shop-bag{grid-template-columns:repeat(5,minmax(0,1fr))}
 .shop-btn{background:#c98f45}
 .lab-btn{background:#2a9a6a}
+.revive-btn{background:#7a5ad1}
 .lab-recipe{display:flex;align-items:center;justify-content:center;gap:16px;margin:10px 0;padding:14px;border-radius:14px;background:rgba(47,179,106,.12);border:1px solid rgba(47,179,106,.4)}
 .lab-recipe span{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:30px}
 .lab-recipe small{font-size:12px;color:var(--ink-dim);font-weight:800}
@@ -553,6 +554,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <button class="water-btn quest-btn" id="questBtn" type="button" hidden>🌱 Mluvit se zahradnicí</button>
   <button class="water-btn shop-btn" id="shopBtn" type="button" hidden>🛒 Otevřít obchod</button>
   <button class="water-btn lab-btn" id="labBtn" type="button" hidden>⚗️ Lékárnický stůl</button>
+  <button class="water-btn revive-btn" id="reviveBtn" type="button" hidden>✨ Oživit</button>
 </div>
 
 <div class="chat" id="chat" aria-label="Chat planety">
@@ -2759,6 +2761,7 @@ canvas.addEventListener('pointerup',e=>{
   const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){openBoss();return}
   const qh=questNpc&&ray.intersectObject(questNpc,true)[0];if(qh&&(!hit||qh.distance<hit.distance+.01)){questOpen();return}
   {const sg=siteGroup.children.find(c=>c.userData.site==='shop'),sh=sg&&ray.intersectObject(sg,true)[0];if(sh&&(!hit||sh.distance<hit.distance+.01)){if(play&&shop.near)shopOpen();else toast('🛒 Obchod planety: dojdi ke dveřím za svou postavou a otevři nabídku.');return}}
+  {const gh=ray.intersectObject(deadGroup,true)[0];if(gh&&(!hit||gh.distance<hit.distance+.01)){const id=gh.object.userData.graveOf;toast(id===meId?'🪦 Tohle je tvůj hrobeček. Počkej, až tě někdo oživí.':`🪦 Tady leží @${id}. Dojdi sem za postavou a oživ ho!`);return}}
   if(hit&&hit.object.userData.bed){const bk=hit.object.userData.bed,wt=waterWait(bk);toast(wt>0?`🌸 Kytky jsou zalité. Znovu je půjde zalít za ${fmtWait(wt)}.`:waterFresh(bk)?'🌸 Kytky jsou zalité a už se dají zalít znovu.':(play?'🥀 Kytky usychají! Dojdi k nim a zalij je.':'🥀 Kytky usychají! Klikni na „Hrát za postavu“, dojdi k nim a zalij je.'));return}
   selected=hit&&hit.object.userData.house?hit.object.userData.house.userData.id:null;
 });
@@ -2850,7 +2853,7 @@ function loop(now){
   }
   animateFountain(now);
   updateWalker(now);
-  updatePlay(now);updateWater(now);updateQuest();updateShop();updateLab();
+  updatePlay(now);updateWater(now);updateQuest();updateShop();updateLab();updateGrave();
   updateRemotes(now);
   updateWanderers(now);
   updateFox(now);
@@ -3061,7 +3064,7 @@ async function acctFetch(path,opt){
 }
 async function acctGet(path){const r=await acctFetch(path);if(!r.ok)throw new Error(r.status);return r.json()}
 function acctPut(path,val){return acctFetch(path,{method:'PUT',body:JSON.stringify(val)}).then(r=>r.ok)}
-function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true);setTimeout(()=>{try{xpDailyLogin()}catch(_){}try{launchGift()}catch(_){}},1500)}
+function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true);setTimeout(()=>{try{xpDailyLogin()}catch(_){}try{launchGift()}catch(_){}try{hlLogin()}catch(_){}},1500)}
 async function acctLogout(msg){
   try{questDrop()}catch(_){}
   clearTimeout(acct.timer);try{localStorage.removeItem(LOGIN_AT)}catch(_){}
@@ -3408,16 +3411,119 @@ function updateQuest(){ // in play mode: offer a button when standing next to th
 document.getElementById('questBtn').onclick=questOpen;
 
 // ---------- health: every player starts each visit with 100 HP (damage comes later); medicine heals what's missing ----------
-const hp={cur:100,max:100};
-function hpUi(){const t=`❤️ ${hp.cur}/${hp.max}`;document.getElementById('hpChip').textContent=t;document.getElementById('meHp').textContent='❤️ Životy '+hp.cur+'/'+hp.max}
+// ---------- health, illness, death ----------
+// /health/<nick> = {hp, sick, tk (last hourly tick while sick), dead, dAt (time of death), imm (no illness until), t}.
+// Health stays between visits. Ill: −10 HP every hour, also while offline. 10 % chance to fall ill on every visit and then
+// every 30 minutes while playing. Antibiotics cure the illness, heal to 100 and protect for an hour.
+// 0 HP = a gravestone; another player can revive you there, or you come back by yourself after 2 hours.
+const H_MS=3600000,REVIVE_MS=2*H_MS,SICK_CHANCE=.1;
+const hp={cur:100,max:100,sick:false,dead:false,dAt:0,imm:0,tk:0,loaded:false};
+const hl={all:{}};
+const hlNow=()=>Date.now()+(typeof water!=='undefined'?water.skew:0);
+function hlEff(st,now){
+  if(!st)return {hp:100,sick:false,dead:false,dAt:0,imm:0,tk:now};
+  const imm=+st.imm||0;
+  if(st.dead){if(now-(+st.dAt||0)>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:now,revived:true};return {hp:0,sick:false,dead:true,dAt:+st.dAt||now,imm,tk:now}}
+  if(st.sick){const tk=+st.tk||now,n=Math.max(0,Math.floor((now-tk)/H_MS)),h=(+st.hp||0)-10*n;
+    if(h<=0){const dAt=tk+Math.ceil((+st.hp||0)/10)*H_MS;if(now-dAt>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:now,revived:true};return {hp:0,sick:false,dead:true,dAt,imm,tk:now}}
+    return {hp:h,sick:true,dead:false,dAt:0,imm,tk:tk+n*H_MS}}
+  return {hp:Math.max(0,Math.min(100,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
+}
+function hlSet(e){Object.assign(hp,{cur:e.hp,sick:e.sick,dead:e.dead,dAt:e.dAt,imm:e.imm,tk:e.tk});hpUi()}
+async function hlSave(){
+  if(!meId||!acct.user)return false;
+  const v={hp:hp.cur,sick:hp.sick,tk:hp.tk,dead:hp.dead,dAt:hp.dAt||0,imm:hp.imm||0,t:{'.sv':'timestamp'}};
+  hl.all[liveKey(meId)]={...v,t:Date.now()};deadSync();
+  try{return await acctPut('/health/'+liveKey(meId),v)}catch(_){return false}
+}
+function hpUi(){
+  const t=hp.dead?'🪦 mrtvý':`❤️ ${hp.cur}/${hp.max}${hp.sick?' 🤒':''}`;
+  document.getElementById('hpChip').textContent=t;
+  document.getElementById('meHp').textContent=hp.dead?`🪦 Jsi mrtvý · oživení za ${fmtLeft(hp.dAt+REVIVE_MS-hlNow())} nebo tě oživí jiný hráč`:'❤️ Životy '+hp.cur+'/'+hp.max+(hp.sick?' · 🤒 nemocný (−10 HP každou hodinu)':'');
+}
+const fmtLeft=ms=>{ms=Math.max(0,ms);const h=Math.floor(ms/H_MS),m=Math.ceil(ms%H_MS/60000);return h?`${h} h ${m} min`:`${m} min`};
+function hlSick(){
+  if(hp.dead||hp.sick||hlNow()<hp.imm||Math.random()>=SICK_CHANCE)return false;
+  hp.sick=true;hp.tk=hlNow();hpUi();hlSave();
+  toast('🤒 Onemocněl jsi! Každou hodinu ztratíš 10 HP. Vyleč se antibiotiky z lékárny.');return true;
+}
+function hlDied(){
+  if(play)stopPlay();
+  toast('🪦 Tvoje životy klesly na 0. Ať tě oživí jiný hráč, nebo se za 2 hodiny probudíš sám.');
+}
+async function hlLogin(){ // on every visit: load, apply what happened while away, maybe fall ill
+  if(!meId||!acct.user)return;
+  let st=null;try{st=await acctGet('/health/'+liveKey(meId))}catch(_){}
+  const e=hlEff(st,hlNow());hlSet(e);hp.loaded=true;
+  const changed=!st||e.revived||e.dead!==!!st.dead||e.hp!==st.hp||e.sick!==!!st.sick;
+  if(e.revived)toast('✨ Probudil ses z hrobečku. Máš zase 100 HP.');
+  if(!hlSick()&&changed)hlSave();
+  if(hp.dead)hlDied();
+}
+let hlRoll=Date.now();
+setInterval(()=>{ // every minute: illness ticks, death, coming back to life; every 30 min a new illness roll
+  if(!hp.loaded||!meId||!acct.user)return;
+  const before={hp:hp.cur,dead:hp.dead,sick:hp.sick};
+  const e=hlEff({hp:hp.cur,sick:hp.sick,tk:hp.tk,dead:hp.dead,dAt:hp.dAt,imm:hp.imm},hlNow());hlSet(e);
+  if(e.revived)toast('✨ Probudil ses z hrobečku. Máš zase 100 HP.');
+  if(e.hp!==before.hp||e.dead!==before.dead||e.sick!==before.sick)hlSave();
+  if(e.dead&&!before.dead)hlDied();
+  else if(e.sick&&e.hp<before.hp)toast(`🤒 Nemoc ti ubrala 10 HP. Máš ${e.hp}/100.`);
+  if(Date.now()-hlRoll>=30*60000){hlRoll=Date.now();hlSick()}
+},60000);
 async function medUse(){
   const det=document.getElementById('invDetail');
-  if(hp.cur>=hp.max){det.textContent='💊 Antibiotika ×'+medCount(meId)+' · máš plné zdraví, teď je nepotřebuješ.';return}
+  if(hp.dead){det.textContent='🪦 Mrtvý lék nevezme. Počkej na oživení.';return}
+  if(hp.cur>=hp.max&&!hp.sick){det.textContent='💊 Antibiotika ×'+medCount(meId)+' · jsi zdravý, teď je nepotřebuješ.';return}
   const k=liveKey(meId),c=medCount(meId);if(c<1)return;
-  if(await acctPut('/meds/'+k,{c:c-1,t:{'.sv':'timestamp'}})){inv.meds[k]={c:c-1,t:Date.now()};const healed=hp.max-hp.cur;hp.cur=hp.max;hpUi();invRender();det.textContent=`💊 Vyléčeno +${healed} HP. Máš zase ${hp.max}/${hp.max}.`}
-  else det.textContent='Nepodařilo se použít lék. Zkus to znovu.';
+  if(await acctPut('/meds/'+k,{c:c-1,t:{'.sv':'timestamp'}})){
+    inv.meds[k]={c:c-1,t:Date.now()};const healed=hp.max-hp.cur,wasSick=hp.sick;
+    hp.cur=hp.max;hp.sick=false;hp.imm=hlNow()+H_MS;hp.tk=hlNow();hpUi();hlSave();invRender();
+    det.textContent=(wasSick?'💊 Nemoc je pryč! ':'💊 ')+`Vyléčeno +${healed} HP, máš ${hp.max}/${hp.max}. Hodinu teď nemůžeš onemocnět.`;
+  }else det.textContent='Nepodařilo se použít lék. Zkus to znovu.';
 }
 hpUi();
+
+// ---------- gravestones of dead players, at their house (or their building) ----------
+const deadGroup=new THREE.Group();scene.add(deadGroup);
+const deadGraves=new Map();
+function graveDir(id){
+  const r=residentById.get(id);if(!r||r.left)return null;
+  if(r.home!=null&&PLOTS[r.home])return slerpDir(PLOTS[r.home].v,START,.03/Math.max(.05,PLOTS[r.home].v.angleTo(START)));
+  const k=siteKeyOf(r.role);return k&&SITES[k]?slerpDir(SITES[k].dir,START,.09/Math.max(.1,SITES[k].dir.angleTo(START))):null;
+}
+function graveMesh(r){
+  const g=new THREE.Group(),stone=mat('#8d939e');
+  const slab=new THREE.Mesh(new THREE.BoxGeometry(.05,.06,.012),stone);slab.position.y=.03;g.add(slab);
+  const top=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.012,16),stone);top.rotation.x=Math.PI/2;top.position.y=.06;g.add(top);
+  const mound=new THREE.Mesh(new THREE.SphereGeometry(.04,10,6,0,Math.PI*2,0,Math.PI/2),mat('#6b4a2e'));mound.scale.set(.8,.25,1.3);mound.position.z=.04;g.add(mound);
+  const rip=new THREE.Mesh(new THREE.PlaneGeometry(.04,.016),new THREE.MeshBasicMaterial({map:textTex('RIP','#8d939e','#2b2b30',256,100,'900 80px system-ui,sans-serif')}));rip.position.set(0,.045,.0065);g.add(rip);
+  const c=document.createElement('canvas');c.width=512;c.height=96;const x=c.getContext('2d');x.font='900 54px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';
+  x.fillStyle='rgba(20,18,40,.85)';x.beginPath();x.roundRect(8,8,496,80,40);x.fill();x.fillStyle='#fff';x.fillText('🪦 '+r.name,256,50);
+  const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));tag.scale.set(.16,.03,1);tag.position.y=.12;g.add(tag);
+  g.userData.graveOf=r.id;g.traverse(o=>{if(o.isMesh)o.userData.graveOf=r.id});return g;
+}
+function deadSync(){
+  const now=hlNow(),dead=new Set();
+  for(const [k,st] of Object.entries(hl.all)){const e=hlEff(st,now);if(!e.dead)continue;const r=residents.find(x=>liveKey(x.id)===k);if(r&&!r.left)dead.add(r.id)}
+  for(const [id,g] of deadGraves)if(!dead.has(id)){deadGroup.remove(g);deadGraves.delete(id)}
+  for(const id of dead){if(deadGraves.has(id))continue;const dir=graveDir(id);if(!dir)continue;const g=graveMesh(residentById.get(id));placeOn(g,dir,0,0);faceToward(g,dir,START.clone().sub(dir));g.userData.dir=dir;deadGroup.add(g);deadGraves.set(id,g)}
+}
+async function deadLoad(){try{const r=await fetch(LIVE_DB+'/health.json');if(r.ok){hl.all=await r.json()||{};deadSync()}}catch(_){}}
+deadLoad();setInterval(deadLoad,60000);
+const deadNear={id:null};
+async function graveRevive(id){
+  if(!meId||!acct.user||id===meId)return;
+  const k=liveKey(id),st=hl.all[k];if(!st||!hlEff(st,hlNow()).dead){deadSync();return}
+  try{const ok=await acctPut('/health/'+k,{hp:100,sick:false,tk:{'.sv':'timestamp'},dead:false,dAt:0,imm:+st.imm||0,t:{'.sv':'timestamp'},rev:meId});
+    if(ok){hl.all[k]={hp:100,sick:false,tk:Date.now(),dead:false,t:Date.now()};deadSync();toast(`✨ Oživil jsi @${id}! Má zase 100 HP.`);deadNear.id=undefined}
+    else toast('Oživení se nepovedlo. Zkus to znovu.')}catch(_){toast('Nepodařilo se spojit se serverem.')}
+}
+function updateGrave(){
+  let near=null;if(play&&acct.user){let best=.025;for(const [id,g] of deadGraves){if(id===meId)continue;const d=g.userData.dir.distanceTo(play.p);if(d<best){best=d;near=id}}}
+  if(near!==deadNear.id){deadNear.id=near;const b=document.getElementById('reviveBtn');b.hidden=!near;if(near)b.textContent=`✨ Oživit @${near}`+(touchUI()?'':' (F)')}
+}
+document.getElementById('reviveBtn').onclick=()=>{if(deadNear.id)graveRevive(deadNear.id)};
 
 // ---------- the pharmacy's lab table: 3 herbs → 1 antibiotics, brewing takes a minute and you have to stay by the table ----------
 const MED_HERBS=3,MED_TIME=60000;
@@ -3756,6 +3862,7 @@ function updateAbduct(P,now,dt){ // the UFO base is gone (aliens can't be won an
 // ---------- my own character ----------
 function startPlay(){
   const r=residentById.get(meId);if(!r||r.left||play)return;
+  if(hp.dead){toast(`🪦 Jsi mrtvý. Oživení za ${fmtLeft(hp.dAt+REVIVE_MS-hlNow())}, nebo ať tě oživí jiný hráč u tvého hrobečku.`);return}
   finishFly();controls.autoRotate=false;controls.enabled=false;
   sheet.hidden=true;bar.hidden=false;
   const av=makeAvatar(r);playerGroup.add(av.fig);
@@ -3852,6 +3959,7 @@ addEventListener('keydown',e=>{
   if(e.code==='Space'){e.preventDefault();if(!e.repeat)startJump();return}
   if(e.code==='KeyF'&&!e.repeat&&water.near&&!water.job){waterStart(water.near);return}
   if(e.code==='KeyF'&&!e.repeat&&quest.near){questOpen();return}
+  if(e.code==='KeyF'&&!e.repeat&&deadNear.id){graveRevive(deadNear.id);return}
   if(e.code==='KeyF'&&!e.repeat&&shop.near){shopOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&lab.near&&!lab.job){labOpen();return}
   keys.add(e.code);
