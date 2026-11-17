@@ -1,6 +1,6 @@
 {
- "updated": 1794855000000,
- "changedAt": 1794830738032,
+ "updated": 1794899095406,
+ "changedAt": 1794899095406,
  "followers": [
   {
    "id": "lubikosuch",
@@ -973,7 +973,9 @@
   {
    "id": "tonickaaabroo",
    "name": "@tonickaaabroo",
-   "at": 1793972733298
+   "at": 1793972733298,
+   "left": true,
+   "leftAt": 1794899095406
   },
   {
    "id": "daveorigin",
@@ -1010,7 +1012,9 @@
   {
    "id": "mia_soosova",
    "name": "@mia_soosova",
-   "at": 1793988273229
+   "at": 1793988273229,
+   "left": true,
+   "leftAt": 1794899095406
   },
   {
    "id": "bobes.04",
@@ -1194,7 +1198,9 @@
   {
    "id": "bjk_daniceqq_",
    "name": "@bjk_daniceqq_",
-   "at": 1794064062160
+   "at": 1794064062160,
+   "left": true,
+   "leftAt": 1794899095406
   },
   {
    "id": "bengoro.cawo",
@@ -1270,7 +1276,9 @@
   {
    "id": "eliska_12406",
    "name": "@eliska_12406",
-   "at": 1794171834519
+   "at": 1794171834519,
+   "left": true,
+   "leftAt": 1794899095406
   },
   {
    "id": "nzhsvjut",
@@ -1511,7 +1519,9 @@
   {
    "id": "xxstepiks",
    "name": "@xxstepiks",
-   "at": 1794517696595
+   "at": 1794517696595,
+   "left": true,
+   "leftAt": 1794899095406
   },
   {
    "id": "_._.davca._._._",
@@ -1749,6 +1759,11 @@
    "id": "jartix_9_",
    "name": "@jartix_9_",
    "at": 1794830738034
+  },
+  {
+   "id": "lollypopz_roblox",
+   "name": "@lollypopz_roblox",
+   "at": 1794899095406
   }
  ]
 }
