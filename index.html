@@ -137,6 +137,22 @@ body.hide-players .label.player{display:none!important}
 body.hide-sites .label.site,body.hide-sites .label.gate{display:none!important}
 @media (max-width:700px){.bar{padding-right:72px}}
 body.playing .admin-key{display:none}
+.lvl{display:flex;flex-direction:column;gap:4px;width:100%;margin-top:8px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid var(--panel-line);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.lvl[hidden]{display:none}
+.lvl-top{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--ink-dim)}
+.lvl-top b{color:var(--sun);font-size:13px}
+.lvl-bar{display:block;height:8px;border-radius:4px;background:#2a2440;overflow:hidden}
+.lvl-bar.big{height:12px;border-radius:6px;margin:4px 0 6px}
+.lvl-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffc300,#ff8a3d);border-radius:inherit;transition:width .5s}
+.lvl-big{margin:0;font-size:22px;font-weight:900}
+.lvl-big span{font-size:14px;font-weight:700;color:var(--ink-dim)}
+.lvl-list{margin:0;padding-left:18px;font-size:13px;line-height:1.6;color:var(--ink-dim)}
+.lvl-list b{color:var(--ink)}
+.lvl-list li.done{color:#7fe0a0}
+.lvl-top10{margin:0;padding-left:22px;font-size:13px;line-height:1.7}
+.lvl-top10 li.me{color:var(--sun);font-weight:800}
+.label.player.lv5{border-color:#7fd8ff}
+.label.player.lv20{background:#3a2a08;border-color:#ffc300;color:#ffe08a}
 .inv{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
 .inv[hidden]{display:none}
 .inv-card{width:min(460px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#15122b;border:1px solid var(--panel-line);border-radius:18px;padding:18px 18px 20px;box-sizing:border-box;color:var(--ink)}
@@ -159,7 +175,7 @@ body.playing .admin-key{display:none}
 .inv-money b{font-size:20px;color:#ffd23a}
 .inv-money span:last-child{font-size:11px;font-weight:800;color:#e8c98a}
 .inv-sub{margin:16px 0 8px;font-size:14px}
-.inv-bag{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.inv-bag{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
 .inv-detail{min-height:36px;font-size:13px;line-height:1.4;color:var(--ink-dim);margin:12px 0 0}
 .inv-detail b{color:var(--ink)}
 .boss-mg{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
@@ -284,6 +300,25 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     <p class="inv-detail" id="invDetail" role="status" aria-live="polite">Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.</p>
   </div>
 </section>
+<section class="inv" id="lvlBox" hidden aria-labelledby="lvlTitle">
+  <div class="inv-card">
+    <header><h2 id="lvlTitle">⭐ Level a žebříček</h2><button type="button" id="lvlClose">Zavřít</button></header>
+    <p class="lvl-big" id="lvlBig"></p>
+    <span class="lvl-bar big"><i id="lvlFill"></i></span>
+    <p class="inv-who" id="lvlToday"></p>
+    <h3 class="inv-sub">Jak získat XP</h3>
+    <ul class="lvl-list">
+      <li><b>+10 XP</b> zalití záhonku u domu</li>
+      <li><b>+20 XP</b> první přihlášení za den</li>
+      <li><b>+5 XP</b> za každý den, co followuješ @planetafolloweru</li>
+      <li><b>až +600 XP</b> za boj s bossem (odznak a údery)</li>
+    </ul>
+    <h3 class="inv-sub">Co se odemyká</h3>
+    <ul class="lvl-list" id="lvlUnlocks"></ul>
+    <h3 class="inv-sub">🏆 TOP 10</h3>
+    <ol class="lvl-top10" id="lvlTop"></ol>
+  </div>
+</section>
 <section class="admin" id="admin" hidden aria-labelledby="adminTitle">
   <div class="admin-card">
     <header><h2 id="adminTitle">Admin · statistiky</h2><button type="button" id="adminClose">Zavřít</button></header>
@@ -343,6 +378,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 <aside class="me card" id="meCard" hidden aria-live="polite">
   <div class="me-top"><b id="meName"></b><button class="link" type="button" id="meChange">odhlásit</button></div>
   <div id="meInfo" class="me-info"></div>
+  <button class="lvl" id="meLvl" type="button" hidden aria-label="Level a žebříček"><span class="lvl-top"><b id="meLvlN">Level 1</b><span id="meLvlXp">0/100 XP</span></span><span class="lvl-bar"><i id="meLvlFill"></i></span></button>
 </aside>
 
 <div class="bar" id="bar">
@@ -2713,7 +2749,7 @@ const ROLE_TEXT={
 function applyMe(flyThere){
   if(meFig){meFig.scale.setScalar(1);meFig.remove(meMarker);meFig=null}
   meTag.hidden=true;playBtn.hidden=true;
-  document.getElementById('invBtn').hidden=!meId;
+  document.getElementById('invBtn').hidden=!meId;lvlCard();
   if(!meId){meCard.hidden=true;meBtn.hidden=true;return}
   meCard.hidden=false;document.getElementById('meName').textContent='@'+meNick.replace(/^@+/,'');
   if(!dataLoaded){setMeInfo([noData?'Planetu se teď nepodařilo načíst.':'Hledám tvůj dům…']);meBtn.hidden=true;return}
@@ -2778,7 +2814,7 @@ async function acctFetch(path,opt){
 }
 async function acctGet(path){const r=await acctFetch(path);if(!r.ok)throw new Error(r.status);return r.json()}
 function acctPut(path,val){return acctFetch(path,{method:'PUT',body:JSON.stringify(val)}).then(r=>r.ok)}
-function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true)}
+function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true);setTimeout(()=>{try{xpDailyLogin()}catch(_){}},1500)}
 async function acctLogout(msg){
   clearTimeout(acct.timer);try{localStorage.removeItem(LOGIN_AT)}catch(_){}
   if(play)stopPlay();
@@ -2853,6 +2889,93 @@ setTimeout(()=>{
 meBtn.onclick=()=>applyMe(true);
 document.getElementById('games').onclick=()=>openBoss();
 
+// ---------- leveling: XP from playing, levels 1–50 ----------
+// XP = earned (/xp/<nick>.x: watering, daily login) + 5 per day of following + boss (badge 100 + 1 per 100 hits, max 600) + admin bonus (/xpbonus/<nick>).
+// The database rules cap earned XP at 20 per write, one write per 5 s and 300 per day, so nobody can just type in a big number.
+// Level L needs 50·L XP more than L−1: L2 = 100, L10 = 2 700 total, L50 = 63 700 total.
+const LVL_MAX=50,XP_DAY_CAP=300;
+const lvlNeed=L=>L<=1?0:50*(L*(L+1)/2-1); // total XP to reach level L
+const xp={earned:{},bonus:{},pending:0,login:false,busy:false,mine:null};
+function lvlOfXp(x){let L=1;while(L<LVL_MAX&&x>=lvlNeed(L+1))L++;return L}
+function xpOf(id){
+  if(!id)return 0;const k=liveKey(id),r=residentById&&residentById.get(id);
+  const e=+(xp.earned[k]&&xp.earned[k].x)||0,b=+xp.bonus[k]||0;
+  const days=r&&!r.left&&r.at?Math.max(0,Math.floor((Date.now()-r.at)/86400000)):0;
+  let boss=0;try{const h=bossHitsOf(id);if(h>0)boss=Math.min(600,(bossBadge(id)?100:0)+Math.floor(h/100))}catch(_){}
+  return e+(k===liveKey(meId||'')?xp.pending:0)+b+days*5+boss;
+}
+function lvlOf(id){return lvlOfXp(xpOf(id))}
+const xpDay=()=>Math.floor((Date.now()+(typeof water!=='undefined'?water.skew:0))/86400000);
+async function xpLoad(){
+  try{const [e,b]=await Promise.all(['xp','xpbonus'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
+    if(e)xp.earned=e;if(b)xp.bonus=b;lvlCard()}catch(_){}
+}
+xpLoad();setInterval(xpLoad,120000);
+function xpGain(n,why){
+  if(!meId||!acct.user)return;
+  const k=liveKey(meId),cur=xp.earned[k]||{},today=cur.day===xpDay()?(+cur.d||0):0;
+  const room=XP_DAY_CAP-today-xp.pending;if(room<=0){toast('Dnešní limit '+XP_DAY_CAP+' XP máš splněný. Zítra zas!');return}
+  xp.pending+=Math.min(n,room);lvlCard(true);xpFlush();
+}
+async function xpFlush(){
+  if(xp.busy||!xp.pending||!acct.user||!meId)return;
+  xp.busy=true;
+  try{
+    const k=liveKey(meId);let cur=xp.earned[k];
+    try{cur=await acctGet('/xp/'+k)}catch(_){}
+    const day=xpDay(),g=Math.min(20,xp.pending),x0=+(cur&&cur.x)||0,d0=cur&&cur.day===day?(+cur.d||0):0;
+    if(d0+g>XP_DAY_CAP){xp.pending=0;lvlCard();return}
+    const next={x:x0+g,d:d0+g,day,t:{'.sv':'timestamp'},l:cur&&cur.l||0};
+    if(xp.loginDay===day)next.l=day;
+    if(await acctPut('/xp/'+k,next)){xp.pending-=g;next.t=Date.now();xp.earned[k]=next;lvlCard()}
+  }catch(_){}
+  finally{xp.busy=false;if(xp.pending)setTimeout(xpFlush,6000)}
+}
+async function xpDailyLogin(){ // +20 XP for the first visit of the day
+  if(!meId||!acct.user)return;
+  try{const cur=await acctGet('/xp/'+liveKey(meId));if(cur)xp.earned[liveKey(meId)]=cur;
+    const day=xpDay();if(cur&&cur.l===day)return;
+    xp.loginDay=day;xpGain(20,'přihlášení');toast('☀️ Denní bonus +20 XP');}catch(_){}
+}
+const LVL_UNLOCKS=[[3,'číslo levelu u tvé jmenovky'],[5,'modrá jmenovka'],[10,'4. slot v batohu'],[20,'5. slot v batohu a zlatá jmenovka'],[30,'místo v síni slávy']];
+function lvlCard(gained){
+  const btn=document.getElementById('meLvl');if(!btn)return;
+  if(!meId||!acct.user){btn.hidden=true;return}
+  const x=xpOf(meId),L=lvlOfXp(x),a=lvlNeed(L),b=lvlNeed(Math.min(LVL_MAX,L+1)),pct=L>=LVL_MAX?100:Math.round((x-a)/(b-a)*100);
+  btn.hidden=false;document.getElementById('meLvlN').textContent='Level '+L;
+  document.getElementById('meLvlXp').textContent=L>=LVL_MAX?'MAX':`${(x-a).toLocaleString('cs-CZ')}/${(b-a).toLocaleString('cs-CZ')} XP`;
+  document.getElementById('meLvlFill').style.width=pct+'%';
+  // level up?
+  const key='planeta-lvl-'+meId;let prev=0;try{prev=+localStorage.getItem(key)||0;localStorage.setItem(key,String(L))}catch(_){}
+  if(gained&&prev&&L>prev)lvlUp(L); // only celebrate levels earned right now, not data arriving late
+  if(!document.getElementById('lvlBox').hidden)lvlRender();
+}
+function lvlUp(L){
+  toast('🎉 Level '+L+'!'+((LVL_UNLOCKS.find(u=>u[0]===L)||[])[1]?' Odemčeno: '+LVL_UNLOCKS.find(u=>u[0]===L)[1]+'.':''));
+  const f=play?play.av.fig:meFig;
+  if(f){const m=new THREE.Mesh(new THREE.CylinderGeometry(.05,.09,1.2,16,1,true),new THREE.MeshBasicMaterial({color:'#ffd23a',transparent:true,opacity:.7,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
+    m.position.y=.6;f.add(m);const t0=performance.now();
+    const step=()=>{const k=(performance.now()-t0)/1800;if(k>=1){f.remove(m);return}m.material.opacity=.7*(1-k);m.scale.set(1+k,1,1+k);requestAnimationFrame(step)};step()}
+  if(L%5===0&&chatCanWrite())fetch(LIVE_DB+'/chat.json',{method:'POST',body:JSON.stringify({n:'@'+meNick,x:'🎉 dosáhl/a levelu '+L+'!',t:{'.sv':'timestamp'}})}).catch(()=>{});
+}
+function lvlRender(){
+  const x=xpOf(meId),L=lvlOfXp(x),a=lvlNeed(L),b=lvlNeed(Math.min(LVL_MAX,L+1));
+  const big=document.getElementById('lvlBig');big.replaceChildren('Level '+L+' ');const sp=document.createElement('span');
+  sp.textContent=L>=LVL_MAX?'· maximum':`· ${x.toLocaleString('cs-CZ')} XP · do levelu ${L+1} zbývá ${(b-x).toLocaleString('cs-CZ')} XP`;big.append(sp);
+  document.getElementById('lvlFill').style.width=(L>=LVL_MAX?100:Math.round((x-a)/(b-a)*100))+'%';
+  const cur=xp.earned[liveKey(meId)],today=(cur&&cur.day===xpDay()?(+cur.d||0):0)+xp.pending;
+  document.getElementById('lvlToday').textContent=`Dnes získáno ${today}/${XP_DAY_CAP} XP z aktivit.`;
+  const ul=document.getElementById('lvlUnlocks');ul.replaceChildren();
+  for(const [lv,t] of LVL_UNLOCKS){const li=document.createElement('li');if(L>=lv)li.className='done';li.textContent=(L>=lv?'✓ ':'')+'L'+lv+': '+t;ul.append(li)}
+  const top=residents.filter(r=>!r.left).map(r=>[r,xpOf(r.id)]).sort((p,q)=>q[1]-p[1]).slice(0,10);
+  const ol=document.getElementById('lvlTop');ol.replaceChildren();
+  for(const [r,v] of top){const li=document.createElement('li');if(r.id===meId)li.className='me';li.textContent=`${r.name} · L${lvlOfXp(v)} · ${v.toLocaleString('cs-CZ')} XP`;ol.append(li)}
+}
+document.getElementById('meLvl').onclick=()=>{lvlRender();document.getElementById('lvlBox').hidden=false;document.getElementById('lvlClose').focus()};
+document.getElementById('lvlClose').onclick=()=>{document.getElementById('lvlBox').hidden=true};
+document.getElementById('lvlBox').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('lvlBox').hidden=true;e.stopPropagation()});
+document.getElementById('lvlBox').addEventListener('click',e=>{if(e.target.id==='lvlBox')e.target.hidden=true});
+
 // ---------- watering: every house's flower bed wilts after a day without water; any signed-in player can water it ----------
 // /water/<houseKey> = {t: server time, n: nick}. One bed can be watered once an hour (checked by the database rules);
 // /waterings/<nick> counts how many beds a player watered (for the coming economy).
@@ -2881,7 +3004,7 @@ async function waterBed(k){
   try{
     const ok=await acctPut('/water/'+k,{t:{'.sv':'timestamp'},n:meId});
     if(!ok){await waterLoad();waterSay('Tyhle kytky už někdo zalil. Zkus jiné.');return}
-    water.mine++;
+    water.mine++;xpGain(10,'zalití');
     acctFetch('/waterings/'+liveKey(meId),{method:'PUT',body:JSON.stringify({'.sv':{increment:1}})}).catch(()=>{});
     waterSay('💧 Zalito! Kytky jsou zase svěží.');
   }catch(_){waterSay('Nepodařilo se spojit se serverem.')}
@@ -2931,7 +3054,8 @@ const INV_SLOTS=[ // [key, label, empty icon, grid cell 1–12 (3 columns)]
   ['weapon','Zbraň','🗡️',4],['armor','Brnění / vesta','🦺',5],['shield','Štít','🛡️',6],
   ['gloves','Rukavice','🧤',7],['pants','Kalhoty','👖',8],['bracelet','Náramek','⌚',9],
   ['boots','Boty','🥾',11]];
-const INV_BAG=['bag1','bag2','bag3'];
+const INV_BAG=['bag1','bag2','bag3','bag4','bag5'];
+const invBagN=id=>{try{const L=lvlOf(id);return 3+(L>=10?1:0)+(L>=20?1:0)}catch(_){return 3}}; // L10 and L20 each open one more bag slot
 const ITEMS={
   boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',legend:true,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery.'}
 };
@@ -2946,7 +3070,7 @@ function invState(id){ // {slot: itemId} with every owned item either worn or in
   const own=invOwned(id),saved=inv.equip[invKey(id)],st={},used=new Set();
   if(saved)for(const [sl,it] of Object.entries(saved))if(own.includes(it)&&!used.has(it)&&(INV_BAG.includes(sl)||ITEMS[it].slot===sl)){st[sl]=it;used.add(it)}
   for(const it of own){if(used.has(it))continue;const sl=ITEMS[it].slot;
-    const free=!saved&&!st[sl]?sl:INV_BAG.find(b=>!st[b]);if(free){st[free]=it;used.add(it)}}
+    const free=!saved&&!st[sl]?sl:INV_BAG.slice(0,invBagN(id)).find(b=>!st[b]);if(free){st[free]=it;used.add(it)}}
   return st;
 }
 function invWears(id,item){try{const st=invState(id);return Object.entries(st).some(([sl,it])=>it===item&&!INV_BAG.includes(sl))}catch(_){return true}} // figures built before the inventory code runs wear what they own
@@ -2981,7 +3105,7 @@ function invRender(){
     if(!cells[c]){const g=document.createElement('div');g.className='inv-slot gap';g.setAttribute('aria-hidden','true');doll.append(g);continue}
     const [k,l,i]=cells[c];doll.append(invCell(k,l,i,st[k]));
   }
-  INV_BAG.forEach((k,n)=>bag.append(invCell(k,'Slot '+(n+1),'＋',st[k])));
+  INV_BAG.forEach((k,n)=>{if(n<invBagN(meId)||st[k])bag.append(invCell(k,'Slot '+(n+1),'＋',st[k]));else{const c=invCell(k,'Od levelu '+(n===3?10:20),'🔒',null);c.disabled=true;c.style.opacity=.45;bag.append(c)}});
   const coins=+inv.money[invKey(meId)]||0;document.getElementById('invCoins').textContent=coins.toLocaleString('cs-CZ');
   document.getElementById('invWho').textContent='@'+meNick.replace(/^@+/,'')+(invOwned(meId).length?'':' · zatím nemáš žádné věci. Brzy je půjde získat ve hře.');
 }
@@ -2994,7 +3118,7 @@ async function invClick(key){
   if(!item){const lbl=(INV_SLOTS.find(x=>x[0]===key)||[0,'Slot v batohu'])[1];det.textContent=INV_BAG.includes(key)?'Volný slot v batohu.':`${lbl}: prázdné. Věc sem dáš klepnutím na ni v batohu.`;return}
   const it=ITEMS[item],next={...st};
   if(INV_BAG.includes(key)){const was=next[it.slot];next[it.slot]=item;if(was)next[key]=was;else delete next[key]}
-  else{const free=INV_BAG.find(b=>!next[b]);if(!free){det.textContent='Batoh je plný.';return}next[free]=item;delete next[key]}
+  else{const free=INV_BAG.slice(0,invBagN(meId)).find(b=>!next[b]);if(!free){det.textContent='Batoh je plný.';return}next[free]=item;delete next[key]}
   const saved=inv.equip[invKey(meId)];inv.equip[invKey(meId)]=next;invRender();invRefreshFigs(meId);
   det.replaceChildren();const b=document.createElement('b');b.textContent=it.name;det.append(b,' · '+it.desc+(invWears(meId,item)?' Máš ho na sobě.':' Je v batohu.'));
   if(!await invSave(next)){if(saved)inv.equip[invKey(meId)]=saved;else delete inv.equip[invKey(meId)];invRender();invRefreshFigs(meId);det.textContent='Nepodařilo se uložit. Zkus to znovu.'}
@@ -3723,6 +3847,7 @@ function updatePlayerLabels(camDir,dist){
     if(n.dot(camDir)<.3||dist>R+16){el.hidden=true;continue}
     const p=n.clone().multiplyScalar(R+terrain(n)+.28).project(camera);
     el.hidden=false;el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(500+Math.round(n.dot(camDir)*100));
+    const L=lvlOf(id),txt=(L>=3?'L'+L+' ':'')+a.name;if(el.textContent!==txt){el.textContent=txt;el.classList.toggle('lv5',L>=5&&L<20);el.classList.toggle('lv20',L>=20)}
   }
   for(const [id,el] of live.labels)if(!live.avatars.has(id)){el.remove();live.labels.delete(id)}
 }
