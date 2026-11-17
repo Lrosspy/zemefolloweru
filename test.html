@@ -308,7 +308,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
         <div class="inv-money" id="invMoney"><span class="inv-coin" aria-hidden="true">🪙</span><b id="invCoins">0</b><span>peníze</span></div>
       </aside>
     </div>
-    <h3 class="inv-sub">Batoh</h3>
+    <h3 class="inv-sub">V batohu</h3>
     <div class="inv-bag" id="invBag" aria-label="Batoh"></div>
     <p class="inv-detail" id="invDetail" role="status" aria-live="polite">Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.</p>
   </div>
@@ -3198,7 +3198,7 @@ const INV_SLOTS=[ // [key, label, empty icon, grid cell 1–12 (3 columns)]
   ['talisman','Talisman','🧿',1],['helmet','Helma','⛑️',2],['necklace','Náhrdelník','📿',3],
   ['weapon','Zbraň','🗡️',4],['armor','Brnění / vesta','🦺',5],['shield','Štít','🛡️',6],
   ['gloves','Rukavice','🧤',7],['pants','Kalhoty','👖',8],['bracelet','Náramek','⌚',9],
-  ['boots','Boty','🥾',11]];
+  ['backpack','Batoh','🎒',10],['boots','Boty','🥾',11]];
 const INV_BAG=['bag1','bag2','bag3','bag4','bag5'];
 const invBagN=id=>{try{const L=lvlOf(id);return 3+(L>=10?1:0)+(L>=20?1:0)}catch(_){return 3}}; // L10 and L20 each open one more bag slot
 const ITEMS={
