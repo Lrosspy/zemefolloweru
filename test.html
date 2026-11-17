@@ -432,7 +432,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
       </div>
       <div class="admin-days"><h3>Lidé za den (14 dní)</h3><div class="admin-chart" id="stChart"></div></div>
       <div class="admin-gift">
-        <h3>💎 Poslat diamanty</h3>
+        <h3>💎 Diamanty hráče</h3>
         <label for="giftNick">Jméno postavy<input id="giftNick" list="giftList" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="@nick hráče"></label>
         <datalist id="giftList"></datalist>
         <div class="gift-player" id="giftPlayer" hidden>
@@ -445,7 +445,8 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
         </div>
         <form class="gift-send" id="giftForm" hidden>
           <label for="giftAmount">Počet diamantů<input id="giftAmount" type="number" min="1" max="100000" step="1" inputmode="numeric" required></label>
-          <button class="primary" type="submit">Poslat 💎</button>
+          <button class="primary" type="submit" value="add">Přidat 💎</button>
+          <button type="submit" value="sub">Odebrat</button>
         </form>
         <p class="admin-msg" id="giftMsg" role="status"></p>
       </div>
@@ -4082,14 +4083,17 @@ async function giftLookup(){
   }catch(_){msg.textContent='Nepodařilo se načíst hráče.'}
 }
 $id('giftForm').addEventListener('submit',async e=>{
-  e.preventDefault();const msg=$id('giftMsg'),n=Math.floor(+$id('giftAmount').value||0);
+  e.preventDefault();const msg=$id('giftMsg'),n=Math.floor(+$id('giftAmount').value||0),sub=e.submitter&&e.submitter.value==='sub';
   if(!gift.id||n<1){msg.textContent='Zadej počet diamantů.';return}
   const tok=await adminToken();if(!tok){msg.textContent='Přihlášení vypršelo, přihlas se znovu.';return}
   try{
     const cur=Math.max(0,Math.floor(+(await fetch(LIVE_DB+'/diamonds/'+gift.key+'.json').then(x=>x.json()))||0));
-    const r=await fetch(LIVE_DB+'/diamonds/'+gift.key+'.json?auth='+encodeURIComponent(tok),{method:'PUT',body:JSON.stringify(cur+n)});
+    if(sub&&cur===0){msg.textContent=`@${gift.id} nemá žádné diamanty, není co odebrat.`;return}
+    const next=sub?Math.max(0,cur-n):cur+n,diff=Math.abs(next-cur);
+    const r=await fetch(LIVE_DB+'/diamonds/'+gift.key+'.json?auth='+encodeURIComponent(tok),{method:'PUT',body:JSON.stringify(next)});
     if(!r.ok){msg.textContent='Nepovedlo se. Zkontroluj pravidla ve Firebase.';return}
-    gift.has=cur+n;$id('giftHas').textContent='Má teď '+gift.has+' 💎';msg.textContent=`Posláno +${n} 💎 hráči @${gift.id}.`;$id('giftAmount').value='';
+    gift.has=next;$id('giftHas').textContent='Má teď '+gift.has+' 💎';
+    msg.textContent=sub?`Odebráno −${diff} 💎 hráči @${gift.id}`+(diff<n?` (víc neměl).`:'.'):`Přidáno +${n} 💎 hráči @${gift.id}.`;$id('giftAmount').value='';
     if(typeof inv!=='undefined'){inv.dia=inv.dia||{};inv.dia[gift.key]=gift.has}
   }catch(_){msg.textContent='Nepodařilo se spojit se serverem.'}
 });
