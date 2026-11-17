@@ -2951,6 +2951,7 @@ async function xpFlush(){
     if(d0+g>XP_DAY_CAP){xp.pending=0;lvlCard();return}
     const next={x:x0+g,d:d0+g,day,t:{'.sv':'timestamp'},l:cur&&cur.l||0};
     if(xp.loginDay===day)next.l=day;
+    if(xp.qDay===day)next.q=xp.q;else if(cur&&cur.day===day&&cur.q)next.q=cur.q;
     if(await acctPut('/xp/'+k,next)){xp.pending-=g;next.t=Date.now();xp.earned[k]=next;lvlCard()}
   }catch(_){}
   finally{xp.busy=false;if(xp.pending)setTimeout(xpFlush,6000)}
@@ -3100,6 +3101,16 @@ document.getElementById('waterBtn').onclick=()=>{if(water.near&&!water.job)water
 // its progress and the role are gone. Watering gives XP only through finished quests.
 const QUESTS=[{n:2,xp:5},{n:5,xp:10},{n:8,xp:15},{n:10,xp:20},{n:15,xp:50}];
 const quest={active:null,offer:null,near:false};
+const QUEST_DAY_MAX=5; // finished quests per player per day (resets at midnight UTC)
+function questsToday(){
+  if(!meId)return 0;const day=xpDay(),k=liveKey(meId),e=xp.earned[k];let n=e&&e.day===day?(+e.q||0):0;
+  try{const l=JSON.parse(localStorage.getItem('planeta-quests-'+k)||'null');if(l&&l.day===day)n=Math.max(n,+l.n||0)}catch(_){}
+  return n;
+}
+function questCount(){
+  const day=xpDay(),k=liveKey(meId),n=questsToday()+1;
+  xp.qDay=day;xp.q=n;try{localStorage.setItem('planeta-quests-'+k,JSON.stringify({day,n}))}catch(_){}
+}
 let questNpc=null;
 function questBuildNpc(){
   if(questNpc)return;
@@ -3117,7 +3128,7 @@ function questUi(){
   const a=quest.active,chip=document.getElementById('questChip'),line=document.getElementById('meQuest');
   const txt=a?`🌱 Zahradník · zalito ${a.done}/${a.n} · odměna ${a.xp} XP`:'';
   chip.hidden=line.hidden=!a;chip.textContent=line.textContent=txt;
-  if(questNpc){const m=questNpc.getObjectByName('questMark');if(m)m.visible=!a}
+  if(questNpc){const m=questNpc.getObjectByName('questMark');if(m)m.visible=!a&&questsToday()<QUEST_DAY_MAX}
   meTag.textContent=a?'TY · 🌱 zahradník':'TY';
 }
 function questOpen(){
@@ -3127,6 +3138,9 @@ function questOpen(){
   if(quest.active){
     const a=quest.active;say.replaceChildren('Jak to jde? Zatím jsi zalil ',Object.assign(document.createElement('b'),{textContent:`${a.done} z ${a.n}`}),' záhonků. Kytky u domů čekají!');
     btn('Pokračovat','primary',questClose);btn('Vzdát úkol','',()=>{questDrop();toast('Úkol jsi vzdal. Roli zahradníka už nemáš.');questClose()});
+  }else if(questsToday()>=QUEST_DAY_MAX){
+    say.replaceChildren('Děkuju, dneska jsi mi pomohl už ',Object.assign(document.createElement('b'),{textContent:QUEST_DAY_MAX+'×'}),'. Další úkoly mám zase zítra!');
+    btn('Zavřít','primary',questClose);
   }else{
     if(!quest.offer)quest.offer=QUESTS[Math.floor(Math.random()*QUESTS.length)];
     const o=quest.offer;say.replaceChildren('Ahoj! Kytky po městě usychají. Zalij ',Object.assign(document.createElement('b'),{textContent:`${o.n}× záhonek`}),' u domů a dám ti ',Object.assign(document.createElement('b'),{textContent:`${o.xp} XP`}),'.');
@@ -3139,7 +3153,7 @@ function questClose(){document.getElementById('questBox').hidden=true}
 function questDrop(){quest.active=null;quest.offer=null;questUi()}
 function questWatered(){
   const a=quest.active;if(!a)return;a.done++;
-  if(a.done>=a.n){quest.active=null;questUi();xpGain(a.xp,'úkol');toast(`🌸 Úkol splněn! +${a.xp} XP. Pro další úkol zajdi za zahradnicí.`)}
+  if(a.done>=a.n){quest.active=null;questCount();questUi();xpGain(a.xp,'úkol');const left=QUEST_DAY_MAX-questsToday();toast(`🌸 Úkol splněn! +${a.xp} XP. `+(left>0?`Dnes ještě ${left}× můžeš za zahradnicí.`:'Na dnešek máš u zahradnice hotovo.'))}
   else{questUi();waterSay(`💧 Zalito ${a.done}/${a.n}`)}
 }
 function updateQuest(){ // in play mode: offer a button when standing next to the gardener
