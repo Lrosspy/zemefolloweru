@@ -2891,9 +2891,9 @@ document.getElementById('games').onclick=()=>openBoss();
 
 // ---------- leveling: XP from playing, levels 1–50 ----------
 // XP = earned (/xp/<nick>.x: watering, daily login) + 5 per day of following + boss (badge 100 + 1 per 100 hits, max 600) + admin bonus (/xpbonus/<nick>).
-// The database rules cap earned XP at 20 per write, one write per 5 s and 300 per day, so nobody can just type in a big number.
+// The database rules cap earned XP at 50 per write, one write per 5 s and 1 000 per day, so nobody can just type in a big number.
 // Level L needs 50·L XP more than L−1: L2 = 100, L10 = 2 700 total, L50 = 63 700 total.
-const LVL_MAX=50,XP_DAY_CAP=300;
+const LVL_MAX=50,XP_DAY_CAP=1000,XP_PER_WRITE=50;
 const lvlNeed=L=>L<=1?0:50*(L*(L+1)/2-1); // total XP to reach level L
 const xp={earned:{},bonus:{},pending:0,login:false,busy:false,mine:null};
 function lvlOfXp(x){let L=1;while(L<LVL_MAX&&x>=lvlNeed(L+1))L++;return L}
@@ -2923,7 +2923,7 @@ async function xpFlush(){
   try{
     const k=liveKey(meId);let cur=xp.earned[k];
     try{cur=await acctGet('/xp/'+k)}catch(_){}
-    const day=xpDay(),g=Math.min(20,xp.pending),x0=+(cur&&cur.x)||0,d0=cur&&cur.day===day?(+cur.d||0):0;
+    const day=xpDay(),g=Math.min(XP_PER_WRITE,xp.pending),x0=+(cur&&cur.x)||0,d0=cur&&cur.day===day?(+cur.d||0):0;
     if(d0+g>XP_DAY_CAP){xp.pending=0;lvlCard();return}
     const next={x:x0+g,d:d0+g,day,t:{'.sv':'timestamp'},l:cur&&cur.l||0};
     if(xp.loginDay===day)next.l=day;
