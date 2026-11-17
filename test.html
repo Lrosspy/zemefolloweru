@@ -183,6 +183,29 @@ body.playing .admin-key{display:none}
 .inv-slot.legend{border-color:#7dff9e;box-shadow:0 0 14px rgba(125,255,158,.35) inset}
 .inv-slot.sel{outline:3px solid var(--sun);outline-offset:1px}
 .inv-slot.gap{visibility:hidden;pointer-events:none}
+.coin{display:inline-block;width:22px;height:22px;border-radius:50%;flex:none}
+.coin.g{background:radial-gradient(circle at 35% 30%,#fff3a8,#ffc300 45%,#b07a00);box-shadow:inset 0 0 0 2px #8a5c00}
+.coin.s{background:radial-gradient(circle at 35% 30%,#ffffff,#c9ced8 45%,#7d8494);box-shadow:inset 0 0 0 2px #5d6270}
+.inv-money .dia{font-size:20px;line-height:1}
+.shop-card{width:min(760px,100%)}
+.shop-main{display:flex;gap:18px;flex-wrap:wrap}
+.shop-col{flex:1 1 300px;min-width:0}
+.shop-offers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.shop-offer{aspect-ratio:1;border-radius:14px;border:1.5px dashed rgba(255,255,255,.25);background:#1d1838;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink-dim);font-size:13px}
+.shop-offer .ic{font-size:26px;opacity:.6}
+.shop-special{position:relative;margin-top:12px;border-radius:18px;overflow:hidden;border:2px solid #ffc300;background:#3a2a08;min-height:150px;display:grid;place-items:center}
+.shop-rays{position:absolute;inset:-60%;background:repeating-conic-gradient(from 0deg,rgba(255,214,90,.38) 0deg 10deg,rgba(255,214,90,0) 10deg 22deg);animation:shopSpin 14s linear infinite}
+@keyframes shopSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.shop-rays{animation:none}}
+.shop-special-in{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;padding:16px;background:radial-gradient(circle,rgba(58,42,8,.92) 40%,rgba(58,42,8,0) 75%)}
+.shop-special-in .ic{font-size:40px}
+.shop-special-in b{font-size:18px;color:#ffd84a}
+.shop-special-in span{font-size:13px;color:#ffe9b0}
+.shop-special-in em{margin-top:6px;font-style:normal;font-weight:900;font-size:12px;padding:4px 10px;border-radius:999px;background:#ffc300;color:#2b1d0e}
+.shop-purse{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-weight:900}
+.shop-purse span{display:inline-flex;align-items:center;gap:6px}
+.shop-bag{grid-template-columns:repeat(5,minmax(0,1fr))}
+.shop-btn{background:#c98f45}
 .inv-money{border-radius:14px;background:linear-gradient(#3a2a10,#24190a);border:1.5px solid #ffc300;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:2px}
 .inv-money .inv-coin{font-size:28px;line-height:1}
 .inv-money b{font-size:20px;color:#ffd23a}
@@ -305,12 +328,43 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     <div class="inv-main">
       <div class="inv-doll" id="invDoll" aria-label="Vybavení na postavě"></div>
       <aside class="inv-side">
-        <div class="inv-money" id="invMoney"><span class="inv-coin" aria-hidden="true">🪙</span><b id="invCoins">0</b><span>peníze</span></div>
+        <div class="inv-money" id="invMoney"><span class="coin g" aria-hidden="true"></span><b id="invGold">0</b><span>zlaté</span><span class="coin s" aria-hidden="true"></span><b id="invSilver">0</b><span>stříbrné</span><span class="dia" aria-hidden="true">💎</span><b id="invDia">0</b><span>diamanty</span></div>
       </aside>
     </div>
     <h3 class="inv-sub">V batohu</h3>
     <div class="inv-bag" id="invBag" aria-label="Batoh"></div>
     <p class="inv-detail" id="invDetail" role="status" aria-live="polite">Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.</p>
+  </div>
+</section>
+<section class="inv" id="shopBox" hidden aria-labelledby="shopTitle">
+  <div class="inv-card shop-card">
+    <header><h2 id="shopTitle">🛒 Obchod planety</h2><button type="button" id="shopClose">Zavřít</button></header>
+    <div class="shop-main">
+      <div class="shop-col">
+        <h3 class="inv-sub">Dnešní nabídka</h3>
+        <div class="shop-offers">
+          <div class="shop-offer"><span class="ic" aria-hidden="true">🔒</span><b>Již brzy</b></div>
+          <div class="shop-offer"><span class="ic" aria-hidden="true">🔒</span><b>Již brzy</b></div>
+          <div class="shop-offer"><span class="ic" aria-hidden="true">🔒</span><b>Již brzy</b></div>
+        </div>
+        <div class="shop-special">
+          <div class="shop-rays" aria-hidden="true"></div>
+          <div class="shop-special-in">
+            <span class="ic" aria-hidden="true">🏡</span>
+            <b>Kup si vlastní pozemek</b>
+            <span>s vlastním nastavením</span>
+            <em>Již brzy</em>
+          </div>
+        </div>
+        <p class="inv-who">Nabídka se mění každý den.</p>
+      </div>
+      <div class="shop-col">
+        <h3 class="inv-sub">Tvůj inventář</h3>
+        <div class="shop-purse" id="shopPurse"></div>
+        <div class="inv-bag shop-bag" id="shopBag" aria-label="Věci k prodeji"></div>
+        <p class="inv-detail" id="shopDetail">Klepni na věc v batohu a prodáš ji. Výkup se spustí s prvním zbožím.</p>
+      </div>
+    </div>
   </div>
 </section>
 <section class="inv" id="questBox" hidden aria-labelledby="questTitle">
@@ -423,6 +477,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <div class="play-bar"><button type="button" id="playInv">Inventář 🎒</button></div>
   <button class="water-btn" id="waterBtn" type="button" hidden>💧 Zalít kytky</button>
   <button class="water-btn quest-btn" id="questBtn" type="button" hidden>🌱 Mluvit se zahradnicí</button>
+  <button class="water-btn shop-btn" id="shopBtn" type="button" hidden>🛒 Otevřít obchod</button>
 </div>
 
 <div class="chat" id="chat" aria-label="Chat planety">
@@ -522,6 +577,7 @@ SITES.post={title:'Pošta',dir:ringDir(315,.88),r:.1};
 SITES.radio={title:'Rádiová stanice',dir:ringDir(12,1.0),r:.1,always:true};
 SITES.mayor={title:'Radnice',dir:ringDir(128,.62),r:.1};
 SITES.kfc={title:'KFP – Křupavé kuře planety',dir:ringDir(60,.93),r:.1}; // fried-chicken bistro, run by @adam.morgi
+SITES.shop={title:'Obchod planety',dir:ringDir(170,.95),r:.11,always:true}; // public shop, open only to players walking their character
 SITES.pharmacy={title:'Lékárna planety',dir:ringDir(280,.97),r:.1}; // pharmacy for @turtle.9884488 (also the planet's doctor)
 SITES.castle={title:'Hrad 500. obyvatele',dir:ringDir(240,.95),r:.11}; // goes to the 500th resident ("Starosta mrzne" challenge) // town hall next to the barbershop; the mayor (role 'mayor') won the election in the comments // next to the stadium, beams radio waves into space; belongs to the whole planet
 const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // Boss ze záhrobí (used to be the UFO base), far side of the planet
@@ -546,7 +602,7 @@ function frostLevel(){const n=aliveCount();if(n>=MRAZ_GOAL)return 0;
   return Math.max(0,Math.min(1,need*(.6+Math.min(.4,days*.06))))}
 function siteKeyOf(role){return role?(SITES[role]?role:(WORKER_OF[role]||null)):null}
 function siteMembers(k){return residents.filter(r=>hasRole(r,k)||WORKER_OF[r.role]===k).sort((a,b)=>a.at-b.at)}
-const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡',mayor:'👑',castle:'🏰',kfc:'🍗',pharmacy:'💊'};
+const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡',mayor:'👑',castle:'🏰',kfc:'🍗',pharmacy:'💊',shop:'🛒'};
 const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta',radio:'Tichá rádiová stanice',mayor:'Opuštěná radnice',castle:'Opuštěný hrad',kfc:'Zavřené kuřecí bistro',pharmacy:'Zavřená lékárna'};
 (function(){
   const g=Math.PI*(3-Math.sqrt(5));
@@ -1921,6 +1977,55 @@ function buildBurger(owner){ // "Mekáč planety": a burger joint with a giant b
   g.userData.height=.95*S;return g;
 }
 
+function buildShop(){ // sand-brick shop: striped awning, glowing OBCHOD sign, a treasure chest full of coins on the roof
+  const g=new THREE.Group(),S=1.5,b=new THREE.Group();b.scale.setScalar(S);g.add(b);
+  const sand=mat('#e0b066'),brick=mat('#c98f45'),rim=mat('#d4a463'),wood=mat('#7a4a26'),woodD=mat('#5a341a'),dark=mat('#2b2b30'),gold=mat('#ffc83a'),red=mat('#d8393a'),white=mat('#f6efe2');
+  const lot=new THREE.Mesh(new THREE.CylinderGeometry(.44,.46,.02,30),mat('#6fbf5a'));lot.position.y=-.004;b.add(lot);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.46,.24,.34),sand);body.position.y=.12;b.add(body);
+  const rr=rnd(77);for(let i=0;i<14;i++){const side=i%2,bk=new THREE.Mesh(new THREE.BoxGeometry(side?.006:.06,.025,side?.06:.006),i%3?brick:rim);
+    if(side)bk.position.set(.232,.03+rr()*.19,-.15+rr()*.3);else bk.position.set(-.21+rr()*.42,.03+rr()*.19,-.172);b.add(bk)}
+  // roof: raised rim around a gravel top
+  const gravel=new THREE.Mesh(new THREE.BoxGeometry(.44,.012,.32),mat('#968a76'));gravel.position.y=.246;b.add(gravel);
+  for(const [w,d,x,z] of [[.48,.03,0,.17],[.48,.03,0,-.17],[.03,.34,.24,0],[.03,.34,-.24,0]]){const r=new THREE.Mesh(new THREE.BoxGeometry(w,.04,d),rim);r.position.set(x,.255,z);b.add(r)}
+  // shop window with shelves of goods, door with a sign
+  const win=new THREE.Mesh(new THREE.BoxGeometry(.26,.12,.006),new THREE.MeshLambertMaterial({color:'#bfe6ff',transparent:true,opacity:.45}));win.position.set(-.06,.1,.173);b.add(win);
+  const shelfBack=new THREE.Mesh(new THREE.BoxGeometry(.26,.12,.004),mat('#8a5a32'));shelfBack.position.set(-.06,.1,.166);b.add(shelfBack);
+  const goods=['#e8443a','#3fae5a','#ffd34d','#ff9a3c','#f2f2f2','#c84a8a'];
+  for(let r2=0;r2<2;r2++){const sh=new THREE.Mesh(new THREE.BoxGeometry(.25,.006,.012),wood);sh.position.set(-.06,.065+r2*.05,.17);b.add(sh);
+    for(let i=0;i<9;i++){const c=new THREE.Mesh(i%2?new THREE.CylinderGeometry(.008,.008,.022,8):new THREE.BoxGeometry(.016,.02,.01),mat(goods[(i+r2*3)%goods.length]));c.position.set(-.18+i*.03,.08+r2*.05,.17);b.add(c)}}
+  const door=new THREE.Mesh(new THREE.BoxGeometry(.07,.15,.006),mat('#cfe8f5'));door.position.set(.15,.075,.173);b.add(door);
+  const df=new THREE.Mesh(new THREE.BoxGeometry(.08,.16,.004),woodD);df.position.set(.15,.08,.171);b.add(df);
+  const ds=new THREE.Mesh(new THREE.PlaneGeometry(.04,.024),new THREE.MeshBasicMaterial({map:textTex('OPEN','#f4ecd8','#2b2b30',256,150,'900 92px system-ui,sans-serif')}));ds.position.set(.15,.11,.177);b.add(ds);
+  // striped awning over the window
+  for(let i=0;i<10;i++){const st=new THREE.Mesh(new THREE.BoxGeometry(.03,.006,.09),i%2?white:red);st.position.set(-.195+i*.03,.175,.21);st.rotation.x=.42;b.add(st);
+    const sc=new THREE.Mesh(new THREE.CylinderGeometry(.015,.015,.006,10,1,false,0,Math.PI),i%2?white:red);sc.rotation.set(Math.PI/2,0,0);sc.position.set(-.195+i*.03,.155,.253);b.add(sc)}
+  // glowing sign
+  const sg=new THREE.Mesh(new THREE.BoxGeometry(.24,.07,.012),mat('#6b6f7a'));sg.position.set(-.04,.22,.18);b.add(sg);
+  const sgt=new THREE.Mesh(new THREE.PlaneGeometry(.22,.055),new THREE.MeshBasicMaterial({map:textTex('OBCHOD','#3a3d46','#fff6c8',1024,256,'900 190px system-ui,sans-serif')}));sgt.position.set(-.04,.22,.187);b.add(sgt);
+  const glow=new THREE.Mesh(new THREE.PlaneGeometry(.3,.11),new THREE.MeshBasicMaterial({color:'#fff3b0',transparent:true,opacity:.18,depthWrite:false,blending:THREE.AdditiveBlending}));glow.position.set(-.04,.22,.19);b.add(glow);
+  // produce crate in front
+  const pc=new THREE.Mesh(new THREE.BoxGeometry(.24,.03,.05),wood);pc.position.set(-.06,.015,.2);b.add(pc);
+  for(let i=0;i<10;i++){const v=new THREE.Mesh(new THREE.BoxGeometry(.016,.016,.016),mat(['#e8443a','#3fae5a','#ffd34d','#ff9a3c'][i%4]));v.position.set(-.17+i*.024,.036,.2+((i%2)-.5)*.018);b.add(v)}
+  // treasure chest full of coins on the roof
+  const chest=new THREE.Group();chest.position.set(.04,.255,-.02);b.add(chest);
+  const cb=new THREE.Mesh(new THREE.BoxGeometry(.13,.06,.08),wood);cb.position.y=.03;chest.add(cb);
+  for(const x of [-.045,.045]){const bd=new THREE.Mesh(new THREE.BoxGeometry(.012,.062,.082),gold);bd.position.set(x,.031,0);chest.add(bd)}
+  const coins=new THREE.Mesh(new THREE.SphereGeometry(.06,12,6,0,Math.PI*2,0,Math.PI/2),gold);coins.scale.set(1,.35,.6);coins.position.y=.06;chest.add(coins);
+  const lid=new THREE.Group();lid.position.set(0,.06,-.04);chest.add(lid);
+  const lt=new THREE.Mesh(new THREE.BoxGeometry(.13,.025,.08),wood);lt.position.set(0,.012,.04);lid.add(lt);
+  for(const x of [-.045,.045]){const lb=new THREE.Mesh(new THREE.BoxGeometry(.012,.027,.082),gold);lb.position.set(x,.012,.04);lid.add(lb)}
+  const lock=new THREE.Mesh(new THREE.BoxGeometry(.02,.022,.006),gold);lock.position.set(0,.04,.042);chest.add(lock);
+  lid.rotation.x=-1.9;
+  for(let i=0;i<7;i++){const c=new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,.003,10),gold);c.position.set(-.09+rr()*.2,.004,.06+rr()*.07);c.rotation.x=rr()*.4;chest.add(c)}
+  for(const [x,col] of [[-.03,'#7fd8ff'],[.035,'#ff6fa3']]){const gm=new THREE.Mesh(new THREE.OctahedronGeometry(.012),mat(col));gm.position.set(x,.075,.01);chest.add(gm)}
+  // barrels and crates by the side
+  for(const [x,z] of [[.29,.06],[.31,-.03],[.27,-.1]]){const br=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.07,12),wood);br.position.set(x,.035,z);b.add(br);
+    for(const y of [.015,.055]){const band=new THREE.Mesh(new THREE.CylinderGeometry(.031,.031,.006,12),dark);band.position.set(x,y,z);b.add(band)}}
+  for(const [x,y,z] of [[.3,.03,.15],[.36,.03,.08],[.33,.09,.13]]){const cr=new THREE.Mesh(new THREE.BoxGeometry(.06,.06,.06),woodD);cr.position.set(x,y,z);b.add(cr)}
+  g.userData.anim=T=>{glow.material.opacity=.14+.08*Math.sin(T*3);coins.rotation.y=T*.3};
+  g.userData.height=.62*S;return g;
+}
+
 function buildPharmacy(owner){ // "Lékárna planety": white shop, glowing green cross, giant pill on the roof
   const g=new THREE.Group(),alive=owner&&!owner.left,S=1.5,b=new THREE.Group();b.scale.setScalar(S);g.add(b);
   const white=mat(alive?'#f4f7f6':'#b9bcbb'),green=mat(alive?'#2fb36a':'#5f7d6c'),teal=mat(alive?'#1f8a73':'#4f6660'),dark=mat('#2b2b30');
@@ -2335,7 +2440,7 @@ function buildRadio(){ // radio station: lattice mast, a dish aimed at the sky a
 }
 
 const SITE_BUILD={castle:buildCastle,doctor:buildHospital,farmer:buildFarm,builder:buildConstruction,tennis:buildTennis,gardener:buildGreenhouse,
-  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio,mayor:buildTownHall,kfc:buildKfc,pharmacy:buildPharmacy};
+  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio,mayor:buildTownHall,kfc:buildKfc,pharmacy:buildPharmacy,shop:buildShop};
 function syncSites(animate){
   const sig=Object.keys(SITES).map(k=>k+':'+siteMembers(k).map(m=>m.id+':'+(m.role||'')+(m.left?'x':'')).join(',')).join('|');
   if(sig===siteSig)return;siteSig=sig;
@@ -2362,6 +2467,7 @@ function siteLabelText(k){
   if(k==='temple')return `Chrám planety · velekněz ${n}`;
   if(k==='mayor')return `Radnice · starosta ${n}`;
   if(k==='post')return `Pošta · poštmistr ${n}`;
+  if(k==='shop')return 'Obchod planety · dojdi sem za postavou';
   if(k==='radio')return n?`Rádiová stanice · ${n}`:'Rádiová stanice · vysílá do vesmíru';
   return `${S.title} · ${n}`;
 }
@@ -2538,6 +2644,7 @@ canvas.addEventListener('pointerup',e=>{
   const hit=ray.intersectObjects([planet,townGroup],true)[0];
   const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){openBoss();return}
   const qh=questNpc&&ray.intersectObject(questNpc,true)[0];if(qh&&(!hit||qh.distance<hit.distance+.01)){questOpen();return}
+  {const sg=siteGroup.children.find(c=>c.userData.site==='shop'),sh=sg&&ray.intersectObject(sg,true)[0];if(sh&&(!hit||sh.distance<hit.distance+.01)){if(play&&shop.near)shopOpen();else toast('🛒 Obchod planety: dojdi ke dveřím za svou postavou a otevři nabídku.');return}}
   if(hit&&hit.object.userData.bed){const bk=hit.object.userData.bed,wt=waterWait(bk);toast(wt>0?`🌸 Kytky jsou zalité. Znovu je půjde zalít za ${fmtWait(wt)}.`:waterFresh(bk)?'🌸 Kytky jsou zalité a už se dají zalít znovu.':(play?'🥀 Kytky usychají! Dojdi k nim a zalij je.':'🥀 Kytky usychají! Klikni na „Hrát za postavu“, dojdi k nim a zalij je.'));return}
   selected=hit&&hit.object.userData.house?hit.object.userData.house.userData.id:null;
 });
@@ -2629,7 +2736,7 @@ function loop(now){
   }
   animateFountain(now);
   updateWalker(now);
-  updatePlay(now);updateWater(now);updateQuest();
+  updatePlay(now);updateWater(now);updateQuest();updateShop();
   updateRemotes(now);
   updateWanderers(now);
   updateFox(now);
@@ -3185,6 +3292,31 @@ function updateQuest(){ // in play mode: offer a button when standing next to th
   if(near!==quest.near){quest.near=near;const b=document.getElementById('questBtn');b.hidden=!near;b.textContent=(quest.active?'🌱 Můj úkol':'🌱 Úkol od zahradnice')+(touchUI()?'':' (F)')}
 }
 document.getElementById('questBtn').onclick=questOpen;
+
+// ---------- the shop: only reachable on foot; 3 daily offers (coming soon), a golden "own plot" offer, and your inventory to sell from ----------
+const shop={near:false};
+function shopDoor(){const S=SITES.shop;return slerpDir(S.dir,START,.07/S.dir.angleTo(START))}
+function shopOpen(){
+  if(!play){toast('🛒 Do obchodu musíš dojít za svou postavou. Klikni na „Hrát za postavu“.');return}
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Nakupovat můžou jen přihlášení hráči.');return}
+  keys.clear();shopRender();document.getElementById('shopBox').hidden=false;document.getElementById('shopClose').focus();
+}
+function shopRender(){
+  const m=wallet(meId),purse=document.getElementById('shopPurse');purse.replaceChildren();
+  const pl=(n,a,b,c)=>n===1?a:n>=2&&n<=4?b:c;
+  for(const [cls,v,l] of [['coin g',m.gold.toLocaleString('cs-CZ'),pl(m.gold,'zlatý','zlaté','zlatých')],['coin s',m.silver,pl(m.silver,'stříbrný','stříbrné','stříbrných')],['dia',m.dia.toLocaleString('cs-CZ'),pl(m.dia,'diamant','diamanty','diamantů')]]){
+    const sp=document.createElement('span');const ic=document.createElement('span');ic.className=cls;ic.setAttribute('aria-hidden','true');if(cls==='dia')ic.textContent='💎';sp.append(ic,v+' '+l);purse.append(sp)}
+  const st=invState(meId),bag=document.getElementById('shopBag');bag.replaceChildren();
+  INV_BAG.forEach((k,n)=>{if(n>=invBagN(meId)&&!st[k])return;const c=invCell(k,'Slot '+(n+1),'＋',st[k]);c.onclick=()=>{const it=st[k]&&ITEMS[st[k]];document.getElementById('shopDetail').textContent=it?`${it.name}: výkup se spustí s prvním zbožím. Již brzy!`:'Prázdný slot.'};bag.append(c)});
+}
+document.getElementById('shopBtn').onclick=shopOpen;
+document.getElementById('shopClose').onclick=()=>{document.getElementById('shopBox').hidden=true};
+document.getElementById('shopBox').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('shopBox').hidden=true;e.stopPropagation()});
+document.getElementById('shopBox').addEventListener('click',e=>{if(e.target.id==='shopBox')e.target.hidden=true});
+function updateShop(){
+  let near=false;if(play)near=shopDoor().distanceTo(play.p)<.03;
+  if(near!==shop.near){shop.near=near;const b=document.getElementById('shopBtn');b.hidden=!near;b.textContent='🛒 Otevřít obchod'+(touchUI()?'':' (F)')}
+}
 document.getElementById('questClose').onclick=questClose;
 document.getElementById('questBox').addEventListener('keydown',e=>{if(e.key==='Escape')questClose();e.stopPropagation()});
 document.getElementById('questBox').addEventListener('click',e=>{if(e.target.id==='questBox')questClose()});
@@ -3206,6 +3338,8 @@ const ITEMS={
   herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,desc:'Roste u zalitých kytek: šance 15 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
+// money: /money/<nick> = silver coins in total (100 silver = 1 gold); /diamonds/<nick> = diamonds (bought for real money, set by the admin for now)
+const wallet=id=>{const k=liveKey(id||''),s=Math.max(0,Math.floor(+inv.money[k]||0));return {gold:Math.floor(s/100),silver:s%100,dia:Math.max(0,Math.floor(+((inv.dia||{})[k])||0))}};
 const herbCount=id=>+((inv.herbs[liveKey(id)]||{}).c)||0;
 const invKey=id=>liveKey(id);
 function invOwned(id){
@@ -3228,8 +3362,8 @@ function invRefreshFigs(id){
 }
 async function invLoad(){
   try{
-    const [it,eq,mo,hb]=await Promise.all(['items','equip','money','herbs'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
-    inv.items=it||{};inv.equip=eq||{};inv.money=mo||{};inv.herbs=hb||{};inv.loaded=true;
+    const [it,eq,mo,hb,di]=await Promise.all(['items','equip','money','herbs','diamonds'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
+    inv.items=it||{};inv.equip=eq||{};inv.money=mo||{};inv.herbs=hb||{};inv.dia=di||{};inv.loaded=true;
     if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);
   }catch(_){}
 }
@@ -3262,7 +3396,7 @@ function invRender(){
     const [k,l,i]=cells[c];doll.append(invCell(k,l,i,st[k]));
   }
   INV_BAG.forEach((k,n)=>{if(n<invBagN(meId)||st[k])bag.append(invCell(k,'Slot '+(n+1),'＋',st[k]));else{const c=invCell(k,'Od levelu '+(n===3?10:20),'🔒',null);c.disabled=true;c.style.opacity=.45;bag.append(c)}});
-  const coins=+inv.money[invKey(meId)]||0;document.getElementById('invCoins').textContent=coins.toLocaleString('cs-CZ');
+  const m=wallet(meId);document.getElementById('invGold').textContent=m.gold.toLocaleString('cs-CZ');document.getElementById('invSilver').textContent=String(m.silver);document.getElementById('invDia').textContent=m.dia.toLocaleString('cs-CZ');
   document.getElementById('invWho').textContent='@'+meNick.replace(/^@+/,'')+(invOwned(meId).length?'':' · zatím nemáš žádné věci. Brzy je půjde získat ve hře.');
 }
 async function invSave(st){
@@ -3524,13 +3658,14 @@ addEventListener('keydown',e=>{
   if(e.target&&e.target.closest&&e.target.closest('input,textarea,select'))return;
   const move=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code);
   if(!play){ // pressing W A S D starts the game when you have a character
-    if(move&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&welcome.hidden&&sheet.hidden&&document.getElementById('inv').hidden&&!playBtn.hidden)startPlay();
+    if(move&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&welcome.hidden&&sheet.hidden&&document.getElementById('inv').hidden&&document.getElementById('shopBox').hidden&&!playBtn.hidden)startPlay();
     if(!play)return;
   }
   if(e.code==='Escape'){stopPlay();return}
   if(e.code==='Space'){e.preventDefault();if(!e.repeat)startJump();return}
   if(e.code==='KeyF'&&!e.repeat&&water.near&&!water.job){waterStart(water.near);return}
   if(e.code==='KeyF'&&!e.repeat&&quest.near){questOpen();return}
+  if(e.code==='KeyF'&&!e.repeat&&shop.near){shopOpen();return}
   keys.add(e.code);
   if(move||e.code==='Space')e.preventDefault();
 });
