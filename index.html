@@ -114,6 +114,10 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .joy{position:fixed;left:max(24px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 28px);width:136px;height:136px;border-radius:50%;background:rgba(20,18,40,.45);border:2px solid rgba(255,226,180,.4);pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none}
 .joy i{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(255,204,102,.9);box-shadow:0 2px 10px rgba(0,0,0,.45);pointer-events:none}
 .label.player{background:rgba(20,18,40,.9);font-size:11px;padding:3px 8px}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 90px);transform:translate(-50%,20px);max-width:min(420px,calc(100% - 32px));padding:12px 18px;border-radius:14px;background:#15122b;border:1px solid var(--panel-line);color:var(--ink);font-weight:800;font-size:14px;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:30}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.water-btn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 150px);padding:12px 20px;border-radius:999px;background:#3a9be0;color:#fff;border:2px solid rgba(255,255,255,.6);font-weight:900;font-size:16px;pointer-events:auto;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.water-btn[hidden]{display:none}
 .jump-btn{position:fixed;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 52px);width:88px;height:88px;border-radius:50%;padding:0;background:rgba(255,204,102,.9);color:#2b1d0e;border:2px solid rgba(255,255,255,.5);font-size:15px;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
 .label.bubble{background:#fff;color:#1b1530;border:0;font-weight:700;font-size:12px;white-space:normal;max-width:190px;width:max-content;text-align:center;padding:6px 10px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,.35);transition:opacity .4s;margin-top:-8px}
 .label.bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff}
@@ -338,6 +342,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <div class="abduct-flash" id="abductFlash" aria-hidden="true"></div>
   <div class="joy" id="joy" hidden aria-label="Joystick pro chůzi"><i id="joyKnob"></i></div>
   <button class="jump-btn" id="jumpBtn" type="button" hidden>Skok</button>
+  <button class="water-btn" id="waterBtn" type="button" hidden>💧 Zalít kytky</button>
 </div>
 
 <div class="chat" id="chat" aria-label="Chat planety">
@@ -695,6 +700,8 @@ function makeHouse(home){
   }
   g.userData={id:home.key,height:h+.3,waveArms,flowers,bedAt:new THREE.Vector3(bedX,0,.02),standAt:new THREE.Vector3(bedX-.11,0,.1)};
   g.traverse(o=>{if(o.isMesh)o.userData.house=g});
+  bed.userData.bed=edge.userData.bed=home.key;flowers.forEach(f=>f.traverse(o=>{if(o.isMesh)o.userData.bed=home.key}));
+  setTimeout(()=>waterLook(home.key),0);
   return g;
 }
 
@@ -2449,6 +2456,7 @@ canvas.addEventListener('pointerup',e=>{
   ray.setFromCamera(mouse,camera);
   const hit=ray.intersectObjects([planet,townGroup],true)[0];
   const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){openBoss();return}
+  if(hit&&hit.object.userData.bed){waterBed(hit.object.userData.bed);return}
   selected=hit&&hit.object.userData.house?hit.object.userData.house.userData.id:null;
 });
 
@@ -2539,7 +2547,7 @@ function loop(now){
   }
   animateFountain(now);
   updateWalker(now);
-  updatePlay(now);
+  updatePlay(now);updateWater(now);
   updateRemotes(now);
   updateWanderers(now);
   updateFox(now);
@@ -2824,6 +2832,74 @@ setTimeout(()=>{
 },0);
 meBtn.onclick=()=>applyMe(true);
 document.getElementById('games').onclick=()=>openBoss();
+
+// ---------- watering: every house's flower bed wilts after a day without water; any signed-in player can water it ----------
+// /water/<houseKey> = {t: server time, n: nick}. One bed can be watered once an hour (checked by the database rules);
+// /waterings/<nick> counts how many beds a player watered (for the coming economy).
+const WATER_FRESH=24*60*60*1000,WATER_COOLDOWN=60*60*1000;
+const water={beds:{},near:null,anim:new Map(),skew:0,mine:0};
+function waterFresh(k){const w=water.beds[k];return !!(w&&w.t&&Date.now()+water.skew-w.t<WATER_FRESH)}
+function waterLook(k){ // fresh: upright; thirsty: flowers droop and shrink
+  const h=houses.get(k);if(!h)return;const fresh=waterFresh(k);
+  h.g.userData.flowers.forEach((f,i)=>{if(water.anim.has(k))return;f.rotation.set(fresh?0:.35*(i%2?1:-1),0,fresh?0:.55*(i%3?1:-1));f.scale.setScalar(fresh?1:.78)});
+}
+async function waterLoad(){
+  try{const r=await fetch(LIVE_DB+'/water.json');if(!r.ok)return;const j=await r.json()||{};
+    const d=r.headers.get('date');if(d)water.skew=new Date(d).getTime()-Date.now();
+    water.beds=j;houses.forEach((_,k)=>waterLook(k))}catch(_){}
+}
+waterLoad();setInterval(waterLoad,60000);setInterval(()=>houses.forEach((_,k)=>waterLook(k)),5*60000);
+function toast(t){let el=document.getElementById('toast');if(!el){el=document.createElement('div');el.id='toast';el.className='toast';el.setAttribute('role','status');document.body.append(el)}
+  el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),3500)}
+function waterSay(t){if(play)sayPlay(t,3500);else toast(t)}
+async function waterBed(k){
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Kytky můžeš zalévat, až se přihlásíš.');return}
+  const w=water.beds[k],now=Date.now()+water.skew;
+  if(w&&w.t&&now-w.t<WATER_COOLDOWN){waterAnim(k,true);waterSay(`Tyhle kytky už zalil${w.n?' @'+w.n:'i'} před ${Math.max(1,Math.round((now-w.t)/60000))} min. Zkus jiné.`);return}
+  waterAnim(k);
+  water.beds[k]={t:now,n:meId};waterLook(k);
+  try{
+    const ok=await acctPut('/water/'+k,{t:{'.sv':'timestamp'},n:meId});
+    if(!ok){await waterLoad();waterSay('Tyhle kytky už někdo zalil. Zkus jiné.');return}
+    water.mine++;
+    acctFetch('/waterings/'+liveKey(meId),{method:'PUT',body:JSON.stringify({'.sv':{increment:1}})}).catch(()=>{});
+    waterSay('💧 Zalito! Kytky jsou zase svěží.');
+  }catch(_){waterSay('Nepodařilo se spojit se serverem.')}
+}
+const WCAN=(()=>{ // a small floating watering can used for the effect
+  const g=new THREE.Group(),m=mat('#3a9be0');
+  const b=new THREE.Mesh(new THREE.CylinderGeometry(.03,.034,.055,12),m);g.add(b);
+  const sp=new THREE.Mesh(new THREE.CylinderGeometry(.006,.008,.08,6),m);sp.position.set(0,.01,.055);sp.rotation.x=1.0;g.add(sp);
+  const hd=new THREE.Mesh(new THREE.TorusGeometry(.02,.005,4,10,Math.PI),mat('#2a7bc0'));hd.position.y=.03;hd.rotation.y=Math.PI/2;g.add(hd);
+  const drops=new THREE.Group();const dm=new THREE.MeshBasicMaterial({color:'#9fd8ff',transparent:true,opacity:.9});
+  for(let i=0;i<12;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(.005,4,3),dm);d.userData.ph=i/12;d.userData.x=((i*7)%5-2)*.006;drops.add(d)}
+  return {g,drops};
+})();
+function waterAnim(k,short){
+  const h=houses.get(k);if(!h)return;
+  const can=WCAN.g.clone(true),drops=WCAN.drops.clone(true);
+  can.position.copy(h.g.userData.bedAt).add(new THREE.Vector3(.06,.14,-.05));can.rotation.set(.8,-Math.PI/2,0);
+  drops.position.copy(h.g.userData.bedAt);
+  h.g.add(can,drops);
+  water.anim.set(k,{can,drops,h,until:performance.now()+(short?900:2600),short});
+}
+function updateWater(now){
+  const T=now/1000;
+  for(const [k,a] of water.anim){
+    const left=a.until-now;
+    a.drops.children.forEach(d=>{const u=(T*2.4+d.userData.ph)%1;d.position.set(.04+d.userData.x-u*.02,.12*(1-u*u),d.userData.x*2);d.visible=!a.short});
+    a.can.position.y=a.h.g.userData.bedAt.y+.14+Math.sin(T*3)*.01;
+    if(!a.short)a.h.g.userData.flowers.forEach((f,i)=>{const q=Math.min(1,(2600-left)/1800);f.rotation.x*=.92;f.rotation.z*=.92;f.scale.setScalar(.78+.22*q+.18*Math.sin(q*Math.PI)*(.7+.3*Math.sin(i*1.7+T*5)))});
+    if(left<=0){a.h.g.remove(a.can,a.drops);water.anim.delete(k);waterLook(k)}
+  }
+  // in play mode: offer the button when standing next to a bed
+  let near=null;
+  if(play&&acct.user){let best=.03;const w=new THREE.Vector3();
+    houses.forEach((h,k)=>{w.copy(h.g.userData.bedAt);h.g.localToWorld(w);const d=w.normalize().distanceTo(play.p);if(d<best){best=d;near=k}})}
+  if(near!==water.near){water.near=near;const b=document.getElementById('waterBtn');b.hidden=!near;
+    if(near){const thirsty=!waterFresh(near);b.textContent=thirsty?'💧 Zalít kytky'+(touchUI()?'':' (F)'):'🌸 Kytky jsou svěží'+(touchUI()?'':' (F)')}}
+}
+document.getElementById('waterBtn').onclick=()=>{if(water.near)waterBed(water.near)};
 
 // ---------- inventory: equipment slots on the character, a 3-slot bag and a money box ----------
 // Owned items: /items/<nick>/<itemId> = true (set by the admin) plus items the game grants in code (Zubatý meč).
@@ -3151,6 +3227,7 @@ addEventListener('keydown',e=>{
   }
   if(e.code==='Escape'){stopPlay();return}
   if(e.code==='Space'){e.preventDefault();if(!e.repeat)startJump();return}
+  if(e.code==='KeyF'&&!e.repeat&&water.near){waterBed(water.near);return}
   keys.add(e.code);
   if(move||e.code==='Space')e.preventDefault();
 });
