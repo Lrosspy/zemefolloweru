@@ -204,6 +204,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 .chat-log{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-direction:column;gap:3px;font-size:13px;line-height:1.3;color:var(--ink)}
 .chat-log li{text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.6);overflow-wrap:anywhere}
 .chat.open .chat-log li{text-shadow:none}
+.chat.open .chat-log{max-height:min(45vh,340px);overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-width:thin}
 .chat-log b{color:var(--sun);font-weight:800}
 .chat-log li.mine b{color:#7fe0a0}
 .chat-log li.sys{color:var(--ink-dim);font-style:italic}
@@ -3394,12 +3395,16 @@ document.addEventListener('visibilitychange',()=>{if(play&&document.visibilitySt
 // ---------- chat: last 5 messages on the left, background only while writing ----------
 const chat={el:document.getElementById('chat'),log:document.getElementById('chatLog'),form:document.getElementById('chatForm'),
   input:document.getElementById('chatInput'),hint:document.getElementById('chatHint'),msgs:{},es:null,lastSent:0};
-const CHAT_SHOW=5;
+const CHAT_SHOW=5,CHAT_KEEP=100; // closed chat shows the last 5 lines, opened chat scrolls through the last 100
 const BAD=/(kurv|p[ií]č|kokot|zmrd|čur[aá]k|mrd|buzer|negr|fuck|shit|bitch)\p{L}*/giu;
 const cleanText=t=>String(t||'').replace(/[\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().slice(0,120).replace(BAD,m=>m[0]+'***');
 function chatRender(){
-  const list=Object.entries(chat.msgs).sort((a,b)=>a[0]<b[0]?-1:1).slice(-CHAT_SHOW);
-  chat.log.textContent='';
+  const open=chat.el.classList.contains('open'),L=chat.log;
+  const stick=!open||L.scrollHeight-L.scrollTop-L.clientHeight<40; // keep following new lines unless the player scrolled up
+  const all=Object.entries(chat.msgs).sort((a,b)=>a[0]<b[0]?-1:1);
+  if(all.length>CHAT_KEEP)for(const [k] of all.slice(0,all.length-CHAT_KEEP))delete chat.msgs[k];
+  const list=all.slice(open?-CHAT_KEEP:-CHAT_SHOW);
+  L.textContent='';
   for(const [,m] of list){
     const li=document.createElement('li');
     if(m.sys){li.className='sys';li.textContent=m.x}
@@ -3407,8 +3412,9 @@ function chatRender(){
       const b=document.createElement('b');b.textContent=m.n+': ';li.append(b,document.createTextNode(m.x));
       if(meNick&&m.n==='@'+meNick)li.className='mine';
     }
-    chat.log.appendChild(li);
+    L.appendChild(li);
   }
+  if(open&&stick)L.scrollTop=L.scrollHeight;
 }
 function chatSys(text){chat.msgs['~'+Date.now()]={sys:1,x:text};chatRender()}
 function chatSet(key,m){
@@ -3420,7 +3426,7 @@ function chatSet(key,m){
 function chatStart(){
   if(!LIVE_DB||chat.es||typeof EventSource==='undefined')return;
   try{
-    const es=new EventSource(LIVE_DB+'/chat.json?orderBy=%22%24key%22&limitToLast=20');
+    const es=new EventSource(LIVE_DB+'/chat.json?orderBy=%22%24key%22&limitToLast=100');
     const apply=(e,merge)=>{try{
       const m=JSON.parse(e.data);if(!m||typeof m.path!=='string')return;
       const parts=m.path.split('/').filter(Boolean);
@@ -3436,13 +3442,14 @@ function chatStart(){
 function chatCanWrite(){const r=meId&&residentById.get(meId);return !!(r&&!r.left)}
 function chatOpen(){
   if(!meId){showWelcome(acct.user?'nick':'login','Pro psaní v chatu se přihlas.');return}
-  chat.el.classList.add('open');keys.clear();
+  chat.el.classList.add('open');keys.clear();chatRender();chat.log.scrollTop=chat.log.scrollHeight;
   if(!chatCanWrite()){
     chat.hint.textContent=meId?'Psát můžou jen obyvatelé planety. Dej follow @planetafolloweru a za chvíli tu máš dům.':'Nejdřív zadej svůj nick z Instagramu (tlačítko vlevo nahoře „změnit“, nebo obnov stránku).';
     chat.input.disabled=true;
   }else{chat.hint.textContent='Enter pošle · Esc zavře';chat.input.disabled=false;setTimeout(()=>chat.input.focus(),0)}
 }
-function chatClose(){chat.el.classList.remove('open');chat.input.blur()}
+function chatClose(){chat.el.classList.remove('open');chat.input.blur();chatRender()}
+chat.log.addEventListener('wheel',e=>{if(chat.el.classList.contains('open'))e.stopPropagation()},{passive:true});
 document.getElementById('chatOpen').onclick=chatOpen;
 document.getElementById('chatClose').onclick=chatClose;
 chat.input.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();chatClose()}e.stopPropagation()});
