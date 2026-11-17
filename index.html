@@ -134,6 +134,7 @@ body.playing .set-panel{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 116p
 .set-row input{width:20px;height:20px;accent-color:var(--sun);flex:none;margin:0}
 body.hide-nicks .label:not(.site):not(.me-tag):not(.bubble):not(.boss):not(.gate){display:none!important}
 body.hide-players .label.player{display:none!important}
+body.hide-sites .label.site,body.hide-sites .label.gate{display:none!important}
 @media (max-width:700px){.bar{padding-right:72px}}
 body.playing .admin-key{display:none}
 .inv{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
@@ -253,6 +254,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <b id="setTitle">Nastavení</b>
   <label class="set-row"><input type="checkbox" id="setPlayers" checked><span>Ukazovat postavy ostatních hráčů</span></label>
   <label class="set-row"><input type="checkbox" id="setNicks" checked><span>Ukazovat nicky hráčů</span></label>
+  <label class="set-row"><input type="checkbox" id="setSites" checked><span>Ukazovat názvy staveb</span></label>
 </div>
 <section class="boss-mg" id="bossMg" hidden aria-labelledby="bossTitle">
   <div class="boss-card">
@@ -3568,17 +3570,18 @@ const $id=id=>document.getElementById(id);
 function adminShow(){adm.el.hidden=false;const ok=!!adm.token;adm.login.hidden=ok;adm.stats.hidden=!ok;if(ok)adminLoad();else setTimeout(()=>$id('adminEmail').focus(),0)}
 $id('adminKey').onclick=adminShow;
 // ---------- settings (gear next to the key): hide other players' characters / hide player nicks; remembered in this browser ----------
-const setv={players:true,nicks:true};
+const setv={players:true,nicks:true,sites:true};
 try{Object.assign(setv,JSON.parse(localStorage.getItem('planeta-set')||'{}'))}catch(_){}
 function setApply(){
   playerGroup.visible=setv.players;
-  document.body.classList.toggle('hide-players',!setv.players);document.body.classList.toggle('hide-nicks',!setv.nicks);
+  document.body.classList.toggle('hide-players',!setv.players);document.body.classList.toggle('hide-nicks',!setv.nicks);document.body.classList.toggle('hide-sites',!setv.sites);$id('setSites').checked=setv.sites;
   $id('setPlayers').checked=setv.players;$id('setNicks').checked=setv.nicks;
   try{localStorage.setItem('planeta-set',JSON.stringify(setv))}catch(_){}
 }
 setApply();
 $id('setPlayers').onchange=e=>{setv.players=e.target.checked;setApply()};
 $id('setNicks').onchange=e=>{setv.nicks=e.target.checked;setApply()};
+$id('setSites').onchange=e=>{setv.sites=e.target.checked;setApply()};
 $id('setBtn').onclick=()=>{const p=$id('setPanel'),open=p.hidden;p.hidden=!open;$id('setBtn').setAttribute('aria-expanded',String(open))};
 addEventListener('pointerdown',e=>{const p=$id('setPanel');if(!p.hidden&&!p.contains(e.target)&&!$id('setBtn').contains(e.target)){p.hidden=true;$id('setBtn').setAttribute('aria-expanded','false')}},true);
 $id('adminClose').onclick=()=>{adm.el.hidden=true};
