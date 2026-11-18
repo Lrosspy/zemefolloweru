@@ -33,6 +33,12 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crossh
 .note b{color:var(--ink)}
 .title{top:30%;left:50%;transform:translate(-50%,-50%);text-align:center;font-family:var(--display);font-size:clamp(26px,6vw,46px);line-height:1.05;text-shadow:0 5px 0 rgba(0,0,0,.4);transition:opacity .8s}
 .title small{display:block;font:900 15px var(--body);margin-top:10px;color:var(--ink)}
+.gate{position:fixed;inset:0;z-index:5;display:grid;place-items:center;padding:16px;background:rgba(10,7,5,.72);backdrop-filter:blur(4px)}
+.gate[hidden]{display:none}
+.gate div{max-width:360px;background:#1d1410;border:1px solid var(--line);border-radius:18px;padding:22px 20px;text-align:center}
+.gate h1{margin:0 0 8px;font-family:var(--display);font-size:24px;font-weight:400}
+.gate p{margin:0 0 16px;color:var(--dim);line-height:1.45}
+.gate a{display:inline-block;background:var(--sun);color:#2b1d0e;font-weight:900;text-decoration:none;border-radius:999px;padding:12px 22px}
 @media (max-width:520px){.board{font-size:12px;padding:8px 10px}.board ol{max-height:30vh}.depth{top:calc(env(safe-area-inset-top,0px) + 112px)}.title{top:36%}}
 </style>
 </head>
@@ -43,6 +49,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crossh
 <a class="back" href="./">← Planeta</a>
 <div class="hud title" id="title">Cesta do<br>středu země<small>Klikej na kolečka s krumpáčem</small></div>
 <p class="hud note" id="note">Načítám…</p>
+<section class="gate" id="gate" hidden aria-labelledby="gateT"><div><h1 id="gateT">Nejdřív se přihlas</h1><p id="gateP">Cesta do středu země je jen pro přihlášené hráče. Přihlas se na planetě přes Google a vrať se sem.</p><a href="./">Přihlásit se na planetě</a></div></section>
 <script>
 (()=>{
 const LIVE_DB='https://planetafolloweru-default-rtdb.europe-west1.firebasedatabase.app';
@@ -181,7 +188,7 @@ cv.addEventListener('pointerdown',e=>{e.preventDefault();hit(e)});
 function fmtM(cl){return (cl*STEP).toLocaleString('cs-CZ',{minimumFractionDigits:1,maximumFractionDigits:1})+' m'}
 let saveT=null,lastSend=0;
 function save(){
-  if(!st.user){try{localStorage.setItem(GUEST,String(st.clicks))}catch(_){}st.pending=0;return}
+  if(!st.user)return;
   if(!saveT)saveT=setTimeout(flush,Math.max(400,1600-(Date.now()-lastSend)));
 }
 async function flush(){
@@ -194,7 +201,6 @@ async function flush(){
   }catch(_){lastSend=Date.now()}
   st.sending=false;if(st.pending)save();
 }
-addEventListener('pagehide',()=>{try{if(!st.user)localStorage.setItem(GUEST,String(st.clicks))}catch(_){}});
 async function boardLoad(){try{const r=await fetch(LIVE_DB+'/dig.json');if(r.ok){st.all=await r.json()||{};boardRender()}}catch(_){}}
 function boardRender(){
   const rows=Object.entries(st.all).filter(([,v])=>v&&+v.c>0).map(([k,v])=>({k,n:v.n||k,c:+v.c}));
@@ -211,10 +217,9 @@ setInterval(boardLoad,10000);
 
 // ---------- who is playing: same Google login as the planet ----------
 const load=src=>new Promise((ok,bad)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.append(s)});
-function guest(msg){
-  st.user=null;st.nick=null;let g=0;try{g=+localStorage.getItem(GUEST)||0}catch(_){}
-  st.clicks=g;st.shown=g*STEP;st.ready=true;spawn();boardLoad();if(g)$('title').style.opacity=0;
-  $('note').replaceChildren(msg||'Nejsi přihlášený: postup se ukládá jen v tomhle prohlížeči. ',Object.assign(document.createElement('b'),{textContent:'Přihlas se na planetě'}),' a dostaneš se do žebříčku.');
+function guest(msg){ // no login, no digging
+  st.user=null;st.nick=null;st.ready=false;boardLoad();
+  if(msg)$('gateP').textContent=msg;$('gate').hidden=false;$('note').textContent='Kopat můžou jen přihlášení hráči.';$('title').style.opacity=0;
 }
 async function start(){
   try{
@@ -226,7 +231,7 @@ async function start(){
     const u=await new Promise(ok=>{const off=firebase.auth().onAuthStateChanged(x=>{off();ok(x)})});
     if(!u){guest();return}
     const tok=await u.getIdToken(),a=await fetch(`${LIVE_DB}/accounts/${u.uid}.json?auth=${encodeURIComponent(tok)}`).then(r=>r.ok?r.json():null);
-    if(!a||!a.nick){guest('Na planetě si ještě vyber postavu: zatím se postup ukládá jen v tomhle prohlížeči. ');return}
+    if(!a||!a.nick){guest('Na planetě si ještě vyber svou postavu (nick). Pak můžeš kopat.');return}
     st.user=u;st.nick=a.nick;
     const cur=await fetch(`${LIVE_DB}/dig/${liveKey(a.nick)}.json`).then(r=>r.ok?r.json():null).catch(()=>null);
     st.base=+(cur&&cur.c)||0;st.clicks=st.base;st.shown=st.clicks*STEP;st.ready=true;spawn();boardLoad();if(st.base)$('title').style.opacity=0;
