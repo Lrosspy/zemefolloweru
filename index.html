@@ -477,6 +477,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
             <span id="giftHas"></span>
             <span id="giftCoins"></span>
             <span id="giftLvl"></span>
+            <span id="giftHpInfo"></span>
           </div>
         </div>
         <div class="gift-rows" id="giftRows" hidden>
@@ -496,6 +497,11 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
             <label for="giftXpKind" class="gift-kind"><span>Co</span><select id="giftXpKind"><option value="xp">XP</option><option value="lvl">levelů</option></select></label>
             <button class="primary" type="submit" value="add">Přidat</button>
             <button type="button" id="giftReset">Reset na L1</button>
+          </form>
+          <form class="gift-send" id="giftHeal">
+            <span id="giftHp" style="flex:1;align-self:center;font-weight:600">❤️ Zdraví</span>
+            <button class="primary" type="submit" value="heal">💊 Uzdravit</button>
+            <button type="submit" value="revive">✨ Oživit</button>
           </form>
         </div>
         <p class="admin-msg" id="giftMsg" role="status"></p>
@@ -3509,7 +3515,14 @@ function deadSync(){
   for(const [id,g] of deadGraves)if(!dead.has(id)){deadGroup.remove(g);deadGraves.delete(id)}
   for(const id of dead){if(deadGraves.has(id))continue;const dir=graveDir(id);if(!dir)continue;const g=graveMesh(residentById.get(id));placeOn(g,dir,0,0);faceToward(g,dir,START.clone().sub(dir));g.userData.dir=dir;deadGroup.add(g);deadGraves.set(id,g)}
 }
-async function deadLoad(){try{const r=await fetch(LIVE_DB+'/health.json');if(r.ok){hl.all=await r.json()||{};deadSync()}}catch(_){}}
+async function deadLoad(){try{const r=await fetch(LIVE_DB+'/health.json');if(r.ok){hl.all=await r.json()||{};hlRemote();deadSync()}}catch(_){}}
+function hlRemote(){ // someone revived or healed me while I'm playing → take it over
+  if(!hp.loaded||!meId||!acct.user)return;
+  const st=hl.all[liveKey(meId)];if(!st||!st.rev||st.dead||st.sick||!(hp.dead||hp.sick||hp.cur<(+st.hp||0)))return;
+  const wasDead=hp.dead,by=st.rev;hlSet(hlEff(st,hlNow()));
+  toast(wasDead?(by==='admin'?'✨ Admin tě oživil! Máš zase 100 HP.':`✨ @${by} tě oživil! Máš zase 100 HP.`):(by==='admin'?'💊 Admin tě uzdravil! Máš 100 HP.':`💊 @${by} tě uzdravil!`));
+  hlSave();
+}
 deadLoad();setInterval(deadLoad,60000);
 const deadNear={id:null};
 async function graveRevive(id){
@@ -4624,7 +4637,9 @@ async function giftLookup(){
     const [uid,d,mo,xb,xe]=await Promise.all([fetch(LIVE_DB+'/nicks/'+key+'.json?auth='+encodeURIComponent(tok)).then(x=>x.json()),...['diamonds','money','xpbonus','xp'].map(k=>fetch(LIVE_DB+'/'+k+'/'+key+'.json').then(x=>x.json()).catch(()=>null))]);
     inv.money[key]=+mo||0;if(xb!=null)xp.bonus[key]=+xb||0;else delete xp.bonus[key];if(xe)xp.earned[key]=xe;
     $id('giftName').textContent=r.name;$id('giftImg').src=giftPortrait(r);$id('giftImg').alt='Postava '+r.name;
-    gift.has=Math.max(0,Math.floor(+d||0));giftShow();
+    gift.has=Math.max(0,Math.floor(+d||0));gift.hp=null;
+    try{gift.hp=await fetch(LIVE_DB+'/health/'+key+'.json').then(x=>x.json())}catch(_){}
+    giftShow();
     const st=$id('giftState');$id('giftPlayer').hidden=false;
     if(uid){st.className='gift-ok';st.textContent='✓ Přihlášený přes Google';gift.id=id;gift.key=key;$id('giftRows').hidden=false;giftShow()}
     else{st.className='gift-no';st.textContent='Zatím se nepřihlásil přes Google';msg.textContent='Upravovat jde jen hráče, kteří se přihlásili.'}
@@ -4635,6 +4650,8 @@ function giftShow(){
   $id('giftHas').textContent='💎 '+gift.has+' diamantů';
   $id('giftCoins').textContent=`🪙 ${w.gold} zlatých · ${w.silver} stříbrných`;
   $id('giftLvl').textContent=`⭐ Level ${L} · ${x.toLocaleString('cs-CZ')} XP`;
+  const e=hlEff(gift.hp,hlNow()),t=e.dead?`🪦 mrtvý · sám se probudí za ${fmtLeft(e.dAt+REVIVE_MS-hlNow())}`:`❤️ ${e.hp}/100`+(e.sick?' · 🤒 nemocný':' · zdravý');
+  $id('giftHpInfo').textContent=t;
 }
 async function giftPut(path,val){
   const tok=await adminToken();if(!tok){$id('giftMsg').textContent='Přihlášení vypršelo, přihlas se znovu.';return false}
@@ -4682,6 +4699,18 @@ $id('giftReset').onclick=async()=>{
   if(!await giftPut('xpbonus',b0-x))return;
   xp.bonus[gift.key]=b0-x;giftShow();msg.textContent=`@${gift.id} je zpátky na levelu 1 (0 XP). Další XP sbírá od teď.`;
 };
+$id('giftHeal').addEventListener('submit',async e=>{
+  e.preventDefault();const msg=$id('giftMsg'),revive=e.submitter&&e.submitter.value==='revive';if(!gift.id)return;
+  try{gift.hp=await fetch(LIVE_DB+'/health/'+gift.key+'.json').then(x=>x.json())}catch(_){}
+  const cur=hlEff(gift.hp,hlNow());
+  if(revive&&!cur.dead){giftShow();msg.textContent=`@${gift.id} není mrtvý, není koho oživovat.`+(cur.sick||cur.hp<100?' Použij Uzdravit.':'');return}
+  if(!revive&&cur.dead){giftShow();msg.textContent=`@${gift.id} je mrtvý – nejdřív ho oživ.`;return}
+  if(!revive&&!cur.sick&&cur.hp>=100){giftShow();msg.textContent=`@${gift.id} je zdravý a má plné životy.`;return}
+  const v={hp:100,sick:false,tk:{'.sv':'timestamp'},dead:false,dAt:0,imm:Math.max(+cur.imm||0,hlNow()+H_MS),t:{'.sv':'timestamp'},rev:'admin'};
+  if(!await giftPut('health',v))return;
+  gift.hp={...v,tk:hlNow(),t:Date.now()};hl.all[gift.key]=gift.hp;deadSync();giftShow();
+  msg.textContent=revive?`✨ @${gift.id} je oživený a má 100 HP.`:`💊 @${gift.id} je uzdravený: 100/100 HP, hodinu nemůže onemocnět.`;
+});
 // Google login uses the official Firebase Auth library, loaded only when needed
 const FB_SDK='https://www.gstatic.com/firebasejs/10.12.2/';
 let fbReady=null;
