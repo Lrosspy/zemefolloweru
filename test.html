@@ -3783,7 +3783,7 @@ function farmTalk(who){
     const g=grainCount(meId),b=breadCount(meId);
     say.replaceChildren('Z ',B(GRAIN_PER_BREAD+'× obilí'),' ti upeču ',B('1 chleba'),'. Chleba vrátí ',B('+'+BREAD_HP+' HP'),', nebo ho u mě prodáš za ',B(BREAD_PRICE+' stříbrných'),'.');
     btn(`Upéct chleba (${GRAIN_PER_BREAD}× 🌾)`,'primary',breadBake,g<GRAIN_PER_BREAD);
-    btn(`Prodat 1 chleba (+${BREAD_PRICE} 🪙)`,'',breadSell,b<1);
+    {const sb=btn(`Prodat 1 chleba (+${BREAD_PRICE} `,'',breadSell,b<1);const co=document.createElement('span');co.className='coin s';co.setAttribute('aria-label','stříbrných');co.style.cssText='width:15px;height:15px;vertical-align:-2px;margin:0 2px';sb.append(co,')')}
     note.textContent=`Máš ${g}× 🌾 obilí · ${b}× 🍞 chleba.`;
   }
   keys.clear();document.getElementById('farmBox').hidden=false;
@@ -3804,7 +3804,7 @@ async function breadSell(){
   if(breadBusy||!acct.user||!meId)return;const k=liveKey(meId),b=breadCount(meId);if(b<1)return;
   breadBusy=true;let m=+inv.money[k]||0;try{const r=await fetch(LIVE_DB+'/money/'+k+'.json');if(r.ok)m=+(await r.json())||0}catch(_){}
   const body={};body['bread/'+k]={c:b-1,t:{'.sv':'timestamp'}};body['money/'+k]=m+BREAD_PRICE;
-  if(await farmPatch(body)){inv.bread[k]={c:b-1,t:Date.now()};inv.money[k]=m+BREAD_PRICE;toast(`🪙 Prodáno za ${BREAD_PRICE} stříbrných.`)}else toast('Prodej se nepovedl. Zkus to znovu.');
+  if(await farmPatch(body)){inv.bread[k]={c:b-1,t:Date.now()};inv.money[k]=m+BREAD_PRICE;toast(`🍞 Prodáno za ${BREAD_PRICE} stříbrných.`)}else toast('Prodej se nepovedl. Zkus to znovu.');
   breadBusy=false;farmTalk('baker');
 }
 async function breadEat(){
