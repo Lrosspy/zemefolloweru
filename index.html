@@ -70,6 +70,10 @@ form.add input{flex:1 1 160px;min-width:0;font:inherit;color:var(--ink);backgrou
 .nick:focus-within{outline:2px solid var(--sun);outline-offset:2px}
 button.ghost{background:transparent;border-color:transparent;color:var(--ink-dim);font-weight:700}
 button.link{background:none;border:0;padding:0;color:var(--sun);font-weight:700;font-size:12px;text-decoration:underline;cursor:pointer}
+.welcome-card .wstep{display:flex;flex-direction:column;gap:12px}
+.welcome-card .wstep[hidden]{display:none}
+button.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#1f1f1f}
+.welcome-card .wnote{font-size:13px;color:var(--sun)}
 .welcome-card .rules{color:var(--ink-dim);font-size:12px;text-decoration:underline}
 .welcome-card .rules:hover{color:var(--sun)}
 .welcome-msg{min-height:1.2em;color:var(--sun)!important;font-weight:700}
@@ -110,13 +114,116 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .joy{position:fixed;left:max(24px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 28px);width:136px;height:136px;border-radius:50%;background:rgba(20,18,40,.45);border:2px solid rgba(255,226,180,.4);pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none}
 .joy i{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(255,204,102,.9);box-shadow:0 2px 10px rgba(0,0,0,.45);pointer-events:none}
 .label.player{background:rgba(20,18,40,.9);font-size:11px;padding:3px 8px}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 90px);transform:translate(-50%,20px);max-width:min(420px,calc(100% - 32px));padding:12px 18px;border-radius:14px;background:#15122b;border:1px solid var(--panel-line);color:var(--ink);font-weight:800;font-size:14px;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:30}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.play-bar{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:flex;justify-content:center;pointer-events:none}
+.play-bar button{pointer-events:auto;min-height:44px}
+.water-btn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 150px);padding:12px 20px;border-radius:999px;background:#3a9be0;color:#fff;border:2px solid rgba(255,255,255,.6);font-weight:900;font-size:16px;pointer-events:auto;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.water-btn[hidden]{display:none}
+.quest-btn{background:#3f9a6a}
+.hp-chip{background:#4a1520!important;color:#ffd6dc}
+.quest-chip{background:#1f5a3a!important;color:#d8ffe6}
+.quest-line{margin:6px 0 0;padding:6px 8px;border-radius:10px;background:rgba(63,154,106,.2);color:#bff5d3;font-weight:800;font-size:12px}
+.quest-line[hidden]{display:none}
+.hp-line{margin:6px 0 0;font-size:12px;font-weight:800;color:#ffb3bf}
+.quest-say{margin:6px 0 14px;font-size:15px;line-height:1.5}
+.quest-say b{color:var(--sun)}
+.quest-actions{display:flex;gap:8px;flex-wrap:wrap}
+.quest-actions button{flex:1;min-height:44px}
+.water-btn{background-image:linear-gradient(90deg,#1f6fb0 var(--p,0%),transparent var(--p,0%))}
+.water-btn:disabled{opacity:1;cursor:default}
 .jump-btn{position:fixed;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 52px);width:88px;height:88px;border-radius:50%;padding:0;background:rgba(255,204,102,.9);color:#2b1d0e;border:2px solid rgba(255,255,255,.5);font-size:15px;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
 .label.bubble{background:#fff;color:#1b1530;border:0;font-weight:700;font-size:12px;white-space:normal;max-width:190px;width:max-content;text-align:center;padding:6px 10px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,.35);transition:opacity .4s;margin-top:-8px}
 .label.bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff}
 .admin-key{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:6;width:44px;height:44px;padding:0;border-radius:50%;font-size:19px;line-height:1;display:grid;place-items:center;opacity:.75}
 .admin-key:hover{opacity:1}
+.set-btn{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 66px);z-index:7;width:44px;height:44px;padding:0;border-radius:50%;display:grid;place-items:center;opacity:.75}
+.set-btn:hover,.set-btn[aria-expanded="true"]{opacity:1}
+body.playing .set-btn{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 64px);right:max(16px,env(safe-area-inset-right,0px));z-index:9}
+.set-panel{position:fixed;right:calc(max(16px,env(safe-area-inset-right,0px)) + 54px);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:9;width:min(280px,calc(100% - 32px));box-sizing:border-box;padding:14px 14px 10px;display:flex;flex-direction:column;gap:4px;border-radius:16px}
+.set-panel[hidden]{display:none}
+body.playing .set-panel{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 116px)}
+.set-panel b{font-size:14px;margin-bottom:4px}
+.set-row{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer}
+.set-row input{width:20px;height:20px;accent-color:var(--sun);flex:none;margin:0}
+body.hide-nicks .label:not(.site):not(.me-tag):not(.bubble):not(.boss):not(.gate){display:none!important}
+body.hide-players .label.player{display:none!important}
+body.hide-sites .label.site,body.hide-sites .label.gate{display:none!important}
 @media (max-width:700px){.bar{padding-right:72px}}
 body.playing .admin-key{display:none}
+.lvl{display:flex;flex-direction:column;gap:4px;width:100%;margin-top:8px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid var(--panel-line);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.lvl[hidden]{display:none}
+.lvl-top{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--ink-dim)}
+.lvl-top b{color:var(--sun);font-size:13px}
+.lvl-bar{display:block;height:8px;border-radius:4px;background:#2a2440;overflow:hidden}
+.lvl-bar.big{height:12px;border-radius:6px;margin:4px 0 6px}
+.lvl-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffc300,#ff8a3d);border-radius:inherit;transition:width .5s}
+.lvl-big{margin:0;font-size:22px;font-weight:900}
+.lvl-big span{font-size:14px;font-weight:700;color:var(--ink-dim)}
+.lvl-list{margin:0;padding-left:18px;font-size:13px;line-height:1.6;color:var(--ink-dim)}
+.lvl-list b{color:var(--ink)}
+.lvl-list li.done{color:#7fe0a0}
+.lvl-top10{margin:0;padding-left:22px;font-size:13px;line-height:1.7}
+.lvl-top10 li.me{color:var(--sun);font-weight:800}
+.label.player.lv5{border-color:#7fd8ff}
+.label.player.lv20{background:#3a2a08;border-color:#ffc300;color:#ffe08a}
+.inv{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
+.inv[hidden]{display:none}
+.inv-card{width:min(460px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#15122b;border:1px solid var(--panel-line);border-radius:18px;padding:18px 18px 20px;box-sizing:border-box;color:var(--ink)}
+.inv-card header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+.inv-card h2{margin:0;font-size:18px}
+.inv-who{margin:0 0 12px;font-size:13px;color:var(--ink-dim)}
+.inv-main{display:flex;gap:18px;align-items:flex-start}
+.inv-doll{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;flex:1;min-width:0}
+.inv-side{width:88px;flex:none;display:flex;flex-direction:column;gap:8px}
+.inv-slot{position:relative;aspect-ratio:1;min-height:56px;border-radius:12px;border:1.5px dashed rgba(255,255,255,.22);background:#1d1838;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px;color:var(--ink);font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.inv-slot .ic{font-size:24px;line-height:1;opacity:.35;filter:grayscale(1)}
+.inv-slot .lb{font-size:10px;font-weight:800;color:var(--ink-dim);text-align:center;line-height:1.1}
+.inv-slot.full{border-style:solid;border-color:rgba(255,255,255,.35);background:#262048}
+.inv-slot.full .ic{opacity:1;filter:none;font-size:28px}
+
+.inv-slot.sel{outline:3px solid var(--sun);outline-offset:1px}
+.inv-slot.gap{visibility:hidden;pointer-events:none}
+.coin{display:inline-block;width:22px;height:22px;border-radius:50%;flex:none}
+.coin.g{background:radial-gradient(circle at 35% 30%,#fff3a8,#ffc300 45%,#b07a00);box-shadow:inset 0 0 0 2px #8a5c00}
+.coin.s{background:radial-gradient(circle at 35% 30%,#ffffff,#c9ced8 45%,#7d8494);box-shadow:inset 0 0 0 2px #5d6270}
+.inv-money .dia{font-size:20px;line-height:1}
+.shop-card{width:min(760px,100%)}
+.shop-main{display:flex;gap:18px;flex-wrap:wrap}
+.shop-col{flex:1 1 300px;min-width:0}
+.shop-offers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.shop-offer{aspect-ratio:1;border-radius:14px;border:1.5px dashed rgba(255,255,255,.25);background:#1d1838;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink-dim);font-size:13px}
+.shop-offer .ic{font-size:26px;opacity:.6}
+.shop-special{position:relative;margin-top:12px;border-radius:18px;overflow:hidden;border:2px solid #ffc300;background:#3a2a08;min-height:150px;display:grid;place-items:center}
+.shop-rays{position:absolute;inset:-60%;background:repeating-conic-gradient(from 0deg,rgba(255,214,90,.38) 0deg 10deg,rgba(255,214,90,0) 10deg 22deg);animation:shopSpin 14s linear infinite}
+@keyframes shopSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.shop-rays{animation:none}}
+.shop-special-in{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;padding:16px;background:radial-gradient(circle,rgba(58,42,8,.92) 40%,rgba(58,42,8,0) 75%)}
+.shop-special-in .ic{font-size:40px}
+.shop-special-in b{font-size:18px;color:#ffd84a}
+.shop-special-in span{font-size:13px;color:#ffe9b0}
+.shop-special-in em{margin-top:6px;font-style:normal;font-weight:900;font-size:12px;padding:4px 10px;border-radius:999px;background:#ffc300;color:#2b1d0e}
+.shop-purse{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-weight:900}
+.shop-purse span{display:inline-flex;align-items:center;gap:6px}
+.shop-bag{grid-template-columns:repeat(5,minmax(0,1fr))}
+.shop-btn{background:#c98f45}
+.lab-btn{background:#2a9a6a}
+.revive-btn{background:#7a5ad1}
+.farm-btn{background:#b9861c}
+.dig-btn{background:#8a5a3b}
+.lab-recipe{display:flex;align-items:center;justify-content:center;gap:16px;margin:10px 0;padding:14px;border-radius:14px;background:rgba(47,179,106,.12);border:1px solid rgba(47,179,106,.4)}
+.lab-recipe span{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:30px}
+.lab-recipe small{font-size:12px;color:var(--ink-dim);font-weight:800}
+.lab-arrow{font-size:26px;color:var(--sun)}
+#labBrew{width:100%;min-height:44px}
+.inv-money{border-radius:14px;background:linear-gradient(#3a2a10,#24190a);border:1.5px solid #ffc300;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.inv-money .inv-coin{font-size:28px;line-height:1}
+.inv-money b{font-size:20px;color:#ffd23a}
+.inv-money span:last-child{font-size:11px;font-weight:800;color:#e8c98a}
+.inv-sub{margin:16px 0 8px;font-size:14px}
+.inv-bag{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.inv-detail{min-height:36px;font-size:13px;line-height:1.4;color:var(--ink-dim);margin:12px 0 0}
+.inv-detail b{color:var(--ink)}
 .boss-mg{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
 .boss-mg[hidden]{display:none}
 .boss-card{width:min(420px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#15122b;border:1px solid var(--panel-line);border-radius:18px;padding:18px 18px 20px;box-sizing:border-box;color:var(--ink);text-align:center}
@@ -138,6 +245,27 @@ body.playing .admin-key{display:none}
 .boss-msg{min-height:18px;font-size:13px;font-weight:800;color:var(--sun);margin:8px 0 0}
 .label.boss{pointer-events:auto;cursor:pointer;font:inherit;font-weight:800;font-size:12px;background:#3a1220;color:#ffe2d6;border-color:#c9573a}
 .admin{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,5,16,.6);padding:16px;box-sizing:border-box}
+.admin-gift{margin-top:16px;padding:14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--panel-line);display:flex;flex-direction:column;gap:10px}
+.admin-gift h3{margin:0;font-size:15px}
+.admin-gift label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-dim)}
+.admin-gift input{font:inherit;font-size:16px;padding:9px 11px;border-radius:10px;border:1px solid var(--panel-line);background:rgba(0,0,0,.35);color:var(--ink)}
+.gift-player{display:flex;gap:14px;align-items:center}
+.gift-player[hidden],.gift-send[hidden]{display:none}
+.gift-player img{width:120px;height:150px;border-radius:12px;background:#1d1838;flex:none}
+.gift-info{display:flex;flex-direction:column;gap:4px;font-size:13px;min-width:0}
+.gift-info b{font-size:16px;color:var(--sun);overflow-wrap:anywhere}
+.gift-ok{color:#7fe0a0;font-weight:800}
+.gift-no{color:#ff9a7a;font-weight:800}
+.gift-rows{display:flex;flex-direction:column;gap:12px}
+.gift-rows[hidden]{display:none}
+.gift-send{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.gift-send label span{display:inline-flex;align-items:center;gap:5px}
+.gift-send .coin{width:14px;height:14px}
+.gift-kind{flex:0 0 auto!important}
+.gift-send select{font:inherit;font-size:16px;padding:9px 8px;border-radius:10px;border:1px solid var(--panel-line);background:rgba(0,0,0,.35);color:var(--ink)}
+#giftReset.armed{background:#c9573a;color:#fff}
+.gift-send label{flex:1 1 90px;min-width:0}
+.gift-send button{min-height:44px}
 .admin-card{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#15122b;border:1px solid var(--panel-line);border-radius:18px;padding:18px 18px 20px;box-sizing:border-box;color:var(--ink)}
 .admin-card header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 .admin-card h2{margin:0;font-family:var(--display);font-weight:400;font-size:20px}
@@ -171,6 +299,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 .chat-log{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-direction:column;gap:3px;font-size:13px;line-height:1.3;color:var(--ink)}
 .chat-log li{text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.6);overflow-wrap:anywhere}
 .chat.open .chat-log li{text-shadow:none}
+.chat.open .chat-log{max-height:min(45vh,340px);overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-width:thin}
 .chat-log b{color:var(--sun);font-weight:800}
 .chat-log li.mine b{color:#7fe0a0}
 .chat-log li.sys{color:var(--ink-dim);font-style:italic}
@@ -203,6 +332,13 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 </div>
 
 <button class="admin-key" id="adminKey" type="button" aria-label="Admin panel">🔑</button>
+<button class="set-btn" id="setBtn" type="button" aria-label="Nastavení" aria-expanded="false" aria-controls="setPanel"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+<div class="set-panel card" id="setPanel" hidden role="group" aria-labelledby="setTitle">
+  <b id="setTitle">Nastavení</b>
+  <label class="set-row"><input type="checkbox" id="setPlayers" checked><span>Ukazovat postavy ostatních hráčů</span></label>
+  <label class="set-row"><input type="checkbox" id="setNicks" checked><span>Ukazovat nicky hráčů</span></label>
+  <label class="set-row"><input type="checkbox" id="setSites" checked><span>Ukazovat názvy staveb</span></label>
+</div>
 <section class="boss-mg" id="bossMg" hidden aria-labelledby="bossTitle">
   <div class="boss-card">
     <header><h2 id="bossTitle">💀 Boss ze záhrobí</h2><button type="button" id="bossClose">Zavřít</button></header>
@@ -216,9 +352,99 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     <p class="boss-msg" id="bossMsg" role="status" aria-live="polite"></p>
   </div>
 </section>
+<section class="inv" id="inv" hidden aria-labelledby="invTitle">
+  <div class="inv-card">
+    <header><h2 id="invTitle">🎒 Inventář</h2><button type="button" id="invClose">Zavřít</button></header>
+    <p class="inv-who" id="invWho"></p>
+    <div class="inv-main">
+      <div class="inv-doll" id="invDoll" aria-label="Vybavení na postavě"></div>
+      <aside class="inv-side">
+        <div class="inv-money" id="invMoney"><span class="coin g" aria-hidden="true"></span><b id="invGold">0</b><span>zlaté</span><span class="coin s" aria-hidden="true"></span><b id="invSilver">0</b><span>stříbrné</span><span class="dia" aria-hidden="true">💎</span><b id="invDia">0</b><span>diamanty</span></div>
+      </aside>
+    </div>
+    <h3 class="inv-sub">V batohu</h3>
+    <div class="inv-bag" id="invBag" aria-label="Batoh"></div>
+    <p class="inv-detail" id="invDetail" role="status" aria-live="polite">Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.</p>
+  </div>
+</section>
+<section class="inv" id="labBox" hidden aria-labelledby="labTitle">
+  <div class="inv-card">
+    <header><h2 id="labTitle">⚗️ Lékárnický stůl</h2><button type="button" id="labClose">Zavřít</button></header>
+    <div class="lab-recipe"><span class="lab-in">🌿🌿🌿<small>3× léčivá bylina</small></span><span class="lab-arrow" aria-hidden="true">→</span><span class="lab-out">💊<small>Antibiotika · hodnota 1 zlatý</small></span></div>
+    <p class="inv-who" id="labHave"></p>
+    <button class="primary" type="button" id="labBrew">Uvařit antibiotika (1 min)</button>
+    <p class="inv-detail" id="labNote"></p>
+  </div>
+</section>
+<section class="inv" id="shopBox" hidden aria-labelledby="shopTitle">
+  <div class="inv-card shop-card">
+    <header><h2 id="shopTitle">🛒 Obchod planety</h2><button type="button" id="shopClose">Zavřít</button></header>
+    <div class="shop-main">
+      <div class="shop-col">
+        <h3 class="inv-sub">Dnešní nabídka</h3>
+        <div class="shop-offers">
+          <div class="shop-offer"><span class="ic" aria-hidden="true">🔒</span><b>Již brzy</b></div>
+          <div class="shop-offer"><span class="ic" aria-hidden="true">🔒</span><b>Již brzy</b></div>
+          <div class="shop-offer"><span class="ic" aria-hidden="true">🔒</span><b>Již brzy</b></div>
+        </div>
+        <div class="shop-special">
+          <div class="shop-rays" aria-hidden="true"></div>
+          <div class="shop-special-in">
+            <span class="ic" aria-hidden="true">🏡</span>
+            <b>Kup si vlastní pozemek</b>
+            <span>s vlastním nastavením</span>
+            <em>Již brzy</em>
+          </div>
+        </div>
+        <p class="inv-who">Nabídka se mění každý den.</p>
+      </div>
+      <div class="shop-col">
+        <h3 class="inv-sub">Tvůj inventář</h3>
+        <div class="shop-purse" id="shopPurse"></div>
+        <div class="inv-bag shop-bag" id="shopBag" aria-label="Věci k prodeji"></div>
+        <p class="inv-detail" id="shopDetail">Klepni na věc v batohu a prodáš ji. Výkup se spustí s prvním zbožím.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="inv" id="questBox" hidden aria-labelledby="questTitle">
+  <div class="inv-card">
+    <header><h2 id="questTitle">🌱 Zahradnice</h2><button type="button" id="questClose">Zavřít</button></header>
+    <p class="quest-say" id="questSay"></p>
+    <div class="quest-actions" id="questActions"></div>
+    <p class="inv-who" id="questNote">Dokud plníš úkol, jsi zahradník. Když hru zavřeš nebo se odhlásíš, úkol i postup propadnou.</p>
+  </div>
+</section>
+<section class="inv" id="farmBox" hidden aria-labelledby="farmTitle">
+  <div class="inv-card">
+    <header><h2 id="farmTitle">🌾 Farmář</h2><button type="button" id="farmClose">Zavřít</button></header>
+    <p class="quest-say" id="farmSay"></p>
+    <div class="quest-actions" id="farmActions"></div>
+    <p class="inv-who" id="farmNote"></p>
+  </div>
+</section>
+<section class="inv" id="lvlBox" hidden aria-labelledby="lvlTitle">
+  <div class="inv-card">
+    <header><h2 id="lvlTitle">⭐ Level a žebříček</h2><button type="button" id="lvlClose">Zavřít</button></header>
+    <p class="lvl-big" id="lvlBig"></p>
+    <span class="lvl-bar big"><i id="lvlFill"></i></span>
+    <p class="inv-who" id="lvlToday"></p>
+    <h3 class="inv-sub">Jak získat XP</h3>
+    <ul class="lvl-list">
+      <li><b>+5 až +50 XP</b> úkoly od zahradnice v Zahradnictví</li>
+      <li><b>+20 XP</b> první přihlášení za den</li>
+      <li><b>+5 XP</b> za každý den, co followuješ @planetafolloweru</li>
+      <li><b>až +600 XP</b> za boj s bossem (odznak a údery)</li>
+    </ul>
+    <h3 class="inv-sub">Co se odemyká</h3>
+    <ul class="lvl-list" id="lvlUnlocks"></ul>
+    <h3 class="inv-sub">🏆 TOP 10</h3>
+    <ol class="lvl-top10" id="lvlTop"></ol>
+  </div>
+</section>
 <section class="admin" id="admin" hidden aria-labelledby="adminTitle">
   <div class="admin-card">
-    <header><h2 id="adminTitle">Admin · statistiky</h2><button type="button" id="adminClose">Zavřít</button></header>
+    <header><h2 id="adminTitle">Admin</h2><button type="button" id="adminClose">Zavřít</button></header>
     <form class="admin-form" id="adminLogin">
       <label for="adminEmail">E-mail<input id="adminEmail" type="email" autocomplete="username" required></label>
       <label for="adminPass">Heslo<input id="adminPass" type="password" autocomplete="current-password" required></label>
@@ -239,6 +465,41 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
         <small style="font-size:11px;color:var(--ink-dim)">lidé za posledních 7 dní</small>
       </div>
       <div class="admin-days"><h3>Lidé za den (14 dní)</h3><div class="admin-chart" id="stChart"></div></div>
+      <div class="admin-gift">
+        <h3>🛠️ Úprava hráče</h3>
+        <label for="giftNick">Jméno postavy<input id="giftNick" list="giftList" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="@nick hráče"></label>
+        <datalist id="giftList"></datalist>
+        <div class="gift-player" id="giftPlayer" hidden>
+          <img id="giftImg" alt="" width="120" height="150">
+          <div class="gift-info">
+            <b id="giftName"></b>
+            <span id="giftState"></span>
+            <span id="giftHas"></span>
+            <span id="giftCoins"></span>
+            <span id="giftLvl"></span>
+          </div>
+        </div>
+        <div class="gift-rows" id="giftRows" hidden>
+          <form class="gift-send" id="giftDia">
+            <label for="giftAmount">💎 Diamanty<input id="giftAmount" type="number" min="1" max="100000" step="1" inputmode="numeric" placeholder="počet" required></label>
+            <button class="primary" type="submit" value="add">Přidat</button>
+            <button type="submit" value="sub">Odebrat</button>
+          </form>
+          <form class="gift-send" id="giftMoney">
+            <label for="giftGold"><span><span class="coin g" aria-hidden="true"></span> Zlaté</span><input id="giftGold" type="number" min="0" max="100000" step="1" inputmode="numeric" placeholder="0"></label>
+            <label for="giftSilver"><span><span class="coin s" aria-hidden="true"></span> Stříbrné</span><input id="giftSilver" type="number" min="0" max="99999" step="1" inputmode="numeric" placeholder="0"></label>
+            <button class="primary" type="submit" value="add">Přidat</button>
+            <button type="submit" value="sub">Odebrat</button>
+          </form>
+          <form class="gift-send" id="giftXp">
+            <label for="giftXpN">⭐ Level a XP<input id="giftXpN" type="number" min="1" max="100000" step="1" inputmode="numeric" placeholder="počet" required></label>
+            <label for="giftXpKind" class="gift-kind"><span>Co</span><select id="giftXpKind"><option value="xp">XP</option><option value="lvl">levelů</option></select></label>
+            <button class="primary" type="submit" value="add">Přidat</button>
+            <button type="button" id="giftReset">Reset na L1</button>
+          </form>
+        </div>
+        <p class="admin-msg" id="giftMsg" role="status"></p>
+      </div>
       <div class="admin-foot"><span id="stUpdated"></span><span style="display:flex;gap:8px"><button type="button" id="adminRefresh">Obnovit</button><button type="button" id="adminOut">Odhlásit</button></span></div>
     </div>
   </div>
@@ -256,9 +517,16 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 <section class="welcome" id="welcome" aria-labelledby="welcomeTitle">
   <form class="welcome-card" id="welcomeForm">
     <h2 id="welcomeTitle">Vítej na Planetě followerů</h2>
-    <p>Napiš svůj nick z Instagramu a najdeme tvůj dům.</p>
-    <label class="nick" for="nickInput"><span>@</span><input id="nickInput" name="nickInput" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="30" placeholder="tvuj_nick" required></label>
-    <button class="primary" type="submit">Najít moji postavu</button>
+    <div class="wstep" id="wStepLogin">
+      <p>Přihlas se Google účtem a najdeme tvůj dům.</p>
+      <button class="primary gbtn" type="button" id="gLogin"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9h-4v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.4 14.4a7.2 7.2 0 0 1 0-4.7V6.6h-4a12 12 0 0 0 0 10.8z"/><path fill="#EA4335" d="M12 4.8c1.7 0 3.3.6 4.5 1.8l3.4-3.4A12 12 0 0 0 1.4 6.6l4 3.1C6.3 6.9 8.9 4.8 12 4.8z"/></svg>Přihlásit se přes Google</button>
+      <p class="wnote" id="inAppNote" hidden>Jsi v prohlížeči Instagramu, kde Google přihlášení nefunguje. Klepni na ⋯ vpravo nahoře a vyber „Otevřít v prohlížeči“.</p>
+    </div>
+    <div class="wstep" id="wStepNick" hidden>
+      <p>Poslední krok: napiš svůj nick z Instagramu. Nick si může zabrat jen jeden účet.</p>
+      <label class="nick" for="nickInput"><span>@</span><input id="nickInput" name="nickInput" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="30" placeholder="tvuj_nick"></label>
+      <button class="primary" type="submit" id="nickClaim">Zabrat můj nick</button>
+    </div>
     <button class="ghost" type="button" id="justLook">Jen se rozhlédnout</button>
     <p class="welcome-msg" id="welcomeMsg" role="status"></p>
     <a class="rules" href="pravidla.html">Pravidla a soukromí</a>
@@ -266,13 +534,17 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 </section>
 
 <aside class="me card" id="meCard" hidden aria-live="polite">
-  <div class="me-top"><b id="meName"></b><button class="link" type="button" id="meChange">změnit</button></div>
+  <div class="me-top"><b id="meName"></b><button class="link" type="button" id="meChange">odhlásit</button></div>
   <div id="meInfo" class="me-info"></div>
+  <p class="quest-line" id="meQuest" hidden></p>
+  <p class="hp-line" id="meHp">❤️ Životy 100/100</p>
+  <button class="lvl" id="meLvl" type="button" hidden aria-label="Level a žebříček"><span class="lvl-top"><b id="meLvlN">Level 1</b><span id="meLvlXp">0/100 XP</span></span><span class="lvl-bar"><i id="meLvlFill"></i></span></button>
 </aside>
 
 <div class="bar" id="bar">
   <button id="playBtn" class="primary" type="button" hidden>Hrát za postavu 🎮</button>
   <button id="meBtn" type="button" hidden>Moje postava</button>
+  <button id="invBtn" type="button" hidden>Inventář 🎒</button>
   <button id="games" type="button">Minihry</button>
   <button id="openList" type="button">Obyvatelé</button>
   <button id="whole" type="button">Celá planeta</button>
@@ -281,11 +553,19 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
 </div>
 
 <div class="play-ui" id="playUi" hidden>
-  <div class="play-top"><span class="card live-chip" id="liveChip">Hraješ</span><button id="playExit" type="button">Konec hry</button></div>
+  <div class="play-top"><span class="card live-chip" id="liveChip">Hraješ</span><span class="card live-chip hp-chip" id="hpChip">❤️ 100/100</span><span class="card live-chip quest-chip" id="questChip" hidden></span><button id="playExit" type="button">Konec hry</button></div>
   <div class="play-help" id="playHelp"></div>
   <div class="abduct-flash" id="abductFlash" aria-hidden="true"></div>
   <div class="joy" id="joy" hidden aria-label="Joystick pro chůzi"><i id="joyKnob"></i></div>
   <button class="jump-btn" id="jumpBtn" type="button" hidden>Skok</button>
+  <div class="play-bar"><button type="button" id="playInv">Inventář 🎒</button></div>
+  <button class="water-btn" id="waterBtn" type="button" hidden>💧 Zalít kytky</button>
+  <button class="water-btn quest-btn" id="questBtn" type="button" hidden>🌱 Mluvit se zahradnicí</button>
+  <button class="water-btn shop-btn" id="shopBtn" type="button" hidden>🛒 Otevřít obchod</button>
+  <button class="water-btn lab-btn" id="labBtn" type="button" hidden>⚗️ Lékárnický stůl</button>
+  <button class="water-btn revive-btn" id="reviveBtn" type="button" hidden>✨ Oživit</button>
+  <button class="water-btn farm-btn" id="farmBtn" type="button" hidden>🌾 Pole</button>
+  <button class="water-btn dig-btn" id="digBtn" type="button" hidden>⛏️ Cesta do středu země</button>
 </div>
 
 <div class="chat" id="chat" aria-label="Chat planety">
@@ -385,6 +665,7 @@ SITES.post={title:'Pošta',dir:ringDir(315,.88),r:.1};
 SITES.radio={title:'Rádiová stanice',dir:ringDir(12,1.0),r:.1,always:true};
 SITES.mayor={title:'Radnice',dir:ringDir(128,.62),r:.1};
 SITES.kfc={title:'KFP – Křupavé kuře planety',dir:ringDir(60,.93),r:.1}; // fried-chicken bistro, run by @adam.morgi
+SITES.shop={title:'Obchod planety',dir:ringDir(170,.95),r:.11,always:true}; // public shop, open only to players walking their character
 SITES.pharmacy={title:'Lékárna planety',dir:ringDir(280,.97),r:.1}; // pharmacy for @turtle.9884488 (also the planet's doctor)
 SITES.castle={title:'Hrad 500. obyvatele',dir:ringDir(240,.95),r:.11}; // goes to the 500th resident ("Starosta mrzne" challenge) // town hall next to the barbershop; the mayor (role 'mayor') won the election in the comments // next to the stadium, beams radio waves into space; belongs to the whole planet
 const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // Boss ze záhrobí (used to be the UFO base), far side of the planet
@@ -409,7 +690,7 @@ function frostLevel(){const n=aliveCount();if(n>=MRAZ_GOAL)return 0;
   return Math.max(0,Math.min(1,need*(.6+Math.min(.4,days*.06))))}
 function siteKeyOf(role){return role?(SITES[role]?role:(WORKER_OF[role]||null)):null}
 function siteMembers(k){return residents.filter(r=>hasRole(r,k)||WORKER_OF[r.role]===k).sort((a,b)=>a.at-b.at)}
-const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡',mayor:'👑',castle:'🏰',kfc:'🍗',pharmacy:'💊'};
+const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡',mayor:'👑',castle:'🏰',kfc:'🍗',pharmacy:'💊',shop:'🛒'};
 const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta',radio:'Tichá rádiová stanice',mayor:'Opuštěná radnice',castle:'Opuštěný hrad',kfc:'Zavřené kuřecí bistro',pharmacy:'Zavřená lékárna'};
 (function(){
   const g=Math.PI*(3-Math.sqrt(5));
@@ -639,10 +920,13 @@ function makeHouse(home){
     const fl=new THREE.Group();fl.position.set(bedX+(k%2?.018:-.018),.024,-.09+k*.042);
     const st=new THREE.Mesh(new THREE.CylinderGeometry(.003,.003,.04,4),stemM);st.position.y=.02;fl.add(st);
     const bl=new THREE.Mesh(new THREE.SphereGeometry(.013,6,4),mat(FL[Math.floor(rr()*FL.length)]));bl.position.y=.045;fl.add(bl);
+    st.userData.orig=st.material;bl.userData.orig=bl.material;fl.userData.stem=st;fl.userData.bloom=bl;
     g.add(fl);flowers.push(fl);
   }
   g.userData={id:home.key,height:h+.3,waveArms,flowers,bedAt:new THREE.Vector3(bedX,0,.02),standAt:new THREE.Vector3(bedX-.11,0,.1)};
   g.traverse(o=>{if(o.isMesh)o.userData.house=g});
+  bed.userData.bed=edge.userData.bed=home.key;flowers.forEach(f=>f.traverse(o=>{if(o.isMesh)o.userData.bed=home.key}));
+  setTimeout(()=>waterLook(home.key),0);
   return g;
 }
 
@@ -981,6 +1265,12 @@ const boss=new THREE.Group();scene.add(boss);
   const cv=document.createElement('canvas');cv.width=640;cv.height=210;const tex=new THREE.CanvasTexture(cv);
   const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));tag.scale.set(.96,.315,1);tag.position.y=2.35;tag.renderOrder=5;boss.add(tag);
   boss.userData={body,head,lower,eyes,glow,wisps,seed,pos,fall:0,tag,cv,tex,tagKey:'',tagAt:0};
+  // the boss is gone: only the black hole stays, now the way down to "Cesta do středu země"
+  body.visible=glow.visible=wisps.visible=tag.visible=false;
+  {const dc=document.createElement('canvas');dc.width=760;dc.height=150;const x=dc.getContext('2d');
+    x.fillStyle='rgba(20,14,10,.88)';x.beginPath();x.roundRect(6,6,748,138,69);x.fill();x.lineWidth=6;x.strokeStyle='#ffc300';x.stroke();
+    x.fillStyle='#fff4e2';x.font='900 58px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('⛏️ Cesta do středu země',380,78);
+    const dt=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(dc),transparent:true,depthWrite:false}));dt.scale.set(.95,.19,1);dt.position.y=.42;dt.renderOrder=5;boss.add(dt)}
   placeOn(boss,BASE.dir,0,0);faceToward(boss,BASE.dir,tangentOf(BASE.dir));boss.scale.setScalar(BASE.scale);
 })();
 function drawBossTag(u,dead,hp){
@@ -1098,6 +1388,32 @@ function flyToResident(r,h){
   selected='h'+r.home;const P=PLOTS[r.home];if(P)flyTo(P.v,R+h);
 }
 // Zubatý meč ze záhrobí: forged from the boss's beak, won in the boss draw, deals 2× damage in every monster clicker
+// Item rarity: colour in the inventory, chance an item of that tier shows up in the shop's daily offer (divine never does)
+const RARITY={
+  common:{name:'Základní',color:'#9aa1ad',chance:50},
+  uncommon:{name:'Obyčejný',color:'#3fbf5f',chance:30},
+  rare:{name:'Vzácný',color:'#3a8dff',chance:15},
+  epic:{name:'Epický',color:'#a24bff',chance:5},
+  legend:{name:'Legendární',color:'#ffc300',chance:.1},
+  divine:{name:'Božský',color:'#ffffff',chance:0}
+};
+function makeBasicSword(tier){ // "Obyčejný meč": a plain straight sword; the green tier adds a green gem, green grip wrap and a faint glow
+  const g=new THREE.Group(),green=tier==='uncommon';
+  const steel=mat(green?'#d9e6e0':'#c9ced6'),edge=mat('#eef2f6'),guardM=mat(green?'#5a6b60':'#6d6f78'),grip=mat(green?'#2f8a4a':'#6b4428'),pom=mat(green?'#3fbf5f':'#8a8d96');
+  const blade=new THREE.Mesh(new THREE.BoxGeometry(.012,.11,.0035),steel);blade.position.y=.07;g.add(blade);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(.0085,.022,4),edge);tip.rotation.y=Math.PI/4;tip.scale.z=.35;tip.position.y=.136;g.add(tip);
+  if(!green){const fuller=new THREE.Mesh(new THREE.BoxGeometry(.003,.085,.004),mat('#a9afba'));fuller.position.y=.068;g.add(fuller)}
+  const guard=new THREE.Mesh(new THREE.BoxGeometry(.05,.007,.01),guardM);guard.position.y=.013;g.add(guard);
+  for(const x of [-.025,.025]){const k=new THREE.Mesh(new THREE.SphereGeometry(.0055,8,6),guardM);k.position.set(x,.013,0);g.add(k)}
+  const gr=new THREE.Mesh(new THREE.CylinderGeometry(.0045,.0045,.028,8),grip);gr.position.y=-.004;g.add(gr);
+  if(green)for(let i=0;i<4;i++){const w=new THREE.Mesh(new THREE.TorusGeometry(.005,.0013,4,10),mat('#1f5a32'));w.rotation.x=Math.PI/2;w.position.y=-.014+i*.0065;g.add(w)}
+  const p=new THREE.Mesh(new THREE.SphereGeometry(.0075,10,8),pom);p.position.y=-.021;g.add(p);
+  if(green){
+    const gem=new THREE.Mesh(new THREE.OctahedronGeometry(.0065),new THREE.MeshBasicMaterial({color:'#5dff8a'}));gem.position.set(0,.013,.006);g.add(gem);
+    for(const z of [-.0022,.0022]){const rune=new THREE.Mesh(new THREE.BoxGeometry(.0026,.07,.0006),new THREE.MeshBasicMaterial({color:'#5dff8a'}));rune.position.set(0,.07,z);g.add(rune)} // glowing green fuller
+  }
+  g.scale.setScalar(.85);return g;
+}
 function makeBossSword(){
   const s=new THREE.Group();
   const L=(c,e,ei)=>new THREE.MeshLambertMaterial({color:c,emissive:e||'#000',emissiveIntensity:ei||0,flatShading:true});
@@ -1165,7 +1481,7 @@ function makePerson(m,shirtColor,hat,skinColor){
   const right=new THREE.Group();right.name='armR';right.position.set(.029,.074,0);const ra=new THREE.Mesh(armGeo,shirt.material);ra.position.y=.022;right.add(ra);
   const hand=new THREE.Mesh(new THREE.SphereGeometry(.008,6,4),skin);hand.position.y=.048;right.add(hand);fig.add(right);
   siteArms.push({arm:right,ph:pr()*6.28,sp:6+pr()*3});
-  if(SWORD_OWNER&&m.id===SWORD_OWNER){const sword=makeBossSword();sword.position.y=.05;sword.rotation.x=1.9;right.add(sword)}
+  if(SWORD_OWNER&&m.id===SWORD_OWNER){const sword=makeBossSword();sword.name='bossSword';sword.position.y=.05;sword.rotation.x=1.9;sword.visible=invWears(m.id,'boss_sword');right.add(sword)}
   return fig;
 }
 function windowsOn(g,w,h,z,rows,cols,lit,y0=.1){
@@ -1222,32 +1538,15 @@ function buildFarm(owner){
   const bdoor=new THREE.Mesh(new THREE.PlaneGeometry(.14,.18),trim);bdoor.position.set(.05,.09,.101);g.add(bdoor);
   const bx1=new THREE.Mesh(new THREE.PlaneGeometry(.17,.012),barnM);bx1.position.set(.05,.09,.102);bx1.rotation.z=.9;g.add(bx1);
   const bx2=bx1.clone();bx2.rotation.z=-.9;g.add(bx2);
-  // field with crop rows, fenced
-  const field=new THREE.Group();field.position.set(.65,0,.05);
-  const soil=new THREE.Mesh(new THREE.BoxGeometry(.7,.02,.6),mat(alive?'#6b4a2b':'#8a6a45'));soil.position.y=.01;field.add(soil);
-  const crop=mat(alive?'#7cc04b':'#c9b26a'),wheat=mat(alive?'#e2c556':'#a89870');
-  for(let r=0;r<6;r++){
-    const furrow=new THREE.Mesh(new THREE.BoxGeometry(.66,.012,.03),mat('#4f3520'));furrow.position.set(0,.022,-.25+r*.1);field.add(furrow);
-    for(let c=0;c<8;c++){
-      if(!alive&&(r*8+c)%3)continue; // an abandoned field has only dry tufts left
-      const pl=new THREE.Mesh(new THREE.ConeGeometry(.022,alive?.07:.035,5),r<3?crop:wheat);pl.position.set(-.29+c*.083,.05,-.25+r*.1);field.add(pl);
-    }
-  }
-  for(let i=0;i<=12;i++){ // fence posts around the field
-    for(const side of [-1,1]){
-      const a=new THREE.Mesh(new THREE.BoxGeometry(.015,.07,.015),wood);a.position.set(-.36+i*.06,.035,side*.32);field.add(a);
-    }
-  }
-  for(let i=0;i<=10;i++)for(const side of [-1,1]){const a=new THREE.Mesh(new THREE.BoxGeometry(.015,.07,.015),wood);a.position.set(side*.37,.035,-.3+i*.06);field.add(a)}
-  g.add(field);
   if(alive){
     const f=makePerson(owner,'#4f7a4a','straw');f.position.set(-.12,0,.32);f.scale.setScalar(1.15);g.add(f);
     // a little scarecrow guarding the crops
     const sc=new THREE.Group();const pole=new THREE.Mesh(new THREE.BoxGeometry(.012,.16,.012),wood);pole.position.y=.08;sc.add(pole);
     const arm=new THREE.Mesh(new THREE.BoxGeometry(.11,.012,.012),wood);arm.position.y=.12;sc.add(arm);
     const sh=new THREE.Mesh(new THREE.SphereGeometry(.02,6,4),mat('#e8c35a'));sh.position.y=.17;sc.add(sh);
-    sc.position.set(.65,0,.05);g.add(sc);
+    sc.position.set(1.06,0,.3);g.add(sc);
   }
+  farmFields(g);
   g.userData.height=.55;return g;
 }
 
@@ -1781,6 +2080,55 @@ function buildBurger(owner){ // "Mekáč planety": a burger joint with a giant b
   g.userData.height=.95*S;return g;
 }
 
+function buildShop(){ // sand-brick shop: striped awning, glowing OBCHOD sign, a treasure chest full of coins on the roof
+  const g=new THREE.Group(),S=1.5,b=new THREE.Group();b.scale.setScalar(S);g.add(b);
+  const sand=mat('#e0b066'),brick=mat('#c98f45'),rim=mat('#d4a463'),wood=mat('#7a4a26'),woodD=mat('#5a341a'),dark=mat('#2b2b30'),gold=mat('#ffc83a'),red=mat('#d8393a'),white=mat('#f6efe2');
+  const lot=new THREE.Mesh(new THREE.CylinderGeometry(.44,.46,.02,30),mat('#6fbf5a'));lot.position.y=-.004;b.add(lot);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.46,.24,.34),sand);body.position.y=.12;b.add(body);
+  const rr=rnd(77);for(let i=0;i<14;i++){const side=i%2,bk=new THREE.Mesh(new THREE.BoxGeometry(side?.006:.06,.025,side?.06:.006),i%3?brick:rim);
+    if(side)bk.position.set(.232,.03+rr()*.19,-.15+rr()*.3);else bk.position.set(-.21+rr()*.42,.03+rr()*.19,-.172);b.add(bk)}
+  // roof: raised rim around a gravel top
+  const gravel=new THREE.Mesh(new THREE.BoxGeometry(.44,.012,.32),mat('#968a76'));gravel.position.y=.246;b.add(gravel);
+  for(const [w,d,x,z] of [[.48,.03,0,.17],[.48,.03,0,-.17],[.03,.34,.24,0],[.03,.34,-.24,0]]){const r=new THREE.Mesh(new THREE.BoxGeometry(w,.04,d),rim);r.position.set(x,.255,z);b.add(r)}
+  // shop window with shelves of goods, door with a sign
+  const win=new THREE.Mesh(new THREE.BoxGeometry(.26,.12,.006),new THREE.MeshLambertMaterial({color:'#bfe6ff',transparent:true,opacity:.45}));win.position.set(-.06,.1,.173);b.add(win);
+  const shelfBack=new THREE.Mesh(new THREE.BoxGeometry(.26,.12,.004),mat('#8a5a32'));shelfBack.position.set(-.06,.1,.166);b.add(shelfBack);
+  const goods=['#e8443a','#3fae5a','#ffd34d','#ff9a3c','#f2f2f2','#c84a8a'];
+  for(let r2=0;r2<2;r2++){const sh=new THREE.Mesh(new THREE.BoxGeometry(.25,.006,.012),wood);sh.position.set(-.06,.065+r2*.05,.17);b.add(sh);
+    for(let i=0;i<9;i++){const c=new THREE.Mesh(i%2?new THREE.CylinderGeometry(.008,.008,.022,8):new THREE.BoxGeometry(.016,.02,.01),mat(goods[(i+r2*3)%goods.length]));c.position.set(-.18+i*.03,.08+r2*.05,.17);b.add(c)}}
+  const door=new THREE.Mesh(new THREE.BoxGeometry(.07,.15,.006),mat('#cfe8f5'));door.position.set(.15,.075,.173);b.add(door);
+  const df=new THREE.Mesh(new THREE.BoxGeometry(.08,.16,.004),woodD);df.position.set(.15,.08,.171);b.add(df);
+  const ds=new THREE.Mesh(new THREE.PlaneGeometry(.04,.024),new THREE.MeshBasicMaterial({map:textTex('OPEN','#f4ecd8','#2b2b30',256,150,'900 92px system-ui,sans-serif')}));ds.position.set(.15,.11,.177);b.add(ds);
+  // striped awning over the window
+  for(let i=0;i<10;i++){const st=new THREE.Mesh(new THREE.BoxGeometry(.03,.006,.09),i%2?white:red);st.position.set(-.195+i*.03,.175,.21);st.rotation.x=.42;b.add(st);
+    const sc=new THREE.Mesh(new THREE.CylinderGeometry(.015,.015,.006,10,1,false,0,Math.PI),i%2?white:red);sc.rotation.set(Math.PI/2,0,0);sc.position.set(-.195+i*.03,.155,.253);b.add(sc)}
+  // glowing sign
+  const sg=new THREE.Mesh(new THREE.BoxGeometry(.24,.07,.012),mat('#6b6f7a'));sg.position.set(-.04,.22,.18);b.add(sg);
+  const sgt=new THREE.Mesh(new THREE.PlaneGeometry(.22,.055),new THREE.MeshBasicMaterial({map:textTex('OBCHOD','#3a3d46','#fff6c8',1024,256,'900 190px system-ui,sans-serif')}));sgt.position.set(-.04,.22,.187);b.add(sgt);
+  const glow=new THREE.Mesh(new THREE.PlaneGeometry(.3,.11),new THREE.MeshBasicMaterial({color:'#fff3b0',transparent:true,opacity:.18,depthWrite:false,blending:THREE.AdditiveBlending}));glow.position.set(-.04,.22,.19);b.add(glow);
+  // produce crate in front
+  const pc=new THREE.Mesh(new THREE.BoxGeometry(.24,.03,.05),wood);pc.position.set(-.06,.015,.2);b.add(pc);
+  for(let i=0;i<10;i++){const v=new THREE.Mesh(new THREE.BoxGeometry(.016,.016,.016),mat(['#e8443a','#3fae5a','#ffd34d','#ff9a3c'][i%4]));v.position.set(-.17+i*.024,.036,.2+((i%2)-.5)*.018);b.add(v)}
+  // treasure chest full of coins on the roof
+  const chest=new THREE.Group();chest.position.set(.04,.255,-.02);b.add(chest);
+  const cb=new THREE.Mesh(new THREE.BoxGeometry(.13,.06,.08),wood);cb.position.y=.03;chest.add(cb);
+  for(const x of [-.045,.045]){const bd=new THREE.Mesh(new THREE.BoxGeometry(.012,.062,.082),gold);bd.position.set(x,.031,0);chest.add(bd)}
+  const coins=new THREE.Mesh(new THREE.SphereGeometry(.06,12,6,0,Math.PI*2,0,Math.PI/2),gold);coins.scale.set(1,.35,.6);coins.position.y=.06;chest.add(coins);
+  const lid=new THREE.Group();lid.position.set(0,.06,-.04);chest.add(lid);
+  const lt=new THREE.Mesh(new THREE.BoxGeometry(.13,.025,.08),wood);lt.position.set(0,.012,.04);lid.add(lt);
+  for(const x of [-.045,.045]){const lb=new THREE.Mesh(new THREE.BoxGeometry(.012,.027,.082),gold);lb.position.set(x,.012,.04);lid.add(lb)}
+  const lock=new THREE.Mesh(new THREE.BoxGeometry(.02,.022,.006),gold);lock.position.set(0,.04,.042);chest.add(lock);
+  lid.rotation.x=-1.9;
+  for(let i=0;i<7;i++){const c=new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,.003,10),gold);c.position.set(-.09+rr()*.2,.004,.06+rr()*.07);c.rotation.x=rr()*.4;chest.add(c)}
+  for(const [x,col] of [[-.03,'#7fd8ff'],[.035,'#ff6fa3']]){const gm=new THREE.Mesh(new THREE.OctahedronGeometry(.012),mat(col));gm.position.set(x,.075,.01);chest.add(gm)}
+  // barrels and crates by the side
+  for(const [x,z] of [[.29,.06],[.31,-.03],[.27,-.1]]){const br=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.07,12),wood);br.position.set(x,.035,z);b.add(br);
+    for(const y of [.015,.055]){const band=new THREE.Mesh(new THREE.CylinderGeometry(.031,.031,.006,12),dark);band.position.set(x,y,z);b.add(band)}}
+  for(const [x,y,z] of [[.3,.03,.15],[.36,.03,.08],[.33,.09,.13]]){const cr=new THREE.Mesh(new THREE.BoxGeometry(.06,.06,.06),woodD);cr.position.set(x,y,z);b.add(cr)}
+  g.userData.anim=T=>{glow.material.opacity=.14+.08*Math.sin(T*3);coins.rotation.y=T*.3};
+  g.userData.height=.62*S;return g;
+}
+
 function buildPharmacy(owner){ // "Lékárna planety": white shop, glowing green cross, giant pill on the roof
   const g=new THREE.Group(),alive=owner&&!owner.left,S=1.5,b=new THREE.Group();b.scale.setScalar(S);g.add(b);
   const white=mat(alive?'#f4f7f6':'#b9bcbb'),green=mat(alive?'#2fb36a':'#5f7d6c'),teal=mat(alive?'#1f8a73':'#4f6660'),dark=mat('#2b2b30');
@@ -1806,8 +2154,21 @@ function buildPharmacy(owner){ // "Lékárna planety": white shop, glowing green
   const bench=new THREE.Mesh(new THREE.BoxGeometry(.12,.02,.04),mat('#8a5a3a'));bench.position.set(-.27,.05,.2);b.add(bench);
   const pl=new THREE.Mesh(new THREE.CylinderGeometry(.03,.025,.05,10),teal);pl.position.set(.3,.025,.05);b.add(pl);
   const bush=new THREE.Mesh(new THREE.SphereGeometry(.04,8,6),green);bush.position.set(.3,.08,.05);b.add(bush);
+  // lab table where anyone can brew medicine from herbs
+  const lab=new THREE.Group();lab.position.set(.3,0,.24);lab.name='labTable';b.add(lab);
+  const top=new THREE.Mesh(new THREE.BoxGeometry(.13,.01,.07),mat('#8a5a3a'));top.position.y=.06;lab.add(top);
+  for(const [x,z] of [[-.055,-.025],[.055,-.025],[-.055,.025],[.055,.025]]){const l=new THREE.Mesh(new THREE.BoxGeometry(.008,.06,.008),mat('#6a4428'));l.position.set(x,.03,z);lab.add(l)}
+  const pot=new THREE.Mesh(new THREE.CylinderGeometry(.022,.017,.026,14),dark);pot.position.set(-.025,.078,0);lab.add(pot);
+  const brew=new THREE.Mesh(new THREE.CircleGeometry(.02,14),new THREE.MeshBasicMaterial({color:'#5dff8a'}));brew.rotation.x=-Math.PI/2;brew.position.set(-.025,.09,0);lab.add(brew);
+  const flask=new THREE.Mesh(new THREE.SphereGeometry(.012,10,8),new THREE.MeshLambertMaterial({color:'#bfe9ff',transparent:true,opacity:.7}));flask.position.set(.03,.076,.008);lab.add(flask);
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.018,6),flask.material);neck.position.set(.03,.093,.008);lab.add(neck);
+  const mortar=new THREE.Mesh(new THREE.CylinderGeometry(.012,.009,.012,10),mat('#cfc6b8'));mortar.position.set(.04,.071,-.02);lab.add(mortar);
+  const bubbles=new THREE.Group();lab.add(bubbles);const bm=new THREE.MeshBasicMaterial({color:'#9dffb8',transparent:true,opacity:.7,depthWrite:false});
+  for(let i=0;i<10;i++){const q=new THREE.Mesh(new THREE.SphereGeometry(.004,6,4),bm);q.userData.ph=i/10;q.userData.x=((i*7)%5-2)*.004;bubbles.add(q)}
+  bubbles.visible=false;g.userData.lab={lab,bubbles,brew};
   ownerFig(g,owner,'#2fb36a','cap',.1,.4,0);
-  g.userData.anim=T=>{pill.rotation.y=T*.8;pill.position.y=.37+Math.sin(T*1.6)*.012;cross.rotation.y=Math.sin(T*.9)*.4;if(alive)cm.color.setHSL(.40,.9,.5+Math.sin(T*3)*.08)};
+  g.userData.anim=T=>{const L=g.userData.lab;if(L.bubbles.visible){L.bubbles.children.forEach(q=>{const u=(T*.7+q.userData.ph)%1;q.position.set(-.025+q.userData.x+Math.sin(T*3+q.userData.ph*9)*.004,.09+u*.12,Math.cos(q.userData.ph*7)*.006);q.scale.setScalar(1+u*2.5)});bm.opacity=.75;L.brew.material.color.setHSL(.38,1,.55+Math.sin(T*8)*.12)}else L.brew.material.color.set('#5dff8a');
+  pill.rotation.y=T*.8;pill.position.y=.37+Math.sin(T*1.6)*.012;cross.rotation.y=Math.sin(T*.9)*.4;if(alive)cm.color.setHSL(.40,.9,.5+Math.sin(T*3)*.08)};
   g.userData.height=.6*S;return g;
 }
 
@@ -2195,7 +2556,7 @@ function buildRadio(){ // radio station: lattice mast, a dish aimed at the sky a
 }
 
 const SITE_BUILD={castle:buildCastle,doctor:buildHospital,farmer:buildFarm,builder:buildConstruction,tennis:buildTennis,gardener:buildGreenhouse,
-  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio,mayor:buildTownHall,kfc:buildKfc,pharmacy:buildPharmacy};
+  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio,mayor:buildTownHall,kfc:buildKfc,pharmacy:buildPharmacy,shop:buildShop};
 function syncSites(animate){
   const sig=Object.keys(SITES).map(k=>k+':'+siteMembers(k).map(m=>m.id+':'+(m.role||'')+(m.left?'x':'')).join(',')).join('|');
   if(sig===siteSig)return;siteSig=sig;
@@ -2222,6 +2583,7 @@ function siteLabelText(k){
   if(k==='temple')return `Chrám planety · velekněz ${n}`;
   if(k==='mayor')return `Radnice · starosta ${n}`;
   if(k==='post')return `Pošta · poštmistr ${n}`;
+  if(k==='shop')return 'Obchod planety · dojdi sem za postavou';
   if(k==='radio')return n?`Rádiová stanice · ${n}`:'Rádiová stanice · vysílá do vesmíru';
   return `${S.title} · ${n}`;
 }
@@ -2396,7 +2758,11 @@ canvas.addEventListener('pointerup',e=>{
   mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
   ray.setFromCamera(mouse,camera);
   const hit=ray.intersectObjects([planet,townGroup],true)[0];
-  const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){openBoss();return}
+  const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){digOpen();return}
+  const qh=questNpc&&ray.intersectObject(questNpc,true)[0];if(qh&&(!hit||qh.distance<hit.distance+.01)){questOpen();return}
+  {const sg=siteGroup.children.find(c=>c.userData.site==='shop'),sh=sg&&ray.intersectObject(sg,true)[0];if(sh&&(!hit||sh.distance<hit.distance+.01)){if(play&&shop.near)shopOpen();else toast('🛒 Obchod planety: dojdi ke dveřím za svou postavou a otevři nabídku.');return}}
+  {const gh=ray.intersectObject(deadGroup,true)[0];if(gh&&(!hit||gh.distance<hit.distance+.01)){const id=gh.object.userData.graveOf;toast(id===meId?'🪦 Tohle je tvůj hrobeček. Počkej, až tě někdo oživí.':`🪦 Tady leží @${id}. Dojdi sem za postavou a oživ ho!`);return}}
+  if(hit&&hit.object.userData.bed){const bk=hit.object.userData.bed,wt=waterWait(bk);toast(wt>0?`🌸 Kytky jsou zalité. Znovu je půjde zalít za ${fmtWait(wt)}.`:waterFresh(bk)?'🌸 Kytky jsou zalité a už se dají zalít znovu.':(play?'🥀 Kytky usychají! Dojdi k nim a zalij je.':'🥀 Kytky usychají! Klikni na „Hrát za postavu“, dojdi k nim a zalij je.'));return}
   selected=hit&&hit.object.userData.house?hit.object.userData.house.userData.id:null;
 });
 
@@ -2487,12 +2853,12 @@ function loop(now){
   }
   animateFountain(now);
   updateWalker(now);
-  updatePlay(now);
+  updatePlay(now);updateWater(now);updateQuest();updateShop();updateLab();updateGrave();updateFarm(now);
   updateRemotes(now);
   updateWanderers(now);
   updateFox(now);
   updateHidden();
-  if(!reduce){if(!MYSTERY.done)animateMystery(now/1000);animateBoss(now/1000);animateComet(now);animateIce(now)}
+  if(!reduce){if(!MYSTERY.done)animateMystery(now/1000);animateComet(now);animateIce(now)}
   if(meFig&&!reduce)meMarker.position.y=.25+Math.sin(now/300)*.025, meMarker.rotation.y=now/600;
   if(!reduce){ // residents wave: arm raised to the side, swinging back and forth
     const T=now/1000;
@@ -2602,10 +2968,10 @@ paintPlanet();updateHud();
 // ---------- the player: find "me" by Instagram nick ----------
 const nickId=v=>String(v||'').trim().replace(/^@+/,'').toLowerCase().replace(/[^a-z0-9._]/g,'_');
 let meId=null, meNick='', dataLoaded=false, noData=false, meFig=null;
-try{const saved=localStorage.getItem('planeta-nick');if(saved){meNick=saved;meId=nickId(saved)}}catch(_){}
+try{localStorage.removeItem('planeta-nick')}catch(_){} // old nick-only login is gone: players now sign in with Google
 const welcome=document.getElementById('welcome'),welcomeMsg=document.getElementById('welcomeMsg');
 const meCard=document.getElementById('meCard'),meInfo=document.getElementById('meInfo'),meBtn=document.getElementById('meBtn');
-welcome.hidden=!!meId;
+welcome.hidden=false;
 // gold marker that floats above your figure
 const meMarker=new THREE.Group();
 (function(){
@@ -2633,6 +2999,7 @@ const ROLE_TEXT={
 function applyMe(flyThere){
   if(meFig){meFig.scale.setScalar(1);meFig.remove(meMarker);meFig=null}
   meTag.hidden=true;playBtn.hidden=true;
+  document.getElementById('invBtn').hidden=!meId;lvlCard();
   if(!meId){meCard.hidden=true;meBtn.hidden=true;return}
   meCard.hidden=false;document.getElementById('meName').textContent='@'+meNick.replace(/^@+/,'');
   if(!dataLoaded){setMeInfo([noData?'Planetu se teď nepodařilo načíst.':'Hledám tvůj dům…']);meBtn.hidden=true;return}
@@ -2680,23 +3047,938 @@ function updateMeTag(camDir){
   const p=w.add(w.clone().normalize().multiplyScalar(.1)).project(camera);
   meTag.hidden=false;meTag.style.left=((p.x+1)/2*innerWidth)+'px';meTag.style.top=((1-p.y)/2*innerHeight)+'px';meTag.style.zIndex='999';
 }
-document.getElementById('welcomeForm').addEventListener('submit',e=>{
+// ---------- player login: Google account → one Instagram nick, auto sign-out after an hour ----------
+// RTDB: /nicks/<liveKey(nick)> = uid (first come, first served, one nick per account), /accounts/<uid> = {nick, at}
+const SESSION_MS=60*60*1000,LOGIN_AT='planeta-login-at';
+const acct={user:null,timer:0};
+const inApp=/Instagram|FBAN|FBAV|FB_IAB|TikTok|musical_ly/i.test(navigator.userAgent);
+function showWelcome(step,msg){
+  welcome.hidden=false;document.getElementById('wStepLogin').hidden=step!=='login';document.getElementById('wStepNick').hidden=step!=='nick';
+  document.getElementById('inAppNote').hidden=!inApp;welcomeMsg.textContent=msg||'';
+  if(step==='nick')document.getElementById('nickInput').focus();
+}
+async function acctFetch(path,opt){
+  if(!acct.user)throw new Error('no user');
+  const t=await acct.user.getIdToken();
+  return fetch(LIVE_DB+path+'.json?auth='+encodeURIComponent(t),opt);
+}
+async function acctGet(path){const r=await acctFetch(path);if(!r.ok)throw new Error(r.status);return r.json()}
+function acctPut(path,val){return acctFetch(path,{method:'PUT',body:JSON.stringify(val)}).then(r=>r.ok)}
+function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true);setTimeout(()=>{try{xpDailyLogin()}catch(_){}try{launchGift()}catch(_){}try{hlLogin()}catch(_){}},1500)}
+async function acctLogout(msg){
+  try{questDrop()}catch(_){}
+  clearTimeout(acct.timer);try{localStorage.removeItem(LOGIN_AT)}catch(_){}
+  if(play)stopPlay();
+  const was=acct.user;acct.user=null;
+  if(was){try{(await loadFirebase()).signOut()}catch(_){}}
+  meId=null;meNick='';applyMe(false);document.getElementById('nickInput').value='';showWelcome('login',msg);
+}
+async function acctUser(user){
+  if(!user){if(acct.user||meId)acctLogout();return}
+  if(acct.user&&acct.user.uid===user.uid)return;
+  acct.user=user;clearTimeout(acct.timer);
+  let at=0;try{at=+localStorage.getItem(LOGIN_AT)||0;if(!at){at=Date.now();localStorage.setItem(LOGIN_AT,String(at))}}catch(_){at=Date.now()}
+  const left=at+SESSION_MS-Date.now();
+  if(left<=0){acctLogout('Po hodině jsme tě pro jistotu odhlásili. Přihlas se znovu.');return}
+  acct.timer=setTimeout(()=>acctLogout('Po hodině jsme tě pro jistotu odhlásili. Přihlas se znovu.'),left);
+  try{const a=await acctGet('/accounts/'+user.uid);if(a&&a.nick){setMe(a.nick);return}}
+  catch(_){showWelcome('login','Nepodařilo se načíst tvůj účet. Zkus to za chvíli znovu.');return}
+  showWelcome('nick');
+}
+let acctListening=false;
+async function acctListen(){
+  const auth=await loadFirebase();
+  if(!acctListening){acctListening=true;auth.onAuthStateChanged(u=>acctUser(u))}
+  return auth;
+}
+document.getElementById('gLogin').onclick=async()=>{
+  if(inApp){showWelcome('login','Google přihlášení v prohlížeči Instagramu nefunguje. Otevři stránku v Safari nebo Chromu.');return}
+  welcomeMsg.textContent='Otevírám přihlášení Googlem…';
+  try{
+    const auth=await acctListen(),prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
+    try{localStorage.setItem(LOGIN_AT,String(Date.now()))}catch(_){}
+    try{await auth.signInWithPopup(prov)}
+    catch(err){
+      const c=err&&err.code||'';
+      if(c==='auth/popup-blocked'||c==='auth/operation-not-supported-in-this-environment'||c==='auth/cancelled-popup-request'){
+        try{sessionStorage.setItem('planeta-login-redirect','1')}catch(_){}
+        await auth.signInWithRedirect(prov);return;
+      }
+      try{localStorage.removeItem(LOGIN_AT)}catch(_){}
+      welcomeMsg.textContent=c==='auth/popup-closed-by-user'?'Přihlášení jsi zavřel.':'Přihlášení se nepovedlo. Zkus to znovu.';
+    }
+  }catch(_){welcomeMsg.textContent='Nepodařilo se načíst přihlášení Googlem. Zkontroluj připojení.'}
+};
+document.getElementById('welcomeForm').addEventListener('submit',async e=>{
   e.preventDefault();
+  if(!acct.user){showWelcome('login');return}
   const raw=document.getElementById('nickInput').value.trim().replace(/^@+/,'');
   if(!/^[A-Za-z0-9._]{1,30}$/.test(raw)){welcomeMsg.textContent='Nick z Instagramu může mít jen písmena, čísla, tečky a podtržítka.';return}
-  meNick=raw;meId=nickId(raw);
-  try{localStorage.setItem('planeta-nick',raw)}catch(_){}
-  welcome.hidden=true;welcomeMsg.textContent='';
-  applyMe(true);
+  const btn=document.getElementById('nickClaim');btn.disabled=true;welcomeMsg.textContent='Zabírám nick…';
+  try{
+    const key=liveKey(nickId(raw)),uid=acct.user.uid;
+    if(!await acctPut('/nicks/'+key,uid)){
+      const owner=await acctGet('/nicks/'+key);
+      if(owner!==uid){welcomeMsg.textContent=owner?'Tenhle nick už si zabral jiný účet. Jestli je tvůj, napiš nám do DM na @planetafolloweru.':'Nick se nepodařilo zabrat. Zkus to znovu.';return}
+    }
+    if(!await acctPut('/accounts/'+uid,{nick:nickId(raw),at:{'.sv':'timestamp'}})){welcomeMsg.textContent='Nick se nepodařilo uložit. Zkus to znovu.';return}
+    setMe(nickId(raw));
+  }catch(_){welcomeMsg.textContent='Nepodařilo se spojit se serverem. Zkus to znovu.'}
+  finally{btn.disabled=false}
 });
 document.getElementById('justLook').onclick=()=>{welcome.hidden=true;if(!meId)flyTo(townCenter(),townDist())};
-document.getElementById('meChange').onclick=()=>{
-  if(play)stopPlay();
-  meId=null;meNick='';try{localStorage.removeItem('planeta-nick')}catch(_){}
-  applyMe(false);document.getElementById('nickInput').value='';welcome.hidden=false;document.getElementById('nickInput').focus();
-};
+document.getElementById('meChange').onclick=()=>acctLogout();
+showWelcome('login');
+// still signed in from earlier (within the hour), or coming back from the Google redirect: restore the session
+setTimeout(()=>{
+  let back=false,fresh=false;
+  try{back=!!sessionStorage.getItem('planeta-login-redirect');sessionStorage.removeItem('planeta-login-redirect');fresh=!!localStorage.getItem(LOGIN_AT)}catch(_){}
+  if(!back&&!fresh)return;
+  welcomeMsg.textContent='Přihlašuji…';
+  acctListen().then(a=>back?a.getRedirectResult():null).then(()=>{if(!acct.user&&welcomeMsg.textContent==='Přihlašuji…')welcomeMsg.textContent=''}).catch(()=>{welcomeMsg.textContent=''});
+},0);
 meBtn.onclick=()=>applyMe(true);
-document.getElementById('games').onclick=()=>openBoss();
+document.getElementById('games').onclick=()=>digOpen();
+
+// ---------- leveling: XP from playing, levels 1–50 ----------
+// XP = earned (/xp/<nick>.x: watering, daily login) + 5 per day of following + boss (badge 100 + 1 per 100 hits, max 600) + admin bonus (/xpbonus/<nick>).
+// The database rules cap earned XP at 50 per write, one write per 5 s and 1 000 per day, so nobody can just type in a big number.
+// Level L needs 50·L XP more than L−1: L2 = 100, L10 = 2 700 total, L50 = 63 700 total.
+const LVL_MAX=50,XP_DAY_CAP=1000,XP_PER_WRITE=50;
+const lvlNeed=L=>L<=1?0:50*(L*(L+1)/2-1); // total XP to reach level L
+const xp={earned:{},bonus:{},pending:0,login:false,busy:false,mine:null};
+function lvlOfXp(x){let L=1;while(L<LVL_MAX&&x>=lvlNeed(L+1))L++;return L}
+function xpOf(id){
+  if(!id)return 0;const k=liveKey(id),r=residentById&&residentById.get(id);
+  const e=+(xp.earned[k]&&xp.earned[k].x)||0,b=+xp.bonus[k]||0;
+  const days=r&&!r.left&&r.at?Math.max(0,Math.floor((Date.now()-r.at)/86400000)):0;
+  let boss=0;try{const h=bossHitsOf(id);if(h>0)boss=Math.min(600,(bossBadge(id)?100:0)+Math.floor(h/100))}catch(_){}
+  return Math.max(0,e+(k===liveKey(meId||'')?xp.pending:0)+b+days*5+boss); // admin bonus can be negative (level reset)
+}
+function lvlOf(id){return lvlOfXp(xpOf(id))}
+const xpDay=()=>Math.floor((Date.now()+(typeof water!=='undefined'?water.skew:0))/86400000);
+async function xpLoad(){
+  try{const [e,b]=await Promise.all(['xp','xpbonus'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
+    if(e)xp.earned=e;if(b)xp.bonus=b;lvlCard()}catch(_){}
+}
+xpLoad();setInterval(xpLoad,120000);
+function xpGain(n,why){
+  if(!meId||!acct.user)return;
+  const k=liveKey(meId),cur=xp.earned[k]||{},today=cur.day===xpDay()?(+cur.d||0):0;
+  const room=XP_DAY_CAP-today-xp.pending;if(room<=0){toast('Dnešní limit '+XP_DAY_CAP+' XP máš splněný. Zítra zas!');return}
+  xp.pending+=Math.min(n,room);lvlCard(true);xpFlush();
+}
+async function xpFlush(){
+  if(xp.busy||!xp.pending||!acct.user||!meId)return;
+  xp.busy=true;
+  try{
+    const k=liveKey(meId);let cur=xp.earned[k];
+    try{cur=await acctGet('/xp/'+k)}catch(_){}
+    const day=xpDay(),g=Math.min(XP_PER_WRITE,xp.pending),x0=+(cur&&cur.x)||0,d0=cur&&cur.day===day?(+cur.d||0):0;
+    if(d0+g>XP_DAY_CAP){xp.pending=0;lvlCard();return}
+    const next={x:x0+g,d:d0+g,day,t:{'.sv':'timestamp'},l:cur&&cur.l||0};
+    if(xp.loginDay===day)next.l=day;
+    if(xp.qDay===day)next.q=xp.q;else if(cur&&cur.day===day&&cur.q)next.q=cur.q;
+    if(await acctPut('/xp/'+k,next)){xp.pending-=g;next.t=Date.now();xp.earned[k]=next;lvlCard()}
+  }catch(_){}
+  finally{xp.busy=false;if(xp.pending)setTimeout(xpFlush,6000)}
+}
+async function xpDailyLogin(){ // +20 XP for the first visit of the day
+  if(!meId||!acct.user)return;
+  try{const cur=await acctGet('/xp/'+liveKey(meId));if(cur)xp.earned[liveKey(meId)]=cur;
+    const day=xpDay();if(cur&&cur.l===day)return;
+    xp.loginDay=day;xpGain(20,'přihlášení');toast('☀️ Denní bonus +20 XP');}catch(_){}
+}
+const LVL_UNLOCKS=[[3,'číslo levelu u tvé jmenovky'],[5,'modrá jmenovka'],[10,'4. slot v batohu'],[20,'5. slot v batohu a zlatá jmenovka'],[30,'místo v síni slávy']];
+function lvlCard(gained){
+  const btn=document.getElementById('meLvl');if(!btn)return;
+  if(!meId||!acct.user){btn.hidden=true;return}
+  const x=xpOf(meId),L=lvlOfXp(x),a=lvlNeed(L),b=lvlNeed(Math.min(LVL_MAX,L+1)),pct=L>=LVL_MAX?100:Math.round((x-a)/(b-a)*100);
+  btn.hidden=false;document.getElementById('meLvlN').textContent='Level '+L;
+  document.getElementById('meLvlXp').textContent=L>=LVL_MAX?'MAX':`${(x-a).toLocaleString('cs-CZ')}/${(b-a).toLocaleString('cs-CZ')} XP`;
+  document.getElementById('meLvlFill').style.width=pct+'%';
+  // level up?
+  const key='planeta-lvl-'+meId;let prev=0;try{prev=+localStorage.getItem(key)||0;localStorage.setItem(key,String(L))}catch(_){}
+  if(gained&&prev&&L>prev)lvlUp(L); // only celebrate levels earned right now, not data arriving late
+  if(!document.getElementById('lvlBox').hidden)lvlRender();
+}
+function lvlUp(L){
+  toast('🎉 Level '+L+'!'+((LVL_UNLOCKS.find(u=>u[0]===L)||[])[1]?' Odemčeno: '+LVL_UNLOCKS.find(u=>u[0]===L)[1]+'.':''));
+  const f=play?play.av.fig:meFig;
+  if(f){const m=new THREE.Mesh(new THREE.CylinderGeometry(.05,.09,1.2,16,1,true),new THREE.MeshBasicMaterial({color:'#ffd23a',transparent:true,opacity:.7,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
+    m.position.y=.6;f.add(m);const t0=performance.now();
+    const step=()=>{const k=(performance.now()-t0)/1800;if(k>=1){f.remove(m);return}m.material.opacity=.7*(1-k);m.scale.set(1+k,1,1+k);requestAnimationFrame(step)};step()}
+  if(L%5===0&&chatCanWrite())fetch(LIVE_DB+'/chat.json',{method:'POST',body:JSON.stringify({n:'@'+meNick,x:'🎉 dosáhl/a levelu '+L+'!',t:{'.sv':'timestamp'}})}).catch(()=>{});
+}
+function lvlRender(){
+  const x=xpOf(meId),L=lvlOfXp(x),a=lvlNeed(L),b=lvlNeed(Math.min(LVL_MAX,L+1));
+  const big=document.getElementById('lvlBig');big.replaceChildren('Level '+L+' ');const sp=document.createElement('span');
+  sp.textContent=L>=LVL_MAX?'· maximum':`· ${x.toLocaleString('cs-CZ')} XP · do levelu ${L+1} zbývá ${(b-x).toLocaleString('cs-CZ')} XP`;big.append(sp);
+  document.getElementById('lvlFill').style.width=(L>=LVL_MAX?100:Math.round((x-a)/(b-a)*100))+'%';
+  const cur=xp.earned[liveKey(meId)],today=(cur&&cur.day===xpDay()?(+cur.d||0):0)+xp.pending;
+  document.getElementById('lvlToday').textContent=`Dnes získáno ${today}/${XP_DAY_CAP} XP z aktivit.`;
+  const ul=document.getElementById('lvlUnlocks');ul.replaceChildren();
+  for(const [lv,t] of LVL_UNLOCKS){const li=document.createElement('li');if(L>=lv)li.className='done';li.textContent=(L>=lv?'✓ ':'')+'L'+lv+': '+t;ul.append(li)}
+  const top=residents.filter(r=>!r.left).map(r=>[r,xpOf(r.id)]).sort((p,q)=>q[1]-p[1]).slice(0,10);
+  const ol=document.getElementById('lvlTop');ol.replaceChildren();
+  for(const [r,v] of top){const li=document.createElement('li');if(r.id===meId)li.className='me';li.textContent=`${r.name} · L${lvlOfXp(v)} · ${v.toLocaleString('cs-CZ')} XP`;ol.append(li)}
+}
+document.getElementById('meLvl').onclick=()=>{lvlRender();document.getElementById('lvlBox').hidden=false;document.getElementById('lvlClose').focus()};
+document.getElementById('lvlClose').onclick=()=>{document.getElementById('lvlBox').hidden=true};
+document.getElementById('lvlBox').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('lvlBox').hidden=true;e.stopPropagation()});
+document.getElementById('lvlBox').addEventListener('click',e=>{if(e.target.id==='lvlBox')e.target.hidden=true});
+
+// ---------- watering: every house's flower bed wilts after a day without water; any signed-in player can water it ----------
+// /water/<houseKey> = {t: server time, n: nick}. One bed can be watered once every 15 minutes (checked by the database rules);
+// /waterings/<nick> counts how many beds a player watered (for the coming economy).
+const WATER_FRESH=24*60*60*1000,WATER_COOLDOWN=15*60*1000; // one bed can be watered every 15 minutes
+const water={beds:{},near:null,anim:new Map(),skew:0,mine:0};
+function waterFresh(k){const w=water.beds[k];return !!(w&&w.t&&Date.now()+water.skew-w.t<WATER_FRESH)}
+const WILT={stem:mat('#a89a3c'),bloom:[mat('#b8a03a'),mat('#9c7b2e'),mat('#c9b04a')]}; // yellow, brownish, rotting
+function flowerLook(f,i,fresh){
+  const st=f.userData.stem,bl=f.userData.bloom;
+  if(st)st.material=fresh?st.userData.orig:WILT.stem;
+  if(bl){bl.material=fresh?bl.userData.orig:WILT.bloom[i%3];bl.scale.set(1,fresh?1:.7,1)}
+  f.rotation.set(fresh?0:.35*(i%2?1:-1),0,fresh?0:.55*(i%3?1:-1));f.scale.setScalar(fresh?1:.82);
+}
+function waterLook(k){ // fresh: as they always looked; thirsty (24 h without water): yellow, rotting, drooping
+  const h=houses.get(k);if(!h)return;const fresh=waterFresh(k);
+  h.g.userData.flowers.forEach((f,i)=>{if(water.anim.has(k))return;flowerLook(f,i,fresh)});
+}
+async function waterLoad(){
+  try{const r=await fetch(LIVE_DB+'/water.json');if(!r.ok)return;const j=await r.json()||{};
+    const d=r.headers.get('date');if(d)water.skew=new Date(d).getTime()-Date.now();
+    water.beds=j;houses.forEach((_,k)=>waterLook(k))}catch(_){}
+}
+waterLoad();setInterval(waterLoad,60000);setInterval(()=>houses.forEach((_,k)=>waterLook(k)),5*60000);
+function toast(t){let el=document.getElementById('toast');if(!el){el=document.createElement('div');el.id='toast';el.className='toast';el.setAttribute('role','status');document.body.append(el)}
+  el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),3500)}
+function waterWait(k){const w=water.beds[k];if(!w||!w.t)return 0;return Math.max(0,w.t+WATER_COOLDOWN-(Date.now()+water.skew))}
+const fmtWait=ms=>{const m=Math.floor(ms/60000),sec=Math.ceil(ms%60000/1000);return m?`${m} min${sec&&m<5?' '+sec+' s':''}`:`${sec} s`};
+function waterSay(t){if(play)sayPlay(t,3500);else toast(t)}
+const WATER_TIME=5000;
+function waterStart(k){
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Kytky můžeš zalévat, až se přihlásíš.');return}
+  if(water.job)return;
+  const w=water.beds[k],now=Date.now()+water.skew;
+  if(waterWait(k)>0){waterSay(`Tyhle kytky už zalil${w.n?' @'+w.n:'i'}. Znovu je půjde zalít za ${fmtWait(waterWait(k))}.`);return}
+  water.job={k,t0:performance.now()};waterAnim(k,false,WATER_TIME);
+}
+function waterCancel(msg){
+  const j=water.job;if(!j)return;water.job=null;
+  const a=water.anim.get(j.k);if(a){a.h.g.remove(a.can,a.drops);water.anim.delete(j.k);waterLook(j.k)}
+  if(msg)waterSay(msg);water.near=undefined;
+}
+async function waterBed(k){
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Kytky můžeš zalévat, až se přihlásíš.');return}
+  const w=water.beds[k],now=Date.now()+water.skew;
+  if(w&&w.t&&now-w.t<WATER_COOLDOWN){waterAnim(k,true);waterSay(`Tyhle kytky už zalil${w.n?' @'+w.n:'i'} před ${Math.max(1,Math.round((now-w.t)/60000))} min. Zkus jiné.`);return}
+  water.beds[k]={t:now,n:meId};waterLook(k);
+  try{
+    const ok=await acctPut('/water/'+k,{t:{'.sv':'timestamp'},n:meId});
+    if(!ok){await waterLoad();waterSay('Tyhle kytky už někdo zalil. Zkus jiné.');return}
+    water.mine++;const qd=!!quest.active;questWatered();herbRoll();
+    acctFetch('/waterings/'+liveKey(meId),{method:'PUT',body:JSON.stringify({'.sv':{increment:1}})}).catch(()=>{});
+    if(!qd)waterSay('💧 Zalito! Kytky jsou zase svěží. Za XP si vezmi úkol od zahradnice v Zahradnictví.');
+  }catch(_){waterSay('Nepodařilo se spojit se serverem.')}
+}
+const WCAN=(()=>{ // a small floating watering can used for the effect
+  const g=new THREE.Group(),m=mat('#3a9be0');
+  const b=new THREE.Mesh(new THREE.CylinderGeometry(.03,.034,.055,12),m);g.add(b);
+  const sp=new THREE.Mesh(new THREE.CylinderGeometry(.006,.008,.08,6),m);sp.position.set(0,.01,.055);sp.rotation.x=1.0;g.add(sp);
+  const hd=new THREE.Mesh(new THREE.TorusGeometry(.02,.005,4,10,Math.PI),mat('#2a7bc0'));hd.position.y=.03;hd.rotation.y=Math.PI/2;g.add(hd);
+  const drops=new THREE.Group();const dm=new THREE.MeshBasicMaterial({color:'#9fd8ff',transparent:true,opacity:.9});
+  for(let i=0;i<12;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(.005,4,3),dm);d.userData.ph=i/12;d.userData.x=((i*7)%5-2)*.006;drops.add(d)}
+  return {g,drops};
+})();
+function waterAnim(k,short,ms){
+  const h=houses.get(k);if(!h)return;
+  const can=WCAN.g.clone(true),drops=WCAN.drops.clone(true);
+  can.position.copy(h.g.userData.bedAt).add(new THREE.Vector3(.06,.14,-.05));can.rotation.set(.8,-Math.PI/2,0);
+  drops.position.copy(h.g.userData.bedAt);
+  h.g.add(can,drops);
+  const dur=ms||(short?900:2600);water.anim.set(k,{can,drops,h,until:performance.now()+dur,dur,short});
+}
+function updateWater(now){
+  const T=now/1000;
+  for(const [k,a] of water.anim){
+    const left=a.until-now;
+    a.drops.children.forEach(d=>{const u=(T*2.4+d.userData.ph)%1;d.position.set(.04+d.userData.x-u*.02,.12*(1-u*u),d.userData.x*2);d.visible=!a.short});
+    a.can.position.y=a.h.g.userData.bedAt.y+.14+Math.sin(T*3)*.01;
+    if(!a.short)a.h.g.userData.flowers.forEach((f,i)=>{const q=Math.min(1,(a.dur-left)/a.dur);if(q>.6&&!f.userData.fresh){flowerLook(f,i,true);f.userData.fresh=1}f.rotation.x*=.95;f.rotation.z*=.95;f.scale.setScalar(.82+.18*q+.15*Math.sin(q*Math.PI)*(.7+.3*Math.sin(i*1.7+T*5)))});
+    if(left<=0){a.h.g.remove(a.can,a.drops);water.anim.delete(k);a.h.g.userData.flowers.forEach(f=>delete f.userData.fresh);waterLook(k)}
+  }
+  // in play mode: offer the button when standing next to a bed
+  let near=null;
+  if(play&&acct.user){let best=.03;const w=new THREE.Vector3();
+    houses.forEach((h,k)=>{w.copy(h.g.userData.bedAt);h.g.localToWorld(w);const d=w.normalize().distanceTo(play.p);if(d<best){best=d;near=k}})}
+  const b=document.getElementById('waterBtn');
+  if(water.job){
+    if(near!==water.job.k){waterCancel('Odešel jsi od kytek, zalévání se přerušilo.');}
+    else{const el=performance.now()-water.job.t0,left=Math.ceil((WATER_TIME-el)/1000);
+      b.hidden=false;b.disabled=true;b.textContent='💧 Zalévám… '+Math.max(0,left)+' s';b.style.setProperty('--p',Math.min(100,el/WATER_TIME*100)+'%');
+      if(el>=WATER_TIME){const k=water.job.k;water.job=null;water.near=undefined;waterBed(k)}
+      return}
+  }
+  const wt=near?waterWait(near):0,lbl=!near?'':wt>0?'🌸 Zalité · znovu za '+fmtWait(wt):'💧 Zalít kytky'+(touchUI()?'':' (F)');
+  if(near!==water.near||b.textContent!==lbl){water.near=near;b.hidden=!near;b.disabled=wt>0;b.style.setProperty('--p','0%');if(near)b.textContent=lbl}
+}
+document.getElementById('waterBtn').onclick=()=>{if(water.near&&!water.job)waterStart(water.near)};
+
+// ---------- gardener's quests: an NPC at the Zahradnictví hands out random watering jobs ----------
+// While a quest runs the player is a "zahradník". It lives only in this page: close it, reload it or sign out and the quest,
+// its progress and the role are gone. Watering gives XP only through finished quests.
+const QUESTS=[{n:2,xp:5},{n:5,xp:10},{n:8,xp:15},{n:10,xp:20},{n:15,xp:50}];
+const quest={active:null,offer:null,near:false};
+const QUEST_DAY_MAX=5; // finished quests per player per day (resets at midnight UTC)
+function questsToday(){
+  if(!meId)return 0;const day=xpDay(),k=liveKey(meId),e=xp.earned[k];let n=e&&e.day===day?(+e.q||0):0;
+  try{const l=JSON.parse(localStorage.getItem('planeta-quests-'+k)||'null');if(l&&l.day===day)n=Math.max(n,+l.n||0)}catch(_){}
+  return n;
+}
+function questCount(){
+  const day=xpDay(),k=liveKey(meId),n=questsToday()+1;
+  xp.qDay=day;xp.q=n;try{localStorage.setItem('planeta-quests-'+k,JSON.stringify({day,n}))}catch(_){}
+}
+let questNpc=null;
+function questBuildNpc(){
+  if(questNpc)return;
+  const parts=makeGardener({id:'npc-zahradnice'});questNpc=parts.fig;questNpc.userData.npc=true;
+  const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');
+  x.fillStyle='#ffc300';x.beginPath();x.arc(64,64,54,0,7);x.fill();x.lineWidth=8;x.strokeStyle='#2b1d0e';x.stroke();
+  x.fillStyle='#2b1d0e';x.font='900 84px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('!',64,70);
+  const mark=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));mark.scale.setScalar(.06);mark.position.y=.2;mark.name='questMark';questNpc.add(mark);
+  const pos=gardenDoor().add(SITE_B.clone().multiplyScalar(.012)).normalize();
+  placeOn(questNpc,pos,0,0);faceToward(questNpc,pos,START.clone().sub(pos));questNpc.userData.pos=pos;
+  scene.add(questNpc);
+}
+setTimeout(questBuildNpc,0);
+function questUi(){
+  const a=quest.active,chip=document.getElementById('questChip'),line=document.getElementById('meQuest');
+  const txt=a?`🌱 Zahradník · zalito ${a.done}/${a.n} · odměna ${a.xp} XP`:'';
+  chip.hidden=line.hidden=!a;chip.textContent=line.textContent=txt;
+  if(questNpc){const m=questNpc.getObjectByName('questMark');if(m)m.visible=!a&&questsToday()<QUEST_DAY_MAX}
+  meTag.textContent=a?'TY · 🌱 zahradník':'TY';questHat();
+}
+function questHatMesh(){
+  const g=new THREE.Group();g.name='questHat';
+  const brim=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.005,12),mat('#f2d06b'));brim.position.y=.12;g.add(brim);
+  const top=new THREE.Mesh(new THREE.CylinderGeometry(.019,.023,.02,10),mat('#f2d06b'));top.position.y=.131;g.add(top);
+  const band=new THREE.Mesh(new THREE.CylinderGeometry(.0235,.0235,.006,10),mat('#e05a8a'));band.position.y=.125;g.add(band);
+  return g;
+}
+function questHat(){
+  const on=!!quest.active;
+  for(const f of [meFig,play&&play.av&&play.av.fig]){
+    if(!f)continue;const h=f.getObjectByName('questHat');
+    if(on&&!h){const hm=questHatMesh();const ar=f.getObjectByName('armR');(ar&&ar.parent||f).add(hm)}
+    else if(!on&&h)h.parent.remove(h);
+  }
+}
+function questOpen(){
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Úkoly od zahradnice dostanou jen přihlášení hráči.');return}
+  const say=document.getElementById('questSay'),act=document.getElementById('questActions');act.replaceChildren();
+  const btn=(t,cls,fn)=>{const b=document.createElement('button');b.type='button';if(cls)b.className=cls;b.textContent=t;b.onclick=fn;act.append(b);return b};
+  if(quest.active){
+    const a=quest.active;say.replaceChildren('Jak to jde? Zatím jsi zalil ',Object.assign(document.createElement('b'),{textContent:`${a.done} z ${a.n}`}),' záhonků. Kytky u domů čekají!');
+    const pr=document.createElement('p');pr.className='inv-who';pr.textContent=`Dnes splněno ${questsToday()}/${QUEST_DAY_MAX} úkolů · po tomhle ještě ${Math.max(0,QUEST_DAY_MAX-questsToday()-1)}×`;say.append(pr);
+    btn('Pokračovat','primary',questClose);btn('Vzdát úkol','',()=>{questDrop();toast('Úkol jsi vzdal. Roli zahradníka už nemáš.');questClose()});
+  }else if(questsToday()>=QUEST_DAY_MAX){
+    say.replaceChildren('Děkuju, dneska jsi mi pomohl už ',Object.assign(document.createElement('b'),{textContent:QUEST_DAY_MAX+'×'}),'. Další úkoly mám zase zítra!');
+    btn('Zavřít','primary',questClose);
+  }else{
+    if(!quest.offer)quest.offer=QUESTS[Math.floor(Math.random()*QUESTS.length)];
+    const o=quest.offer;say.replaceChildren('Ahoj! Kytky po městě usychají. Zalij ',Object.assign(document.createElement('b'),{textContent:`${o.n}× záhonek`}),' u domů a dám ti ',Object.assign(document.createElement('b'),{textContent:`${o.xp} XP`}),'.');
+    const pr=document.createElement('p');pr.className='inv-who';pr.textContent=`Dnes splněno ${questsToday()}/${QUEST_DAY_MAX} úkolů · můžeš ještě ${QUEST_DAY_MAX-questsToday()}×`;say.append(pr);
+    btn('Beru to 🌱','primary',()=>{quest.active={...o,done:0};quest.offer=null;questUi();questClose();toast(`🌱 Jsi zahradník! Zalij ${o.n}× záhonek.`);if(!play&&!playBtn.hidden)startPlay()});
+    btn('Teď ne','',questClose);
+  }
+  document.getElementById('questBox').hidden=false;
+}
+function questClose(){document.getElementById('questBox').hidden=true}
+function questDrop(){quest.active=null;quest.offer=null;questUi()}
+function questWatered(){
+  const a=quest.active;if(!a)return;a.done++;
+  if(a.done>=a.n){quest.active=null;questCount();questUi();xpGain(a.xp,'úkol');const left=QUEST_DAY_MAX-questsToday();toast(`🌸 Úkol splněn! +${a.xp} XP. `+(left>0?`Dnes ještě ${left}× můžeš za zahradnicí.`:'Na dnešek máš u zahradnice hotovo.'))}
+  else{questUi();waterSay(`💧 Zalito ${a.done}/${a.n}`)}
+}
+function updateQuest(){ // in play mode: offer a button when standing next to the gardener
+  if(quest.active&&play&&play.av&&play.av.fig&&!play.av.fig.getObjectByName('questHat'))questHat();
+  let near=false;
+  if(play&&questNpc&&acct.user)near=questNpc.userData.pos.distanceTo(play.p)<.025;
+  if(near!==quest.near){quest.near=near;const b=document.getElementById('questBtn');b.hidden=!near;b.textContent=(quest.active?'🌱 Můj úkol':'🌱 Úkol od zahradnice')+(touchUI()?'':' (F)')}
+}
+document.getElementById('questBtn').onclick=questOpen;
+
+// ---------- health: every player starts each visit with 100 HP (damage comes later); medicine heals what's missing ----------
+// ---------- health, illness, death ----------
+// /health/<nick> = {hp, sick, tk (last hourly tick while sick), dead, dAt (time of death), imm (no illness until), t}.
+// Health stays between visits. Ill: −10 HP every hour, also while offline. 10 % chance to fall ill on every visit and then
+// every 30 minutes while playing. Antibiotics cure the illness, heal to 100 and protect for an hour.
+// 0 HP = a gravestone; another player can revive you there, or you come back by yourself after 2 hours.
+const H_MS=3600000,REVIVE_MS=2*H_MS,SICK_CHANCE=.1;
+const hp={cur:100,max:100,sick:false,dead:false,dAt:0,imm:0,tk:0,loaded:false};
+const hl={all:{}};
+const hlNow=()=>Date.now()+(typeof water!=='undefined'?water.skew:0);
+function hlEff(st,now){
+  if(!st)return {hp:100,sick:false,dead:false,dAt:0,imm:0,tk:now};
+  const imm=+st.imm||0;
+  if(st.dead){if(now-(+st.dAt||0)>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:now,revived:true};return {hp:0,sick:false,dead:true,dAt:+st.dAt||now,imm,tk:now}}
+  if(st.sick){const tk=+st.tk||now,n=Math.max(0,Math.floor((now-tk)/H_MS)),h=(+st.hp||0)-10*n;
+    if(h<=0){const dAt=tk+Math.ceil((+st.hp||0)/10)*H_MS;if(now-dAt>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:now,revived:true};return {hp:0,sick:false,dead:true,dAt,imm,tk:now}}
+    return {hp:h,sick:true,dead:false,dAt:0,imm,tk:tk+n*H_MS}}
+  return {hp:Math.max(0,Math.min(100,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
+}
+function hlSet(e){Object.assign(hp,{cur:e.hp,sick:e.sick,dead:e.dead,dAt:e.dAt,imm:e.imm,tk:e.tk});hpUi()}
+async function hlSave(){
+  if(!meId||!acct.user)return false;
+  const v={hp:hp.cur,sick:hp.sick,tk:hp.tk,dead:hp.dead,dAt:hp.dAt||0,imm:hp.imm||0,t:{'.sv':'timestamp'}};
+  hl.all[liveKey(meId)]={...v,t:Date.now()};deadSync();
+  try{return await acctPut('/health/'+liveKey(meId),v)}catch(_){return false}
+}
+function hpUi(){
+  const t=hp.dead?'🪦 mrtvý':`❤️ ${hp.cur}/${hp.max}${hp.sick?' 🤒':''}`;
+  document.getElementById('hpChip').textContent=t;
+  document.getElementById('meHp').textContent=hp.dead?`🪦 Jsi mrtvý · oživení za ${fmtLeft(hp.dAt+REVIVE_MS-hlNow())} nebo tě oživí jiný hráč`:'❤️ Životy '+hp.cur+'/'+hp.max+(hp.sick?' · 🤒 nemocný (−10 HP každou hodinu)':'');
+}
+const fmtLeft=ms=>{ms=Math.max(0,ms);const h=Math.floor(ms/H_MS),m=Math.ceil(ms%H_MS/60000);return h?`${h} h ${m} min`:`${m} min`};
+function hlSick(){
+  if(hp.dead||hp.sick||hlNow()<hp.imm||Math.random()>=SICK_CHANCE)return false;
+  hp.sick=true;hp.tk=hlNow();hpUi();hlSave();
+  toast('🤒 Onemocněl jsi! Každou hodinu ztratíš 10 HP. Vyleč se antibiotiky z lékárny.');return true;
+}
+function hlDied(){
+  if(play)stopPlay();
+  toast('🪦 Tvoje životy klesly na 0. Ať tě oživí jiný hráč, nebo se za 2 hodiny probudíš sám.');
+}
+async function hlLogin(){ // on every visit: load, apply what happened while away, maybe fall ill
+  if(!meId||!acct.user)return;
+  let st=null;try{st=await acctGet('/health/'+liveKey(meId))}catch(_){}
+  const e=hlEff(st,hlNow());hlSet(e);hp.loaded=true;
+  const changed=!st||e.revived||e.dead!==!!st.dead||e.hp!==st.hp||e.sick!==!!st.sick;
+  if(e.revived)toast('✨ Probudil ses z hrobečku. Máš zase 100 HP.');
+  if(!hlSick()&&changed)hlSave();
+  if(hp.dead)hlDied();
+}
+let hlRoll=Date.now();
+setInterval(()=>{ // every minute: illness ticks, death, coming back to life; every 30 min a new illness roll
+  if(!hp.loaded||!meId||!acct.user)return;
+  const before={hp:hp.cur,dead:hp.dead,sick:hp.sick};
+  const e=hlEff({hp:hp.cur,sick:hp.sick,tk:hp.tk,dead:hp.dead,dAt:hp.dAt,imm:hp.imm},hlNow());hlSet(e);
+  if(e.revived)toast('✨ Probudil ses z hrobečku. Máš zase 100 HP.');
+  if(e.hp!==before.hp||e.dead!==before.dead||e.sick!==before.sick)hlSave();
+  if(e.dead&&!before.dead)hlDied();
+  else if(e.sick&&e.hp<before.hp)toast(`🤒 Nemoc ti ubrala 10 HP. Máš ${e.hp}/100.`);
+  if(Date.now()-hlRoll>=30*60000){hlRoll=Date.now();hlSick()}
+},60000);
+async function medUse(){
+  const det=document.getElementById('invDetail');
+  if(hp.dead){det.textContent='🪦 Mrtvý lék nevezme. Počkej na oživení.';return}
+  if(hp.cur>=hp.max&&!hp.sick){det.textContent='💊 Antibiotika ×'+medCount(meId)+' · jsi zdravý, teď je nepotřebuješ.';return}
+  const k=liveKey(meId),c=medCount(meId);if(c<1)return;
+  if(await acctPut('/meds/'+k,{c:c-1,t:{'.sv':'timestamp'}})){
+    inv.meds[k]={c:c-1,t:Date.now()};const healed=hp.max-hp.cur,wasSick=hp.sick;
+    hp.cur=hp.max;hp.sick=false;hp.imm=hlNow()+H_MS;hp.tk=hlNow();hpUi();hlSave();invRender();
+    det.textContent=(wasSick?'💊 Nemoc je pryč! ':'💊 ')+`Vyléčeno +${healed} HP, máš ${hp.max}/${hp.max}. Hodinu teď nemůžeš onemocnět.`;
+  }else det.textContent='Nepodařilo se použít lék. Zkus to znovu.';
+}
+hpUi();
+
+// ---------- gravestones of dead players, at their house (or their building) ----------
+const deadGroup=new THREE.Group();scene.add(deadGroup);
+const deadGraves=new Map();
+function graveDir(id){
+  const r=residentById.get(id);if(!r||r.left)return null;
+  if(r.home!=null&&PLOTS[r.home])return slerpDir(PLOTS[r.home].v,START,.03/Math.max(.05,PLOTS[r.home].v.angleTo(START)));
+  const k=siteKeyOf(r.role);return k&&SITES[k]?slerpDir(SITES[k].dir,START,.09/Math.max(.1,SITES[k].dir.angleTo(START))):null;
+}
+function graveMesh(r){
+  const g=new THREE.Group(),stone=mat('#8d939e');
+  const slab=new THREE.Mesh(new THREE.BoxGeometry(.05,.06,.012),stone);slab.position.y=.03;g.add(slab);
+  const top=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.012,16),stone);top.rotation.x=Math.PI/2;top.position.y=.06;g.add(top);
+  const mound=new THREE.Mesh(new THREE.SphereGeometry(.04,10,6,0,Math.PI*2,0,Math.PI/2),mat('#6b4a2e'));mound.scale.set(.8,.25,1.3);mound.position.z=.04;g.add(mound);
+  const rip=new THREE.Mesh(new THREE.PlaneGeometry(.04,.016),new THREE.MeshBasicMaterial({map:textTex('RIP','#8d939e','#2b2b30',256,100,'900 80px system-ui,sans-serif')}));rip.position.set(0,.045,.0065);g.add(rip);
+  const c=document.createElement('canvas');c.width=512;c.height=96;const x=c.getContext('2d');x.font='900 54px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';
+  x.fillStyle='rgba(20,18,40,.85)';x.beginPath();x.roundRect(8,8,496,80,40);x.fill();x.fillStyle='#fff';x.fillText('🪦 '+r.name,256,50);
+  const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));tag.scale.set(.16,.03,1);tag.position.y=.12;g.add(tag);
+  g.userData.graveOf=r.id;g.traverse(o=>{if(o.isMesh)o.userData.graveOf=r.id});return g;
+}
+function deadSync(){
+  const now=hlNow(),dead=new Set();
+  for(const [k,st] of Object.entries(hl.all)){const e=hlEff(st,now);if(!e.dead)continue;const r=residents.find(x=>liveKey(x.id)===k);if(r&&!r.left)dead.add(r.id)}
+  for(const [id,g] of deadGraves)if(!dead.has(id)){deadGroup.remove(g);deadGraves.delete(id)}
+  for(const id of dead){if(deadGraves.has(id))continue;const dir=graveDir(id);if(!dir)continue;const g=graveMesh(residentById.get(id));placeOn(g,dir,0,0);faceToward(g,dir,START.clone().sub(dir));g.userData.dir=dir;deadGroup.add(g);deadGraves.set(id,g)}
+}
+async function deadLoad(){try{const r=await fetch(LIVE_DB+'/health.json');if(r.ok){hl.all=await r.json()||{};deadSync()}}catch(_){}}
+deadLoad();setInterval(deadLoad,60000);
+const deadNear={id:null};
+async function graveRevive(id){
+  if(!meId||!acct.user||id===meId)return;
+  const k=liveKey(id),st=hl.all[k];if(!st||!hlEff(st,hlNow()).dead){deadSync();return}
+  try{const ok=await acctPut('/health/'+k,{hp:100,sick:false,tk:{'.sv':'timestamp'},dead:false,dAt:0,imm:+st.imm||0,t:{'.sv':'timestamp'},rev:meId});
+    if(ok){hl.all[k]={hp:100,sick:false,tk:Date.now(),dead:false,t:Date.now()};deadSync();toast(`✨ Oživil jsi @${id}! Má zase 100 HP.`);deadNear.id=undefined}
+    else toast('Oživení se nepovedlo. Zkus to znovu.')}catch(_){toast('Nepodařilo se spojit se serverem.')}
+}
+function updateGrave(){
+  let near=null;if(play&&acct.user){let best=.025;for(const [id,g] of deadGraves){if(id===meId)continue;const d=g.userData.dir.distanceTo(play.p);if(d<best){best=d;near=id}}}
+  if(near!==deadNear.id){deadNear.id=near;const b=document.getElementById('reviveBtn');b.hidden=!near;if(near)b.textContent=`✨ Oživit @${near}`+(touchUI()?'':' (F)')}
+}
+document.getElementById('reviveBtn').onclick=()=>{if(deadNear.id)graveRevive(deadNear.id)};
+
+// ---------- the pharmacy's lab table: 3 herbs → 1 antibiotics, brewing takes a minute and you have to stay by the table ----------
+const MED_HERBS=3,MED_TIME=60000;
+const lab={near:false,job:null};
+function labGroup(){const g=siteGroup.children.find(c=>c.userData.site==='pharmacy');return g&&g.userData.lab?g:null}
+function labPos(){const g=labGroup();if(!g)return null;const w=new THREE.Vector3();g.userData.lab.lab.getWorldPosition(w);return w.normalize()}
+function labOpen(){
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Léky můžou vařit jen přihlášení hráči.');return}
+  const h=herbCount(meId),box=document.getElementById('labBox');
+  document.getElementById('labHave').textContent=`Máš ${h}× 🌿 léčivou bylinu · ${medCount(meId)}× 💊 antibiotika`;
+  const b=document.getElementById('labBrew');b.disabled=h<MED_HERBS||!!lab.job;
+  document.getElementById('labNote').textContent=h<MED_HERBS?`Potřebuješ aspoň ${MED_HERBS} byliny. Najdeš je při zalévání kytek.`:'Vaření trvá 1 minutu a musíš u stolu zůstat. Když odejdeš, byliny ti zůstanou a nic se neuvaří.';
+  keys.clear();box.hidden=false;document.getElementById('labClose').focus();
+}
+function labStart(){
+  if(herbCount(meId)<MED_HERBS||lab.job)return;
+  document.getElementById('labBox').hidden=true;
+  lab.job={t0:performance.now()};const g=labGroup();if(g)g.userData.lab.bubbles.visible=true;
+  toast('⚗️ Vaříš antibiotika. Zůstaň u stolu 1 minutu.');
+}
+function labStop(msg){lab.job=null;const g=labGroup();if(g)g.userData.lab.bubbles.visible=false;lab.near=undefined;if(msg)waterSay(msg)}
+async function labFinish(){
+  const k=liveKey(meId),h=herbCount(meId),m=medCount(meId);
+  const tok=await acct.user.getIdToken();
+  const body={};body['herbs/'+k]={c:h-MED_HERBS,t:{'.sv':'timestamp'}};body['meds/'+k]={c:m+1,t:{'.sv':'timestamp'}};
+  try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});
+    if(r.ok){inv.herbs[k]={c:h-MED_HERBS,t:Date.now()};inv.meds[k]={c:m+1,t:Date.now()};labStop();toast('💊 Antibiotika jsou hotová! Najdeš je v inventáři.');return}}catch(_){}
+  labStop('Vaření se nepovedlo uložit. Byliny ti zůstaly.');
+}
+function updateLab(){
+  const b=document.getElementById('labBtn'),pos=play&&acct.user?labPos():null,near=!!(pos&&pos.distanceTo(play.p)<.025);
+  if(lab.job){
+    if(!near){labStop('Odešel jsi od stolu, vaření se přerušilo. Byliny ti zůstaly.');b.hidden=true;return}
+    const el=performance.now()-lab.job.t0,left=Math.max(0,Math.ceil((MED_TIME-el)/1000));
+    b.hidden=false;b.disabled=true;b.textContent='⚗️ Vaří se… '+left+' s';b.style.setProperty('--p',Math.min(100,el/MED_TIME*100)+'%');
+    if(el>=MED_TIME){lab.job.done=true;const j=lab.job;lab.job={t0:-1e12,saving:true};if(!j.saving)labFinish()}
+    return;
+  }
+  if(near!==lab.near){lab.near=near;b.hidden=!near;b.disabled=false;b.style.setProperty('--p','0%');b.textContent='⚗️ Lékárnický stůl'+(touchUI()?'':' (F)')}
+}
+document.getElementById('labBtn').onclick=()=>{if(lab.near&&!lab.job)labOpen()};
+document.getElementById('labBrew').onclick=labStart;
+document.getElementById('labClose').onclick=()=>{document.getElementById('labBox').hidden=true};
+document.getElementById('labBox').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('labBox').hidden=true;e.stopPropagation()});
+document.getElementById('labBox').addEventListener('click',e=>{if(e.target.id==='labBox')e.target.hidden=true});
+// ---------- farm work: two wheat fields behind the farm (sow → water every 30 min → ripe after 1 h of watered growth → cut 3 rows) ----------
+const FARM_ACT=60000,FIELD_HALF=30*60000,FIELD_GROW=60*60000,GRAIN_PER_BREAD=5,BREAD_PRICE=5,BREAD_HP=20;
+var FIELD_SPOTS=[[-.2,-.78],[.55,-.78],[.65,.05]]; // local x,z inside the farm group
+const farm={st:{},job:false,act:null,near:null,npc:null,tagTxt:['',''],loaded:false};
+const grainCount=id=>+((inv.grain||{})[liveKey(id||'')]||{}).c||0;
+const breadCount=id=>+((inv.bread||{})[liveKey(id||'')]||{}).c||0;
+var fieldMats={};
+function fieldMat(k,c){return fieldMats[k]||(fieldMats[k]=mat(c))}
+function farmFields(g){ // called from buildFarm: two plowed fields with 3 rows each, plus the farmhand and the baker
+  const wood=fieldMat('wood','#a8693a');
+  const seedG=new THREE.SphereGeometry(.007,5,3),sproutG=new THREE.ConeGeometry(.02,.1,5),stalkG=new THREE.CylinderGeometry(.005,.006,.11,4),earG=new THREE.SphereGeometry(.013,6,4),stubG=new THREE.CylinderGeometry(.004,.004,.018,4);
+  const fields=[];
+  FIELD_SPOTS.forEach(([fx,fz],i)=>{
+    const f=new THREE.Group();f.position.set(fx,0,fz);f.name='field'+(i+1);
+    const soil=new THREE.Mesh(new THREE.BoxGeometry(.58,.024,.42),new THREE.MeshLambertMaterial({color:'#6b4a2b',flatShading:true}));soil.position.y=.012;f.add(soil);
+    const rows=[];
+    for(let r=0;r<3;r++){
+      const z=-.13+r*.13,row={seeds:new THREE.Group(),sprouts:new THREE.Group(),wheat:new THREE.Group(),stub:new THREE.Group(),n:8};
+      const ridge=new THREE.Mesh(new THREE.BoxGeometry(.54,.016,.05),fieldMat('ridge','#5a3c22'));ridge.position.set(0,.028,z);f.add(ridge);
+      for(let c=0;c<8;c++){
+        const x=-.24+c*.068;
+        const s=new THREE.Mesh(seedG,fieldMat('seed','#f1dca0'));s.position.set(x,.038,z+(c%2?.01:-.01));row.seeds.add(s);
+        const sp=new THREE.Mesh(sproutG,fieldMat('sprout','#6fbf45'));sp.position.set(x,.036,z);row.sprouts.add(sp);
+        const st=new THREE.Group();st.position.set(x,.036,z);
+        for(const dx of [-.016,0,.016]){const a=new THREE.Mesh(stalkG,fieldMat('stalk','#d9b44a'));a.position.set(dx,.05,0);st.add(a);const e=new THREE.Mesh(earG,fieldMat('ear','#f2cf5b'));e.scale.set(.7,1.8,.7);e.position.set(dx,.115,0);st.add(e)}
+        row.wheat.add(st);
+        const sb=new THREE.Mesh(stubG,fieldMat('stub','#c9a948'));sb.position.set(x,.045,z);row.stub.add(sb);
+      }
+      for(const k of ['seeds','sprouts','wheat','stub']){row[k].visible=false;f.add(row[k])}
+      rows.push(row);
+    }
+    // low fence on the two long sides
+    for(let p=0;p<=10;p++)for(const side of [-1,1]){const a=new THREE.Mesh(new THREE.BoxGeometry(.012,.05,.012),wood);a.position.set(-.3+p*.06,.025,side*.225);f.add(a)}
+    for(const side of [-1,1]){const rail=new THREE.Mesh(new THREE.BoxGeometry(.61,.008,.008),wood);rail.position.set(0,.04,side*.225);f.add(rail)}
+    // water drops shown while somebody waters
+    const drops=new THREE.Group();drops.visible=false;const dm=new THREE.MeshBasicMaterial({color:'#7cc8ff'});
+    for(let d=0;d<26;d++){const m=new THREE.Mesh(new THREE.SphereGeometry(.006,4,3),dm);m.userData.ph=Math.random();m.userData.x=(Math.random()-.5)*.5;m.userData.z=(Math.random()-.5)*.36;drops.add(m)}
+    f.add(drops);
+    // floating status above the field
+    const c=document.createElement('canvas');c.width=640;c.height=104;
+    const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));tag.scale.set(.42,.068,1);tag.position.y=.24;f.add(tag);
+    g.add(f);fields.push({grp:f,soil,rows,drops,tag,canvas:c,txt:''});
+  });
+  // the farmhand: gives the farm job (and the sickle)
+  const hand=makePerson({id:'npc-farmar'},'#7a4f2a','straw');hand.position.set(.18,0,-.48);hand.scale.setScalar(1.15);hand.name='farmHand';g.add(hand);
+  const mk=document.createElement('canvas');mk.width=mk.height=128;const x=mk.getContext('2d');
+  x.fillStyle='#ffc300';x.beginPath();x.arc(64,64,54,0,7);x.fill();x.lineWidth=8;x.strokeStyle='#2b1d0e';x.stroke();x.font='64px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('🌾',64,70);
+  const m1=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(mk),depthTest:false}));m1.scale.setScalar(.06);m1.position.y=.2;hand.add(m1);
+  // the baker at a little bread stall by the farmhouse
+  const baker=makePerson({id:'npc-pekarka'},'#f4efe6','chef');baker.position.set(-.62,0,.22);baker.scale.setScalar(1.15);baker.name='farmBaker';g.add(baker);
+  const stall=new THREE.Group();stall.position.set(-.62,0,.3);
+  const tbl=new THREE.Mesh(new THREE.BoxGeometry(.14,.05,.06),wood);tbl.position.y=.025;stall.add(tbl);
+  for(let b=0;b<3;b++){const lo=new THREE.Mesh(new THREE.SphereGeometry(.016,8,6),fieldMat('loaf','#c98a3e'));lo.scale.set(1.5,.8,1);lo.position.set(-.04+b*.04,.058,0);stall.add(lo)}
+  const mb=document.createElement('canvas');mb.width=mb.height=128;const y=mb.getContext('2d');
+  y.fillStyle='#fff4e2';y.beginPath();y.arc(64,64,54,0,7);y.fill();y.lineWidth=8;y.strokeStyle='#2b1d0e';y.stroke();y.font='64px system-ui,sans-serif';y.textAlign='center';y.textBaseline='middle';y.fillText('🍞',64,70);
+  const m2=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(mb),depthTest:false}));m2.scale.setScalar(.06);m2.position.y=.2;baker.add(m2);
+  g.add(stall);
+  g.userData.farm={fields,hand,baker};
+}
+function farmGroup(){const g=siteGroup.children.find(c=>c.userData.site==='farmer');return g&&g.userData.farm?g:null}
+function farmWorld(o){const w=new THREE.Vector3();o.getWorldPosition(w);return w.normalize()}
+function fieldEff(s,now){ // what a field looks like right now, from its saved state
+  if(!s||!s.ph)return {ph:0};
+  const w=+s.w||0,g=(+s.g||0)+(w?Math.min(now-w,FIELD_HALF):0);
+  if(g>=FIELD_GROW)return {ph:2,rows:+s.rows||0,g:FIELD_GROW};
+  return {ph:1,g,w,thirsty:!w||now-w>=FIELD_HALF,left:w?FIELD_HALF-(now-w):0};
+}
+async function farmLoad(){try{const r=await fetch(LIVE_DB+'/fields.json');if(r.ok){farm.st=await r.json()||{};farm.loaded=true}}catch(_){}}
+farmLoad();setInterval(farmLoad,15000);
+function sickleMesh(){
+  const g=new THREE.Group();g.name='farmSickle';
+  const h=new THREE.Mesh(new THREE.CylinderGeometry(.0035,.0035,.04,5),mat('#7a4a22'));g.add(h);
+  const b=new THREE.Mesh(new THREE.TorusGeometry(.024,.0028,4,14,Math.PI*1.15),new THREE.MeshLambertMaterial({color:'#d8dde6',emissive:'#30343c',flatShading:true}));
+  b.position.set(.022,.02,0);b.rotation.z=Math.PI*.05;g.add(b);
+  g.position.y=.05;g.rotation.x=1.4;return g;
+}
+function canMesh(){
+  const g=new THREE.Group();g.name='farmCan';const m=mat('#3f8fd6');
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.014,.016,.026,8),m);g.add(body);
+  const sp=new THREE.Mesh(new THREE.CylinderGeometry(.003,.004,.03,5),m);sp.position.set(.02,.006,0);sp.rotation.z=-1;g.add(sp);
+  g.position.y=.055;return g;
+}
+function farmTools(){ // sickle in the right hand while you have the farm job, a watering can while you water
+  for(const f of [meFig,play&&play.av&&play.av.fig]){
+    if(!f)continue;const ar=f.getObjectByName('armR');if(!ar)continue;
+    let s=ar.getObjectByName('farmSickle'),c=ar.getObjectByName('farmCan');
+    const can=!!(farm.act&&farm.act.kind==='water');
+    if(farm.job&&!can&&!s)ar.add(s=sickleMesh());else if((!farm.job||can)&&s){ar.remove(s);s=null}
+    if(can&&!c)ar.add(canMesh());else if(!can&&c)ar.remove(c);
+    const sw=ar.getObjectByName('bossSword');if(sw&&farm.job)sw.visible=false;
+  }
+}
+function fieldTag(fd,txt,col){
+  if(fd.txt===txt)return;fd.txt=txt;
+  const c=fd.canvas,x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
+  x.font='900 46px system-ui,sans-serif';const w=Math.min(c.width-8,x.measureText(txt).width+56);
+  x.fillStyle=col||'rgba(20,18,40,.85)';x.beginPath();x.roundRect((c.width-w)/2,6,w,92,46);x.fill();
+  x.fillStyle='#fff';x.textAlign='center';x.textBaseline='middle';x.fillText(txt,c.width/2,54);
+  fd.tag.material.map.needsUpdate=true;
+}
+const fmtMin=ms=>{const m=Math.max(1,Math.ceil(ms/60000));return m+' min'};
+function farmVisual(now,t){
+  const g=farmGroup();if(!g)return;
+  g.userData.farm.fields.forEach((fd,i)=>{
+    const id='f'+(i+1),e=fieldEff(farm.st[id],now),a=farm.act&&farm.act.fid===id?farm.act:null,p=a?Math.min(1,(performance.now()-a.t0)/FARM_ACT):0;
+    const wet=e.ph===1&&!e.thirsty,wetP=a&&a.kind==='water'?p:wet?1:0;
+    fd.soil.material.color.set(wetP>0?'#6b4a2b':'#6b4a2b').lerp(new THREE.Color('#3e2a18'),wetP*.85);
+    fd.drops.visible=!!(a&&a.kind==='water');
+    if(fd.drops.visible)fd.drops.children.forEach(d=>{const k=(d.userData.ph+t*1.6)%1;d.position.set(d.userData.x,.2-k*.18,d.userData.z)});
+    const frac=e.ph===1?e.g/FIELD_GROW:0;
+    fd.rows.forEach((row,r)=>{
+      const cut=e.ph===2&&(e.rows>>r&1);
+      let sown=e.ph>=1;
+      if(a&&a.kind==='sow'){sown=true;const k=Math.floor(p*3*row.n)-r*row.n;row.seeds.children.forEach((s,c)=>s.visible=c<k)}
+      else row.seeds.children.forEach(s=>s.visible=true);
+      row.seeds.visible=!!(sown&&e.ph!==2&&(frac<.12||(a&&a.kind==='sow')));
+      row.sprouts.visible=!!(e.ph===1&&frac>=.02&&!(a&&a.kind==='sow'));
+      if(row.sprouts.visible){const sc=.3+.7*frac;row.sprouts.children.forEach(s=>{s.scale.set(1,sc,1);s.position.y=.036*sc+.006})}
+      const cutting=a&&a.kind==='cut'&&a.row===r;
+      row.wheat.visible=e.ph===2&&!cut;row.stub.visible=!!(e.ph===2&&(cut||cutting));
+      if(row.wheat.visible)row.wheat.children.forEach((s,c)=>{s.visible=!!(!cutting||c>=Math.floor(p*row.n));s.rotation.z=Math.sin(t*1.7+c*.7+r)*.06});
+    });
+    let txt,col;
+    if(a)txt={sow:'🌱 Seje se… ',water:'💧 Zalévá se… ',cut:'🌾 Seče se… '}[a.kind]+Math.round(p*100)+' %',col='rgba(40,90,40,.9)';
+    else if(e.ph===0)txt='🟫 Zorané pole · zasej',col='rgba(90,60,30,.9)';
+    else if(e.ph===2){const left=3-[0,1,2].filter(r=>e.rows>>r&1).length;txt=`🌾 Zralé obilí · ${left}/3 řádky`;col='rgba(150,110,10,.92)'}
+    else if(e.thirsty)txt='💧 Potřebuje zalít!',col='rgba(190,60,40,.92)';
+    else txt=`🌱 ${Math.floor(frac*100)} % · zalít za ${fmtMin(e.left)}`,col='rgba(30,90,150,.9)';
+    fieldTag(fd,txt,col);
+  });
+}
+function farmNear(){ // nearest field / NPC to the walking player
+  const g=farmGroup();if(!g||!play||!acct.user)return null;
+  let best=null,bd=.045;
+  g.userData.farm.fields.forEach((fd,i)=>{const d=farmWorld(fd.grp).distanceTo(play.p);if(d<bd){bd=d;best={kind:'field',fid:'f'+(i+1)}}});
+  for(const [k,o] of [['hand',g.userData.farm.hand],['baker',g.userData.farm.baker]]){const d=farmWorld(o).distanceTo(play.p);if(d<.022&&d<bd+.02){bd=d;best={kind:k}}}
+  return best;
+}
+function farmBtnText(n){
+  if(!n)return '';
+  if(n.kind==='hand')return farm.job?'🌾 Farmář':'🌾 Práce u farmáře';
+  if(n.kind==='baker')return '🍞 Pekařka';
+  const e=fieldEff(farm.st[n.fid],hlNow());
+  if(!farm.job)return '🌾 Pole · nejdřív práce u farmáře';
+  if(e.ph===0)return '🌱 Zasít pole (1 min)';
+  if(e.ph===2)return '🌾 Posekat řádek (1 min)';
+  if(e.thirsty)return '💧 Zalít pole (1 min)';
+  return '🌱 Roste · zalít za '+fmtMin(e.left);
+}
+function farmClick(){
+  const n=farm.near;if(!n||farm.act)return;
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Na farmě můžou pracovat jen přihlášení hráči.');return}
+  if(n.kind==='hand'){farmTalk('hand');return}
+  if(n.kind==='baker'){farmTalk('baker');return}
+  if(!farm.job){waterSay('🌾 Nejdřív si u farmáře vezmi práci. Dá ti srp.');return}
+  if(hp.dead)return;
+  const e=fieldEff(farm.st[n.fid],hlNow());
+  const kind=e.ph===0?'sow':e.ph===2?'cut':e.thirsty?'water':null;
+  if(!kind){waterSay('🌱 Pole je zalité. Znovu zalít půjde za '+fmtMin(e.left)+'.');return}
+  const row=kind==='cut'?[0,1,2].find(r=>!(e.rows>>r&1)):null;
+  farm.act={kind,fid:n.fid,row,t0:performance.now()};farmTools();
+  waterSay({sow:'🌱 Seješ. Zůstaň u pole 1 minutu.',water:'💧 Zaléváš. Zůstaň u pole 1 minutu.',cut:`🌾 Sečeš ${row+1}. řádek. Zůstaň u pole 1 minutu.`}[kind]);
+}
+function farmStop(msg){farm.act=null;farm.btn=undefined;farmTools();if(msg)waterSay(msg)}
+async function farmFinish(a){
+  const tok=await acct.user.getIdToken().catch(()=>null);if(!tok){farmStop('Nepodařilo se uložit. Zkus to znovu.');return}
+  let cur=null;try{const r=await fetch(LIVE_DB+'/fields/'+a.fid+'.json');if(r.ok)cur=await r.json()}catch(_){}
+  const now=hlNow(),e=fieldEff(cur,now),k=liveKey(meId),T={'.sv':'timestamp'};
+  const okNow=a.kind==='sow'?e.ph===0:a.kind==='water'?e.ph===1&&e.thirsty:e.ph===2&&!(e.rows>>a.row&1);
+  if(!okNow){farm.st[a.fid]=cur;farmStop('Někdo tě předběhl, pole už je v jiné fázi.');return}
+  let next,xpN,grain=0;
+  if(a.kind==='sow'){next={ph:1,g:0,w:0,rows:0,n:meId,t:T};xpN=5}
+  else if(a.kind==='water'){next={ph:1,g:Math.min(FIELD_GROW,e.g),w:T,rows:0,n:meId,t:T};xpN=3}
+  else{const rows=e.rows|1<<a.row;next=rows===7?{ph:0,n:meId,t:T}:{ph:1,g:+cur.g||0,w:+cur.w||0,rows,n:meId,t:T};xpN=2;grain=1+Math.floor(Math.random()*3)}
+  const body={};body['fields/'+a.fid]=next;
+  if(grain)body['grain/'+k]={c:grainCount(meId)+grain,t:T};
+  try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});
+    if(r.ok){
+      const loc={...next,t:now};if(next.w===T)loc.w=now;farm.st[a.fid]=loc;
+      if(grain){inv.grain=inv.grain||{};inv.grain[k]={c:grainCount(meId)+grain,t:now}}
+      farmStop();xpGain(xpN,'farma');
+      toast(a.kind==='sow'?'🌱 Zaseto! +5 XP. Teď pole hned zalij.':a.kind==='water'?'💧 Zalito! +3 XP. Za 30 minut bude potřeba zalít znovu.':`🌾 Posekáno! +2 XP a ${grain}× obilí do batohu.`+(next.ph===0?' Pole je zase zorané.':''));
+      if(!document.getElementById('inv').hidden)invRender();return}
+  }catch(_){}
+  farmStop('Nepodařilo se uložit. Zkus to za chvíli znovu.');
+}
+function updateFarm(now,t){
+  farmVisual(hlNow(),t||now/1000);
+  const b=document.getElementById('farmBtn');
+  if(farm.job&&play&&play.av&&play.av.fig&&!play.av.fig.getObjectByName('farmSickle')&&!(farm.act&&farm.act.kind==='water'))farmTools();
+  if(farm.act){
+    const n=farmNear();
+    if(!n||n.fid!==farm.act.fid){farmStop('Odešel jsi od pole, práce se přerušila.');b.hidden=true;return}
+    const el=performance.now()-farm.act.t0,left=Math.max(0,Math.ceil((FARM_ACT-el)/1000));
+    const sk=play&&play.av&&play.av.fig&&play.av.fig.getObjectByName('farmSickle');if(sk&&farm.act.kind==='cut')sk.rotation.z=Math.sin(el/120)*.9;
+    const cn=play&&play.av&&play.av.fig&&play.av.fig.getObjectByName('farmCan');if(cn)cn.rotation.z=-.6+Math.sin(el/400)*.2;
+    b.hidden=false;b.disabled=true;b.textContent={sow:'🌱 Seješ… ',water:'💧 Zaléváš… ',cut:'🌾 Sečeš… '}[farm.act.kind]+left+' s';b.style.setProperty('--p',Math.min(100,el/FARM_ACT*100)+'%');
+    if(el>=FARM_ACT&&!farm.act.saving){farm.act.saving=true;farmFinish(farm.act)}
+    return;
+  }
+  const n=farmNear();farm.near=n;
+  const txt=n?farmBtnText(n)+(touchUI()?'':' (F)'):'';
+  if(txt!==farm.btn){farm.btn=txt;b.hidden=!n;b.disabled=false;b.style.setProperty('--p','0%');b.textContent=txt}
+}
+// ---- the farmhand and the baker ----
+function farmTalk(who){
+  const say=document.getElementById('farmSay'),act=document.getElementById('farmActions'),note=document.getElementById('farmNote');act.replaceChildren();
+  const btn=(t,cls,fn,dis)=>{const b=document.createElement('button');b.type='button';if(cls)b.className=cls;b.textContent=t;b.onclick=fn;b.disabled=!!dis;act.append(b);return b};
+  const B=t=>Object.assign(document.createElement('b'),{textContent:t});
+  if(who==='hand'){
+    document.getElementById('farmTitle').textContent='🌾 Farmář';
+    if(farm.job){say.replaceChildren('Pole čekají! Zasej, hned zalij a každých ',B('30 minut'),' zalévej znovu. Po hodině je obilí zralé a posekáš ho po řádcích.');
+      btn('Jdu na to','primary',farmClose);btn('Skončit s prací','',()=>{farm.job=false;farmTools();farmClose();toast('Srp jsi vrátil. Práci farmáře už nemáš.')})}
+    else{say.replaceChildren('Potřebuju pomocníka na pole. Dám ti ',B('srp'),' a za každou práci dostaneš XP: zasetí ',B('+5'),', zalití ',B('+3'),', posekaný řádek ',B('+2'),' a k tomu ',B('1–3× obilí'),'.');
+      btn('Beru práci 🌾','primary',()=>{farm.job=true;farmTools();farmClose();toast('🌾 Jsi farmář! Srp máš v ruce. Pole jsou za farmou.')});btn('Teď ne','',farmClose)}
+    note.textContent='Srp je jen na práci, do inventáře ho nedostaneš. Když hru zavřeš, práci musíš vzít znovu.';
+  }else{
+    document.getElementById('farmTitle').textContent='🍞 Pekařka';
+    const g=grainCount(meId),b=breadCount(meId);
+    say.replaceChildren('Z ',B(GRAIN_PER_BREAD+'× obilí'),' ti upeču ',B('1 chleba'),'. Chleba vrátí ',B('+'+BREAD_HP+' HP'),', nebo ho u mě prodáš za ',B(BREAD_PRICE+' stříbrných'),'.');
+    btn(`Upéct chleba (${GRAIN_PER_BREAD}× 🌾)`,'primary',breadBake,g<GRAIN_PER_BREAD);
+    {const sb=btn(`Prodat 1 chleba (+${BREAD_PRICE} `,'',breadSell,b<1);const co=document.createElement('span');co.className='coin s';co.setAttribute('aria-label','stříbrných');co.style.cssText='width:15px;height:15px;vertical-align:-2px;margin:0 2px';sb.append(co,')')}
+    note.textContent=`Máš ${g}× 🌾 obilí · ${b}× 🍞 chleba.`;
+  }
+  keys.clear();document.getElementById('farmBox').hidden=false;
+}
+function farmClose(){document.getElementById('farmBox').hidden=true}
+async function farmPatch(body){
+  const tok=await acct.user.getIdToken().catch(()=>null);if(!tok)return false;
+  try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});return r.ok}catch(_){return false}
+}
+let breadBusy=false;
+async function breadBake(){
+  if(breadBusy||!acct.user||!meId)return;const k=liveKey(meId),g=grainCount(meId),b=breadCount(meId);if(g<GRAIN_PER_BREAD)return;
+  breadBusy=true;const T={'.sv':'timestamp'},body={};body['grain/'+k]={c:g-GRAIN_PER_BREAD,t:T};body['bread/'+k]={c:b+1,t:T};
+  if(await farmPatch(body)){inv.grain[k]={c:g-GRAIN_PER_BREAD,t:Date.now()};inv.bread[k]={c:b+1,t:Date.now()};toast('🍞 Upečeno! Chleba máš v inventáři.')}else toast('Pečení se nepovedlo. Zkus to znovu.');
+  breadBusy=false;farmTalk('baker');
+}
+async function breadSell(){
+  if(breadBusy||!acct.user||!meId)return;const k=liveKey(meId),b=breadCount(meId);if(b<1)return;
+  breadBusy=true;let m=+inv.money[k]||0;try{const r=await fetch(LIVE_DB+'/money/'+k+'.json');if(r.ok)m=+(await r.json())||0}catch(_){}
+  const body={};body['bread/'+k]={c:b-1,t:{'.sv':'timestamp'}};body['money/'+k]=m+BREAD_PRICE;
+  if(await farmPatch(body)){inv.bread[k]={c:b-1,t:Date.now()};inv.money[k]=m+BREAD_PRICE;toast(`🍞 Prodáno za ${BREAD_PRICE} stříbrných.`)}else toast('Prodej se nepovedl. Zkus to znovu.');
+  breadBusy=false;farmTalk('baker');
+}
+async function breadEat(){
+  const det=document.getElementById('invDetail');
+  if(hp.dead){det.textContent='🪦 Mrtvý nejí. Počkej na oživení.';return}
+  if(hp.cur>=hp.max){det.textContent='🍞 Chleba ×'+breadCount(meId)+' · máš plné životy, teď ho nepotřebuješ.';return}
+  const k=liveKey(meId),c=breadCount(meId);if(c<1)return;
+  if(await acctPut('/bread/'+k,{c:c-1,t:{'.sv':'timestamp'}})){
+    inv.bread[k]={c:c-1,t:Date.now()};const add=Math.min(BREAD_HP,hp.max-hp.cur);hp.cur+=add;hpUi();hlSave();invRender();
+    det.textContent=`🍞 Mňam! +${add} HP, máš ${hp.cur}/${hp.max}.`+(hp.sick?' Nemoc chleba nevyléčí, na tu jsou antibiotika.':'');
+  }else det.textContent='Nepodařilo se sníst chleba. Zkus to znovu.';
+}
+document.getElementById('farmBtn').onclick=farmClick;
+document.getElementById('digBtn').onclick=digOpen;
+document.getElementById('farmClose').onclick=farmClose;
+document.getElementById('farmBox').addEventListener('keydown',e=>{if(e.key==='Escape')farmClose();e.stopPropagation()});
+document.getElementById('farmBox').addEventListener('click',e=>{if(e.target.id==='farmBox')farmClose()});
+
+
+// ---------- launch gift: everyone who signs in on 18. 11. 2026 between 18:00 and midnight gets the green Obyčejný meč ----------
+const GIFT_FROM=1795021200000,GIFT_TO=1795042800000;
+async function launchGift(){
+  if(!meId||!acct.user)return;const now=Date.now()+(typeof water!=='undefined'?water.skew:0);
+  if(now<GIFT_FROM||now>=GIFT_TO)return;
+  const k=liveKey(meId);if(((inv.gifts||{})[k]||{}).launch)return;
+  try{if(await acctPut('/gifts/'+k+'/launch',{'.sv':'timestamp'})){inv.gifts=inv.gifts||{};inv.gifts[k]={launch:Date.now()};toast('🎁 Dárek k updatu: Obyčejný meč (zelený, 1,3× DMG)! Najdeš ho v inventáři.')}}catch(_){}
+}
+
+// ---------- the shop: only reachable on foot; 3 daily offers (coming soon), a golden "own plot" offer, and your inventory to sell from ----------
+const shop={near:false};
+function shopDoor(){const S=SITES.shop;return slerpDir(S.dir,START,.07/S.dir.angleTo(START))}
+function shopOpen(){
+  if(!play){toast('🛒 Do obchodu musíš dojít za svou postavou. Klikni na „Hrát za postavu“.');return}
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Nakupovat můžou jen přihlášení hráči.');return}
+  keys.clear();shopRender();document.getElementById('shopBox').hidden=false;document.getElementById('shopClose').focus();
+}
+function shopRender(){
+  const m=wallet(meId),purse=document.getElementById('shopPurse');purse.replaceChildren();
+  const pl=(n,a,b,c)=>n===1?a:n>=2&&n<=4?b:c;
+  for(const [cls,v,l] of [['coin g',m.gold.toLocaleString('cs-CZ'),pl(m.gold,'zlatý','zlaté','zlatých')],['coin s',m.silver,pl(m.silver,'stříbrný','stříbrné','stříbrných')],['dia',m.dia.toLocaleString('cs-CZ'),pl(m.dia,'diamant','diamanty','diamantů')]]){
+    const sp=document.createElement('span');const ic=document.createElement('span');ic.className=cls;ic.setAttribute('aria-hidden','true');if(cls==='dia')ic.textContent='💎';sp.append(ic,v+' '+l);purse.append(sp)}
+  const st=invState(meId),bag=document.getElementById('shopBag');bag.replaceChildren();
+  INV_BAG.forEach((k,n)=>{if(n>=invBagN(meId)&&!st[k])return;const c=invCell(k,'Slot '+(n+1),'＋',st[k]);c.onclick=()=>{const it=st[k]&&ITEMS[st[k]];document.getElementById('shopDetail').textContent=it?`${it.name}: výkup se spustí s prvním zbožím. Již brzy!`:'Prázdný slot.'};bag.append(c)});
+}
+document.getElementById('shopBtn').onclick=shopOpen;
+document.getElementById('shopClose').onclick=()=>{document.getElementById('shopBox').hidden=true};
+document.getElementById('shopBox').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('shopBox').hidden=true;e.stopPropagation()});
+document.getElementById('shopBox').addEventListener('click',e=>{if(e.target.id==='shopBox')e.target.hidden=true});
+function updateShop(){
+  let near=false;if(play)near=shopDoor().distanceTo(play.p)<.03;
+  if(near!==shop.near){shop.near=near;const b=document.getElementById('shopBtn');b.hidden=!near;b.textContent='🛒 Otevřít obchod'+(touchUI()?'':' (F)')}
+}
+document.getElementById('questClose').onclick=questClose;
+document.getElementById('questBox').addEventListener('keydown',e=>{if(e.key==='Escape')questClose();e.stopPropagation()});
+document.getElementById('questBox').addEventListener('click',e=>{if(e.target.id==='questBox')questClose()});
+
+// ---------- inventory: equipment slots on the character, a 3-slot bag and a money box ----------
+// Owned items: /items/<nick>/<itemId> = true (set by the admin) plus items the game grants in code (Zubatý meč).
+// What is worn where: /equip/<nick> = {slot: itemId}, written only by the signed-in owner of that nick.
+// Money: /money/<nick> = number (set by the admin until the economy exists).
+// New wearable slot later = one more line in INV_SLOTS (it lands in the next free cell of the grid).
+const INV_SLOTS=[ // [key, label, empty icon, grid cell 1–12 (3 columns)]
+  ['talisman','Talisman','🧿',1],['helmet','Helma','⛑️',2],['necklace','Náhrdelník','📿',3],
+  ['weapon','Zbraň','🗡️',4],['armor','Brnění / vesta','🦺',5],['shield','Štít','🛡️',6],
+  ['gloves','Rukavice','🧤',7],['pants','Kalhoty','👖',8],['bracelet','Náramek','⌚',9],
+  ['backpack','Batoh','🎒',10],['boots','Boty','🥾',11],['banner','Banner','🚩',12]];
+const INV_BAG=['bag1','bag2','bag3','bag4','bag5'];
+const invBagN=id=>{try{const L=lvlOf(id);return 3+(L>=10?1:0)+(L>=20?1:0)}catch(_){return 3}}; // L10 and L20 each open one more bag slot
+const ITEMS={
+  boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',rarity:'rare',dmg:2,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery.'},
+  basic_sword:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'common',dmg:1.2,desc:'Klasický ocelový meč. 1,2× DMG v klikačkách na příšery.'},
+  basic_sword_g:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'uncommon',dmg:1.3,desc:'Klasický meč se zeleným kamenem. 1,3× DMG v klikačkách na příšery.'},
+  meds:{name:'Antibiotika',slot:'bag',icon:'💊',stack:true,rarity:'uncommon',use:'heal',desc:'Uvařená v lékárně ze 3 léčivých bylin. Vyléčí chybějící životy. Hodnota 1 zlatý.'},
+  grain:{name:'Obilí',slot:'bag',icon:'🌾',stack:true,rarity:'common',desc:'Posekané na farmě. U pekařky z 5 kusů upečeš chleba.'},
+  bread:{name:'Chleba',slot:'bag',icon:'🍞',stack:true,rarity:'common',use:'eat',desc:'Upečený z obilí. Doplní 20 HP. U pekařky na farmě ho prodáš za 5 stříbrných.'},
+  herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 15 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
+};
+const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
+// money: /money/<nick> = silver coins in total (100 silver = 1 gold); /diamonds/<nick> = diamonds (bought for real money, set by the admin for now)
+const wallet=id=>{const k=liveKey(id||''),s=Math.max(0,Math.floor(+inv.money[k]||0));return {gold:Math.floor(s/100),silver:s%100,dia:Math.max(0,Math.floor(+((inv.dia||{})[k])||0))}};
+const medCount=id=>+((inv.meds||{})[liveKey(id||'')]||{}).c||0;
+const herbCount=id=>+((inv.herbs[liveKey(id)]||{}).c)||0;
+const invKey=id=>liveKey(id);
+const stackN=item=>item==='meds'?medCount(meId):item==='grain'?grainCount(meId):item==='bread'?breadCount(meId):herbCount(meId);
+function invOwned(id){
+  const own=Object.keys(inv.items[invKey(id)]||{}).filter(k=>ITEMS[k]);
+  if(SWORD_OWNER&&id===SWORD_OWNER&&!own.includes('boss_sword'))own.push('boss_sword');
+  if(herbCount(id)>0&&!own.includes('herb'))own.push('herb');
+  if(medCount(id)>0&&!own.includes('meds'))own.push('meds');
+  if(grainCount(id)>0&&!own.includes('grain'))own.push('grain');
+  if(breadCount(id)>0&&!own.includes('bread'))own.push('bread');
+  if(((inv.gifts||{})[liveKey(id)]||{}).launch&&!own.includes('basic_sword_g'))own.push('basic_sword_g');
+  return own;
+}
+function invState(id){ // {slot: itemId} with every owned item either worn or in the bag
+  const own=invOwned(id),saved=inv.equip[invKey(id)],st={},used=new Set();
+  if(saved)for(const [sl,it] of Object.entries(saved))if(own.includes(it)&&!used.has(it)&&(INV_BAG.includes(sl)||ITEMS[it].slot===sl)){st[sl]=it;used.add(it)}
+  for(const it of own){if(used.has(it))continue;const sl=ITEMS[it].slot;
+    const free=!saved&&sl!=='bag'&&!st[sl]?sl:INV_BAG.slice(0,invBagN(id)).find(b=>!st[b]);if(free){st[free]=it;used.add(it)}}
+  return st;
+}
+function weaponMult(id){try{const it=ITEMS[invState(id).weapon];return it&&it.dmg||1}catch(_){return 1}}
+function invWears(id,item){try{const st=invState(id);return Object.entries(st).some(([sl,it])=>it===item&&!INV_BAG.includes(sl))}catch(_){return true}} // figures built before the inventory code runs wear what they own
+function invRefreshFigs(id){
+  scene.traverse(o=>{if(o.userData&&o.userData.memberId===id){const sw=o.getObjectByName('bossSword');if(sw)sw.visible=invWears(id,'boss_sword')}});
+  if(play&&play.av&&play.av.fig){const sw=play.av.fig.getObjectByName('bossSword');if(sw&&meId===id)sw.visible=invWears(id,'boss_sword')}
+}
+async function invLoad(){
+  try{
+    const [it,eq,mo,hb,di,md,gf,gr,br]=await Promise.all(['items','equip','money','herbs','diamonds','meds','gifts','grain','bread'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
+    inv.items=it||{};inv.equip=eq||{};inv.money=mo||{};inv.herbs=hb||{};inv.dia=di||{};inv.meds=md||{};inv.gifts=gf||{};inv.grain=gr||{};inv.bread=br||{};inv.loaded=true;
+    if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);
+  }catch(_){}
+}
+invLoad();
+function invCell(key,label,icon,item,cls){
+  const b=document.createElement('button');b.type='button';b.className='inv-slot'+(cls||'');b.dataset.slot=key;
+  const it=item&&ITEMS[item];
+  if(it){b.classList.add('full');const ry=RARITY[it.rarity||'common'];b.style.borderColor=ry.color;b.style.boxShadow=`0 0 14px ${ry.color}55 inset`;b.setAttribute('aria-label',label+': '+it.name+', '+ry.name)}
+  else b.setAttribute('aria-label',label+': prázdné');
+  const ic=document.createElement('span');ic.className='ic';ic.textContent=it?it.icon:icon;ic.setAttribute('aria-hidden','true');
+  const lb=document.createElement('span');lb.className='lb';lb.textContent=it?(it.stack?it.name.split(' ').pop()+' ×'+stackN(item):it.name.split(' ')[0]):label;
+  b.append(ic,lb);if(inv.sel===key)b.classList.add('sel');
+  b.onclick=()=>invClick(key);return b;
+}
+async function herbRoll(){
+  if(Math.random()>=.15||!acct.user||!meId)return;
+  const k=liveKey(meId);
+  const got=Math.random()<.5?1:2; // a find is always 1–2 herbs
+  try{const cur=await acctGet('/herbs/'+k),c=(+(cur&&cur.c)||0)+got;
+    if(await acctPut('/herbs/'+k,{c,t:{'.sv':'timestamp'}})){inv.herbs[k]={c,t:Date.now()};toast('🌿 Našel jsi '+(got===2?'2 léčivé byliny':'léčivou bylinu')+'! V inventáři máš '+c+'×.');if(!document.getElementById('inv').hidden)invRender()}
+  }catch(_){}
+}
+function invRender(){
+  const st=invState(meId),doll=document.getElementById('invDoll'),bag=document.getElementById('invBag');
+  doll.replaceChildren();bag.replaceChildren();
+  const cells=[];for(const [k,l,i,c] of INV_SLOTS)cells[c]=[k,l,i];
+  const last=Math.max(...INV_SLOTS.map(x=>x[3]));
+  for(let c=1;c<=Math.ceil(last/3)*3;c++){
+    if(!cells[c]){const g=document.createElement('div');g.className='inv-slot gap';g.setAttribute('aria-hidden','true');doll.append(g);continue}
+    const [k,l,i]=cells[c];doll.append(invCell(k,l,i,st[k]));
+  }
+  INV_BAG.forEach((k,n)=>{if(n<invBagN(meId)||st[k])bag.append(invCell(k,'Slot '+(n+1),'＋',st[k]));else{const c=invCell(k,'Od levelu '+(n===3?10:20),'🔒',null);c.disabled=true;c.style.opacity=.45;bag.append(c)}});
+  const m=wallet(meId);document.getElementById('invGold').textContent=m.gold.toLocaleString('cs-CZ');document.getElementById('invSilver').textContent=String(m.silver);document.getElementById('invDia').textContent=m.dia.toLocaleString('cs-CZ');
+  document.getElementById('invWho').textContent='@'+meNick.replace(/^@+/,'')+(invOwned(meId).length?'':' · zatím nemáš žádné věci. Brzy je půjde získat ve hře.');
+}
+async function invSave(st){
+  if(!acct.user)return false;
+  try{return await acctPut('/equip/'+invKey(meId),st)}catch(_){return false}
+}
+async function invClick(key){
+  const st=invState(meId),item=st[key],det=document.getElementById('invDetail');
+  if(!item){const lbl=(INV_SLOTS.find(x=>x[0]===key)||[0,'Slot v batohu'])[1];det.textContent=INV_BAG.includes(key)?'Volný slot v batohu.':`${lbl}: prázdné. Věc sem dáš klepnutím na ni v batohu.`;return}
+  const it=ITEMS[item],next={...st};
+  if(it.slot==='bag'){if(it.use==='heal'){medUse();return}if(it.use==='eat'){breadEat();return}det.replaceChildren();const bb=document.createElement('b');bb.textContent=it.name+(it.stack?' ×'+stackN(item):'');det.append(bb,' · '+it.desc);return}
+  if(INV_BAG.includes(key)){const was=next[it.slot];next[it.slot]=item;if(was)next[key]=was;else delete next[key]}
+  else{const free=INV_BAG.slice(0,invBagN(meId)).find(b=>!next[b]);if(!free){det.textContent='Batoh je plný.';return}next[free]=item;delete next[key]}
+  const saved=inv.equip[invKey(meId)];inv.equip[invKey(meId)]=next;invRender();invRefreshFigs(meId);
+  det.replaceChildren();const b=document.createElement('b');b.textContent=it.name;const ry=RARITY[it.rarity||'common'],rb=document.createElement('b');rb.textContent=ry.name;rb.style.color=ry.color;det.append(b,' · ',rb,' · '+it.desc+(invWears(meId,item)?' Máš ho na sobě.':' Je v batohu.'));
+  if(!await invSave(next)){if(saved)inv.equip[invKey(meId)]=saved;else delete inv.equip[invKey(meId)];invRender();invRefreshFigs(meId);det.textContent='Nepodařilo se uložit. Zkus to znovu.'}
+}
+function openInv(){if(!meId)return;keys.clear();inv.sel=null;document.getElementById('invDetail').textContent='Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.';invRender();document.getElementById('inv').hidden=false;document.getElementById('invClose').focus()}
+document.getElementById('invBtn').onclick=openInv;
+document.getElementById('playInv').onclick=openInv;
+document.getElementById('invClose').onclick=()=>{document.getElementById('inv').hidden=true};
+document.getElementById('inv').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('inv').hidden=true;e.stopPropagation()});
+document.getElementById('inv').addEventListener('click',e=>{if(e.target.id==='inv')e.target.hidden=true});
 
 // ---------- play: walk your own character around the planet ----------
 // PC: WASD / arrows, Shift to run, Q/E or drag to turn the camera, wheel to zoom.
@@ -2838,14 +4120,30 @@ async function petClaim(){ // 'ok' | 'full' | 'err'
   }catch(_){return 'err'}
 }
 function petsLeft(){return Math.max(0,PET_LIMIT-pets.owners.size)}
-function updateAbduct(P,now,dt){ // the UFO base is gone (aliens can't be won anymore); near the boss just a hint
-  if(!P.bossHint&&P.p.angleTo(BASE.dir)<.4){P.bossHint=true;sayPlay(bossDead()?'💀 Tady leží poražený Boss ze záhrobí.':'💀 Boss ze záhrobí! Klikni na jeho jmenovku nebo na Minihry a bouchni ho mečem.',6000)}
+const dig={near:false};
+function digLook(){ // colours of my character for the 2D game
+  const r=residentById.get(meId);if(!r)return '';
+  let shirt,hat='',skin;const pr=rnd(hash(r.id));
+  if(r.role==='gardener'){shirt='#3f9a6a';hat='straw';skin=SKINS[Math.floor(pr()*4)]}
+  else if(ROLE_LOOK[r.role]){[shirt,hat]=ROLE_LOOK[r.role];hat=hat||'';skin=SKINS[Math.floor(pr()*4)]}
+  else{shirt=ROOFS[Math.floor(pr()*ROOFS.length)];skin=SKINS[Math.floor(pr()*4)]}
+  return '?'+new URLSearchParams({s:shirt,k:skin,h:hat}).toString();
+}
+function digOpen(){
+  if(play&&dig.near){location.href='kopani.html'+digLook();return}
+  toast('⛏️ Cesta do středu země: dojdi svou postavou k černé díře na druhé straně planety (kde býval boss) a kopej co nejhlouběji.');
+}
+function updateAbduct(P,now,dt){ // near the black hole (where the boss used to be): the digging minigame
+  const near=P.p.angleTo(BASE.dir)<.13;
+  if(!P.bossHint&&near){P.bossHint=true;sayPlay('⛏️ Cesta do středu země! Kopej co nejhlouběji.',5000)}
+  if(near!==dig.near){dig.near=near;const b=document.getElementById('digBtn');b.hidden=!near;b.textContent='⛏️ Cesta do středu země'+(touchUI()?'':' (F)')}
   return 0;
 }
 
 // ---------- my own character ----------
 function startPlay(){
   const r=residentById.get(meId);if(!r||r.left||play)return;
+  if(hp.dead){toast(`🪦 Jsi mrtvý. Oživení za ${fmtLeft(hp.dAt+REVIVE_MS-hlNow())}, nebo ať tě oživí jiný hráč u tvého hrobečku.`);return}
   finishFly();controls.autoRotate=false;controls.enabled=false;
   sheet.hidden=true;bar.hidden=false;
   const av=makeAvatar(r);playerGroup.add(av.fig);
@@ -2864,6 +4162,7 @@ function startPlay(){
   updateChip();
 }
 function stopPlay(){
+  dig.near=false;document.getElementById("digBtn").hidden=true;
   if(!play)return;
   const p=play.p.clone();
   liveLeave();
@@ -2935,11 +4234,18 @@ addEventListener('keydown',e=>{
   if(e.target&&e.target.closest&&e.target.closest('input,textarea,select'))return;
   const move=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code);
   if(!play){ // pressing W A S D starts the game when you have a character
-    if(move&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&welcome.hidden&&sheet.hidden&&!playBtn.hidden)startPlay();
+    if(move&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&welcome.hidden&&sheet.hidden&&document.getElementById('inv').hidden&&document.getElementById('shopBox').hidden&&document.getElementById('labBox').hidden&&!playBtn.hidden)startPlay();
     if(!play)return;
   }
   if(e.code==='Escape'){stopPlay();return}
   if(e.code==='Space'){e.preventDefault();if(!e.repeat)startJump();return}
+  if(e.code==='KeyF'&&!e.repeat&&water.near&&!water.job){waterStart(water.near);return}
+  if(e.code==='KeyF'&&!e.repeat&&quest.near){questOpen();return}
+  if(e.code==='KeyF'&&!e.repeat&&deadNear.id){graveRevive(deadNear.id);return}
+  if(e.code==='KeyF'&&!e.repeat&&shop.near){shopOpen();return}
+  if(e.code==='KeyF'&&!e.repeat&&lab.near&&!lab.job){labOpen();return}
+  if(e.code==='KeyF'&&!e.repeat&&farm.near&&!farm.act){farmClick();return}
+  if(e.code==='KeyF'&&!e.repeat&&dig.near&&play){digOpen();return}
   keys.add(e.code);
   if(move||e.code==='Space')e.preventDefault();
 });
@@ -3027,7 +4333,7 @@ function bossRender(){
     :`🎡 Při ${MRAZ_GOAL} obyvatelích roztočíme kolo štěstí o meč, který dává 2× víc ran. Teď je nás ${n}/${MRAZ_GOAL}.`;
 }
 function openBoss(){
-  bossMg.hidden=false;bossSword.classList.toggle('gold',!!SWORD_OWNER&&meId===SWORD_OWNER);bossRender();bossLoad();
+  bossMg.hidden=false;bossSword.classList.toggle('gold',!!SWORD_OWNER&&meId===SWORD_OWNER&&invWears(meId,'boss_sword'));bossRender();bossLoad();
   if(!meId)bossSay('Nejdřív zadej svoje jméno z Instagramu, ať víme, komu dát odznak.');
 }
 function bossHit(){
@@ -3036,7 +4342,7 @@ function bossHit(){
   if(!r||r.left){bossSay('Bossa můžou bouchat jen obyvatelé planety. Dej follow @planetafolloweru.');return}
   if(!bossSt.loaded){bossSay('Boss se ještě probouzí… zkus to za chvíli.');bossLoad();return}
   if(bossDead())return;
-  const dmg=meId===SWORD_OWNER?2:1;bossSt.pending+=dmg;bossSt.lastHit=performance.now();
+  bossSt.frac=(bossSt.frac||0)+weaponMult(meId);const dmg=Math.floor(bossSt.frac);bossSt.frac-=dmg; // the weapon in your hand multiplies each click (1,2× → every 5th click hits for 2)bossSt.pending+=dmg;bossSt.lastHit=performance.now();
   const pop=document.createElement('span');pop.className='boss-pop';pop.textContent='−'+dmg;pop.style.setProperty('--dx',((Math.random()-.5)*90).toFixed(0)+'px');
   bossSword.append(pop);setTimeout(()=>pop.remove(),700);
   bossSword.classList.remove('hit');void bossSword.offsetWidth;bossSword.classList.add('hit');
@@ -3106,12 +4412,16 @@ document.addEventListener('visibilitychange',()=>{if(play&&document.visibilitySt
 // ---------- chat: last 5 messages on the left, background only while writing ----------
 const chat={el:document.getElementById('chat'),log:document.getElementById('chatLog'),form:document.getElementById('chatForm'),
   input:document.getElementById('chatInput'),hint:document.getElementById('chatHint'),msgs:{},es:null,lastSent:0};
-const CHAT_SHOW=5;
+const CHAT_SHOW=5,CHAT_KEEP=100; // closed chat shows the last 5 lines, opened chat scrolls through the last 100
 const BAD=/(kurv|p[ií]č|kokot|zmrd|čur[aá]k|mrd|buzer|negr|fuck|shit|bitch)\p{L}*/giu;
 const cleanText=t=>String(t||'').replace(/[\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().slice(0,120).replace(BAD,m=>m[0]+'***');
 function chatRender(){
-  const list=Object.entries(chat.msgs).sort((a,b)=>a[0]<b[0]?-1:1).slice(-CHAT_SHOW);
-  chat.log.textContent='';
+  const open=chat.el.classList.contains('open'),L=chat.log;
+  const stick=!open||L.scrollHeight-L.scrollTop-L.clientHeight<40; // keep following new lines unless the player scrolled up
+  const all=Object.entries(chat.msgs).sort((a,b)=>a[0]<b[0]?-1:1);
+  if(all.length>CHAT_KEEP)for(const [k] of all.slice(0,all.length-CHAT_KEEP))delete chat.msgs[k];
+  const list=all.slice(open?-CHAT_KEEP:-CHAT_SHOW);
+  L.textContent='';
   for(const [,m] of list){
     const li=document.createElement('li');
     if(m.sys){li.className='sys';li.textContent=m.x}
@@ -3119,8 +4429,9 @@ function chatRender(){
       const b=document.createElement('b');b.textContent=m.n+': ';li.append(b,document.createTextNode(m.x));
       if(meNick&&m.n==='@'+meNick)li.className='mine';
     }
-    chat.log.appendChild(li);
+    L.appendChild(li);
   }
+  if(open&&stick)L.scrollTop=L.scrollHeight;
 }
 function chatSys(text){chat.msgs['~'+Date.now()]={sys:1,x:text};chatRender()}
 function chatSet(key,m){
@@ -3132,7 +4443,7 @@ function chatSet(key,m){
 function chatStart(){
   if(!LIVE_DB||chat.es||typeof EventSource==='undefined')return;
   try{
-    const es=new EventSource(LIVE_DB+'/chat.json?orderBy=%22%24key%22&limitToLast=20');
+    const es=new EventSource(LIVE_DB+'/chat.json?orderBy=%22%24key%22&limitToLast=100');
     const apply=(e,merge)=>{try{
       const m=JSON.parse(e.data);if(!m||typeof m.path!=='string')return;
       const parts=m.path.split('/').filter(Boolean);
@@ -3147,14 +4458,15 @@ function chatStart(){
 }
 function chatCanWrite(){const r=meId&&residentById.get(meId);return !!(r&&!r.left)}
 function chatOpen(){
-  if(!meId){welcome.hidden=false;welcomeMsg.textContent='Pro psaní v chatu zadej svůj nick z Instagramu.';document.getElementById('nickInput').focus();return}
-  chat.el.classList.add('open');keys.clear();
+  if(!meId){showWelcome(acct.user?'nick':'login','Pro psaní v chatu se přihlas.');return}
+  chat.el.classList.add('open');keys.clear();chatRender();chat.log.scrollTop=chat.log.scrollHeight;
   if(!chatCanWrite()){
     chat.hint.textContent=meId?'Psát můžou jen obyvatelé planety. Dej follow @planetafolloweru a za chvíli tu máš dům.':'Nejdřív zadej svůj nick z Instagramu (tlačítko vlevo nahoře „změnit“, nebo obnov stránku).';
     chat.input.disabled=true;
   }else{chat.hint.textContent='Enter pošle · Esc zavře';chat.input.disabled=false;setTimeout(()=>chat.input.focus(),0)}
 }
-function chatClose(){chat.el.classList.remove('open');chat.input.blur()}
+function chatClose(){chat.el.classList.remove('open');chat.input.blur();chatRender()}
+chat.log.addEventListener('wheel',e=>{if(chat.el.classList.contains('open'))e.stopPropagation()},{passive:true});
 document.getElementById('chatOpen').onclick=chatOpen;
 document.getElementById('chatClose').onclick=chatClose;
 chat.input.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();chatClose()}e.stopPropagation()});
@@ -3255,6 +4567,21 @@ try{const t=JSON.parse(sessionStorage.getItem('planeta-admin')||'null');if(t&&(t
 const $id=id=>document.getElementById(id);
 function adminShow(){adm.el.hidden=false;const ok=!!adm.token;adm.login.hidden=ok;adm.stats.hidden=!ok;if(ok)adminLoad();else setTimeout(()=>$id('adminEmail').focus(),0)}
 $id('adminKey').onclick=adminShow;
+// ---------- settings (gear next to the key): hide other players' characters / hide player nicks; remembered in this browser ----------
+const setv={players:true,nicks:true,sites:true};
+try{Object.assign(setv,JSON.parse(localStorage.getItem('planeta-set')||'{}'))}catch(_){}
+function setApply(){
+  playerGroup.visible=setv.players;
+  document.body.classList.toggle('hide-players',!setv.players);document.body.classList.toggle('hide-nicks',!setv.nicks);document.body.classList.toggle('hide-sites',!setv.sites);$id('setSites').checked=setv.sites;
+  $id('setPlayers').checked=setv.players;$id('setNicks').checked=setv.nicks;
+  try{localStorage.setItem('planeta-set',JSON.stringify(setv))}catch(_){}
+}
+setApply();
+$id('setPlayers').onchange=e=>{setv.players=e.target.checked;setApply()};
+$id('setNicks').onchange=e=>{setv.nicks=e.target.checked;setApply()};
+$id('setSites').onchange=e=>{setv.sites=e.target.checked;setApply()};
+$id('setBtn').onclick=()=>{const p=$id('setPanel'),open=p.hidden;p.hidden=!open;$id('setBtn').setAttribute('aria-expanded',String(open))};
+addEventListener('pointerdown',e=>{const p=$id('setPanel');if(!p.hidden&&!p.contains(e.target)&&!$id('setBtn').contains(e.target)){p.hidden=true;$id('setBtn').setAttribute('aria-expanded','false')}},true);
 $id('adminClose').onclick=()=>{adm.el.hidden=true};
 adm.el.addEventListener('click',e=>{if(e.target===adm.el)adm.el.hidden=true});
 adm.el.addEventListener('keydown',e=>{if(e.key==='Escape')adm.el.hidden=true;e.stopPropagation()});
@@ -3273,6 +4600,88 @@ adm.login.addEventListener('submit',async e=>{
 });
 $id('adminOut').onclick=()=>{try{if(window.firebase&&firebase.apps.length)firebase.auth().signOut()}catch(_){}adm.token=null;adm.refresh=null;try{sessionStorage.removeItem('planeta-admin')}catch(_){}adminShow()};
 $id('adminRefresh').onclick=()=>adminLoad();
+// ---------- admin: send diamonds to a player who signed in with Google ----------
+const gift={id:null,key:null,has:0};
+function giftList(){const dl=$id('giftList');if(dl.childElementCount)return;for(const r of residents.filter(x=>!x.left)){const o=document.createElement('option');o.value=r.name;dl.append(o)}}
+$id('giftNick').addEventListener('focus',giftList);
+function giftPortrait(r){
+  try{const cv=document.createElement('canvas');cv.width=240;cv.height=300;const rr=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true,preserveDrawingBuffer:true});
+    const sc=new THREE.Scene();sc.add(new THREE.HemisphereLight('#ffffff','#556',1));const dl=new THREE.DirectionalLight('#fff',.7);dl.position.set(1,2,2);sc.add(dl);
+    const f=makeAvatar(r).fig;sc.add(f);const cam=new THREE.PerspectiveCamera(30,.8,.01,10);cam.position.set(0,.09,.42);cam.lookAt(0,.07,0);rr.render(sc,cam);
+    const url=cv.toDataURL('image/png');rr.dispose();return url}catch(_){return ''}
+}
+let giftT=0;
+$id('giftNick').addEventListener('input',()=>{clearTimeout(giftT);giftT=setTimeout(giftLookup,350)});
+async function giftLookup(){
+  const raw=$id('giftNick').value.trim().replace(/^@+/,''),id=nickId(raw),msg=$id('giftMsg');
+  $id('giftPlayer').hidden=true;$id('giftRows').hidden=true;msg.textContent='';gift.id=null;
+  if(!raw)return;
+  const r=residents.find(x=>x.id===id);
+  if(!r){msg.textContent='Takový obyvatel na planetě není.';return}
+  const tok=await adminToken();if(!tok){msg.textContent='Přihlášení vypršelo, přihlas se znovu.';return}
+  const key=liveKey(id);
+  try{
+    const [uid,d,mo,xb,xe]=await Promise.all([fetch(LIVE_DB+'/nicks/'+key+'.json?auth='+encodeURIComponent(tok)).then(x=>x.json()),...['diamonds','money','xpbonus','xp'].map(k=>fetch(LIVE_DB+'/'+k+'/'+key+'.json').then(x=>x.json()).catch(()=>null))]);
+    inv.money[key]=+mo||0;if(xb!=null)xp.bonus[key]=+xb||0;else delete xp.bonus[key];if(xe)xp.earned[key]=xe;
+    $id('giftName').textContent=r.name;$id('giftImg').src=giftPortrait(r);$id('giftImg').alt='Postava '+r.name;
+    gift.has=Math.max(0,Math.floor(+d||0));giftShow();
+    const st=$id('giftState');$id('giftPlayer').hidden=false;
+    if(uid){st.className='gift-ok';st.textContent='✓ Přihlášený přes Google';gift.id=id;gift.key=key;$id('giftRows').hidden=false;giftShow()}
+    else{st.className='gift-no';st.textContent='Zatím se nepřihlásil přes Google';msg.textContent='Upravovat jde jen hráče, kteří se přihlásili.'}
+  }catch(_){msg.textContent='Nepodařilo se načíst hráče.'}
+}
+function giftShow(){
+  if(!gift.key)return;const id=gift.id||gift.key,w=wallet(id),x=xpOf(id),L=lvlOfXp(x);
+  $id('giftHas').textContent='💎 '+gift.has+' diamantů';
+  $id('giftCoins').textContent=`🪙 ${w.gold} zlatých · ${w.silver} stříbrných`;
+  $id('giftLvl').textContent=`⭐ Level ${L} · ${x.toLocaleString('cs-CZ')} XP`;
+}
+async function giftPut(path,val){
+  const tok=await adminToken();if(!tok){$id('giftMsg').textContent='Přihlášení vypršelo, přihlas se znovu.';return false}
+  try{const r=await fetch(LIVE_DB+'/'+path+'/'+gift.key+'.json?auth='+encodeURIComponent(tok),{method:'PUT',body:JSON.stringify(val)});
+    if(!r.ok){$id('giftMsg').textContent='Nepovedlo se. Zkontroluj pravidla ve Firebase.';return false}return true}
+  catch(_){$id('giftMsg').textContent='Nepodařilo se spojit se serverem.';return false}
+}
+const freshNum=async path=>{try{return +(await fetch(LIVE_DB+'/'+path+'/'+gift.key+'.json').then(x=>x.json()))||0}catch(_){return 0}};
+$id('giftDia').addEventListener('submit',async e=>{
+  e.preventDefault();const msg=$id('giftMsg'),n=Math.floor(+$id('giftAmount').value||0),sub=e.submitter&&e.submitter.value==='sub';
+  if(!gift.id||n<1){msg.textContent='Zadej počet diamantů.';return}
+  const cur=Math.max(0,Math.floor(await freshNum('diamonds')));
+  if(sub&&cur===0){msg.textContent=`@${gift.id} nemá žádné diamanty, není co odebrat.`;return}
+  const next=sub?Math.max(0,cur-n):cur+n,diff=Math.abs(next-cur);
+  if(!await giftPut('diamonds',next))return;
+  gift.has=next;inv.dia=inv.dia||{};inv.dia[gift.key]=next;giftShow();$id('giftAmount').value='';
+  msg.textContent=sub?`Odebráno −${diff} 💎 hráči @${gift.id}`+(diff<n?' (víc neměl).':'.'):`Přidáno +${n} 💎 hráči @${gift.id}.`;
+});
+$id('giftMoney').addEventListener('submit',async e=>{
+  e.preventDefault();const msg=$id('giftMsg'),sub=e.submitter&&e.submitter.value==='sub';
+  const n=Math.floor(+$id('giftGold').value||0)*100+Math.floor(+$id('giftSilver').value||0);
+  if(!gift.id||n<1){msg.textContent='Zadej počet zlatých nebo stříbrných.';return}
+  const cur=Math.max(0,Math.floor(await freshNum('money')));
+  if(sub&&cur===0){msg.textContent=`@${gift.id} nemá žádné peníze, není co odebrat.`;return}
+  const next=sub?Math.max(0,cur-n):cur+n,diff=Math.abs(next-cur),f=v=>`${Math.floor(v/100)} zl. ${v%100} st.`;
+  if(!await giftPut('money',next))return;
+  inv.money[gift.key]=next;giftShow();$id('giftGold').value='';$id('giftSilver').value='';
+  msg.textContent=(sub?`Odebráno ${f(diff)}`+(diff<n?' (víc neměl)':''):`Přidáno ${f(n)}`)+` hráči @${gift.id}.`;
+});
+$id('giftXp').addEventListener('submit',async e=>{
+  e.preventDefault();const msg=$id('giftMsg'),n=Math.floor(+$id('giftXpN').value||0),kind=$id('giftXpKind').value;
+  if(!gift.id||n<1){msg.textContent='Zadej počet.';return}
+  const b0=await freshNum('xpbonus');xp.bonus[gift.key]=b0;
+  const x=xpOf(gift.id),L=lvlOfXp(x);let add=n;
+  if(kind==='lvl'){const L2=Math.min(LVL_MAX,L+n);add=lvlNeed(L2)+(x-lvlNeed(L))-x;if(L2>=LVL_MAX)add=lvlNeed(LVL_MAX)-x;if(add<=0){msg.textContent=`@${gift.id} už má maximální level.`;return}}
+  if(!await giftPut('xpbonus',b0+add))return;
+  xp.bonus[gift.key]=b0+add;giftShow();$id('giftXpN').value='';
+  msg.textContent=`Přidáno +${add.toLocaleString('cs-CZ')} XP hráči @${gift.id} · teď level ${lvlOf(gift.id)}.`;
+});
+$id('giftReset').onclick=async()=>{
+  const b=$id('giftReset'),msg=$id('giftMsg');if(!gift.id)return;
+  if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Opravdu resetovat?';setTimeout(()=>{b.classList.remove('armed');b.textContent='Reset na L1'},4000);return}
+  b.classList.remove('armed');b.textContent='Reset na L1';
+  const b0=await freshNum('xpbonus');xp.bonus[gift.key]=b0;const x=xpOf(gift.id);
+  if(!await giftPut('xpbonus',b0-x))return;
+  xp.bonus[gift.key]=b0-x;giftShow();msg.textContent=`@${gift.id} je zpátky na levelu 1 (0 XP). Další XP sbírá od teď.`;
+};
 // Google login uses the official Firebase Auth library, loaded only when needed
 const FB_SDK='https://www.gstatic.com/firebasejs/10.12.2/';
 let fbReady=null;
@@ -3394,6 +4803,7 @@ function updatePlayerLabels(camDir,dist){
     if(n.dot(camDir)<.3||dist>R+16){el.hidden=true;continue}
     const p=n.clone().multiplyScalar(R+terrain(n)+.28).project(camera);
     el.hidden=false;el.style.left=((p.x+1)/2*innerWidth)+'px';el.style.top=((1-p.y)/2*innerHeight)+'px';el.style.zIndex=String(500+Math.round(n.dot(camDir)*100));
+    const L=lvlOf(id),txt=(L>=3?'L'+L+' ':'')+a.name;if(el.textContent!==txt){el.textContent=txt;el.classList.toggle('lv5',L>=5&&L<20);el.classList.toggle('lv20',L>=20)}
   }
   for(const [id,el] of live.labels)if(!live.avatars.has(id)){el.remove();live.labels.delete(id)}
 }
