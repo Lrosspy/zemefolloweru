@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="cs">
 <head>
+<meta name="robots" content="noindex,nofollow">
 <meta charset="utf-8">
-<meta name="robots" content="noindex,nofollow"><!-- zkušební verze středečního updatu -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Každý follower @planetafolloweru dostane na planetě svůj dům. Najdi svoji postavu.">
 <meta property="og:title" content="Planeta followerů">
@@ -210,6 +210,7 @@ body.playing .admin-key{display:none}
 .shop-btn{background:#c98f45}
 .lab-btn{background:#2a9a6a}
 .revive-btn{background:#7a5ad1}
+.farm-btn{background:#b9861c}
 .lab-recipe{display:flex;align-items:center;justify-content:center;gap:16px;margin:10px 0;padding:14px;border-radius:14px;background:rgba(47,179,106,.12);border:1px solid rgba(47,179,106,.4)}
 .lab-recipe span{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:30px}
 .lab-recipe small{font-size:12px;color:var(--ink-dim);font-weight:800}
@@ -414,6 +415,14 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     <p class="inv-who" id="questNote">Dokud plníš úkol, jsi zahradník. Když hru zavřeš nebo se odhlásíš, úkol i postup propadnou.</p>
   </div>
 </section>
+<section class="inv" id="farmBox" hidden aria-labelledby="farmTitle">
+  <div class="inv-card">
+    <header><h2 id="farmTitle">🌾 Farmář</h2><button type="button" id="farmClose">Zavřít</button></header>
+    <p class="quest-say" id="farmSay"></p>
+    <div class="quest-actions" id="farmActions"></div>
+    <p class="inv-who" id="farmNote"></p>
+  </div>
+</section>
 <section class="inv" id="lvlBox" hidden aria-labelledby="lvlTitle">
   <div class="inv-card">
     <header><h2 id="lvlTitle">⭐ Level a žebříček</h2><button type="button" id="lvlClose">Zavřít</button></header>
@@ -555,6 +564,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <button class="water-btn shop-btn" id="shopBtn" type="button" hidden>🛒 Otevřít obchod</button>
   <button class="water-btn lab-btn" id="labBtn" type="button" hidden>⚗️ Lékárnický stůl</button>
   <button class="water-btn revive-btn" id="reviveBtn" type="button" hidden>✨ Oživit</button>
+  <button class="water-btn farm-btn" id="farmBtn" type="button" hidden>🌾 Pole</button>
 </div>
 
 <div class="chat" id="chat" aria-label="Chat planety">
@@ -1547,6 +1557,7 @@ function buildFarm(owner){
     const sh=new THREE.Mesh(new THREE.SphereGeometry(.02,6,4),mat('#e8c35a'));sh.position.y=.17;sc.add(sh);
     sc.position.set(.65,0,.05);g.add(sc);
   }
+  farmFields(g);
   g.userData.height=.55;return g;
 }
 
@@ -2853,7 +2864,7 @@ function loop(now){
   }
   animateFountain(now);
   updateWalker(now);
-  updatePlay(now);updateWater(now);updateQuest();updateShop();updateLab();updateGrave();
+  updatePlay(now);updateWater(now);updateQuest();updateShop();updateLab();updateGrave();updateFarm(now);
   updateRemotes(now);
   updateWanderers(now);
   updateFox(now);
@@ -3569,6 +3580,266 @@ document.getElementById('labBrew').onclick=labStart;
 document.getElementById('labClose').onclick=()=>{document.getElementById('labBox').hidden=true};
 document.getElementById('labBox').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('labBox').hidden=true;e.stopPropagation()});
 document.getElementById('labBox').addEventListener('click',e=>{if(e.target.id==='labBox')e.target.hidden=true});
+// ---------- farm work: two wheat fields behind the farm (sow → water every 30 min → ripe after 1 h of watered growth → cut 3 rows) ----------
+const FARM_ACT=60000,FIELD_HALF=30*60000,FIELD_GROW=60*60000,GRAIN_PER_BREAD=3,BREAD_PRICE=5,BREAD_HP=20;
+var FIELD_SPOTS=[[-.2,-.78],[.55,-.78]]; // local x,z inside the farm group
+const farm={st:{},job:false,act:null,near:null,npc:null,tagTxt:['',''],loaded:false};
+const grainCount=id=>+((inv.grain||{})[liveKey(id||'')]||{}).c||0;
+const breadCount=id=>+((inv.bread||{})[liveKey(id||'')]||{}).c||0;
+var fieldMats={};
+function fieldMat(k,c){return fieldMats[k]||(fieldMats[k]=mat(c))}
+function farmFields(g){ // called from buildFarm: two plowed fields with 3 rows each, plus the farmhand and the baker
+  const wood=fieldMat('wood','#a8693a');
+  const seedG=new THREE.SphereGeometry(.007,5,3),sproutG=new THREE.ConeGeometry(.02,.1,5),stalkG=new THREE.CylinderGeometry(.005,.006,.11,4),earG=new THREE.SphereGeometry(.013,6,4),stubG=new THREE.CylinderGeometry(.004,.004,.018,4);
+  const fields=[];
+  FIELD_SPOTS.forEach(([fx,fz],i)=>{
+    const f=new THREE.Group();f.position.set(fx,0,fz);f.name='field'+(i+1);
+    const soil=new THREE.Mesh(new THREE.BoxGeometry(.58,.024,.42),new THREE.MeshLambertMaterial({color:'#6b4a2b',flatShading:true}));soil.position.y=.012;f.add(soil);
+    const rows=[];
+    for(let r=0;r<3;r++){
+      const z=-.13+r*.13,row={seeds:new THREE.Group(),sprouts:new THREE.Group(),wheat:new THREE.Group(),stub:new THREE.Group(),n:8};
+      const ridge=new THREE.Mesh(new THREE.BoxGeometry(.54,.016,.05),fieldMat('ridge','#5a3c22'));ridge.position.set(0,.028,z);f.add(ridge);
+      for(let c=0;c<8;c++){
+        const x=-.24+c*.068;
+        const s=new THREE.Mesh(seedG,fieldMat('seed','#f1dca0'));s.position.set(x,.038,z+(c%2?.01:-.01));row.seeds.add(s);
+        const sp=new THREE.Mesh(sproutG,fieldMat('sprout','#6fbf45'));sp.position.set(x,.036,z);row.sprouts.add(sp);
+        const st=new THREE.Group();st.position.set(x,.036,z);
+        for(const dx of [-.016,0,.016]){const a=new THREE.Mesh(stalkG,fieldMat('stalk','#d9b44a'));a.position.set(dx,.05,0);st.add(a);const e=new THREE.Mesh(earG,fieldMat('ear','#f2cf5b'));e.scale.set(.7,1.8,.7);e.position.set(dx,.115,0);st.add(e)}
+        row.wheat.add(st);
+        const sb=new THREE.Mesh(stubG,fieldMat('stub','#c9a948'));sb.position.set(x,.045,z);row.stub.add(sb);
+      }
+      for(const k of ['seeds','sprouts','wheat','stub']){row[k].visible=false;f.add(row[k])}
+      rows.push(row);
+    }
+    // low fence on the two long sides
+    for(let p=0;p<=10;p++)for(const side of [-1,1]){const a=new THREE.Mesh(new THREE.BoxGeometry(.012,.05,.012),wood);a.position.set(-.3+p*.06,.025,side*.225);f.add(a)}
+    for(const side of [-1,1]){const rail=new THREE.Mesh(new THREE.BoxGeometry(.61,.008,.008),wood);rail.position.set(0,.04,side*.225);f.add(rail)}
+    // water drops shown while somebody waters
+    const drops=new THREE.Group();drops.visible=false;const dm=new THREE.MeshBasicMaterial({color:'#7cc8ff'});
+    for(let d=0;d<26;d++){const m=new THREE.Mesh(new THREE.SphereGeometry(.006,4,3),dm);m.userData.ph=Math.random();m.userData.x=(Math.random()-.5)*.5;m.userData.z=(Math.random()-.5)*.36;drops.add(m)}
+    f.add(drops);
+    // floating status above the field
+    const c=document.createElement('canvas');c.width=640;c.height=104;
+    const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));tag.scale.set(.42,.068,1);tag.position.y=.24;f.add(tag);
+    g.add(f);fields.push({grp:f,soil,rows,drops,tag,canvas:c,txt:''});
+  });
+  // the farmhand: gives the farm job (and the sickle)
+  const hand=makePerson({id:'npc-farmar'},'#7a4f2a','straw');hand.position.set(.18,0,-.48);hand.scale.setScalar(1.15);hand.name='farmHand';g.add(hand);
+  const mk=document.createElement('canvas');mk.width=mk.height=128;const x=mk.getContext('2d');
+  x.fillStyle='#ffc300';x.beginPath();x.arc(64,64,54,0,7);x.fill();x.lineWidth=8;x.strokeStyle='#2b1d0e';x.stroke();x.font='64px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('🌾',64,70);
+  const m1=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(mk),depthTest:false}));m1.scale.setScalar(.06);m1.position.y=.2;hand.add(m1);
+  // the baker at a little bread stall by the farmhouse
+  const baker=makePerson({id:'npc-pekarka'},'#f4efe6','chef');baker.position.set(-.62,0,.22);baker.scale.setScalar(1.15);baker.name='farmBaker';g.add(baker);
+  const stall=new THREE.Group();stall.position.set(-.62,0,.3);
+  const tbl=new THREE.Mesh(new THREE.BoxGeometry(.14,.05,.06),wood);tbl.position.y=.025;stall.add(tbl);
+  for(let b=0;b<3;b++){const lo=new THREE.Mesh(new THREE.SphereGeometry(.016,8,6),fieldMat('loaf','#c98a3e'));lo.scale.set(1.5,.8,1);lo.position.set(-.04+b*.04,.058,0);stall.add(lo)}
+  const mb=document.createElement('canvas');mb.width=mb.height=128;const y=mb.getContext('2d');
+  y.fillStyle='#fff4e2';y.beginPath();y.arc(64,64,54,0,7);y.fill();y.lineWidth=8;y.strokeStyle='#2b1d0e';y.stroke();y.font='64px system-ui,sans-serif';y.textAlign='center';y.textBaseline='middle';y.fillText('🍞',64,70);
+  const m2=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(mb),depthTest:false}));m2.scale.setScalar(.06);m2.position.y=.2;baker.add(m2);
+  g.add(stall);
+  g.userData.farm={fields,hand,baker};
+}
+function farmGroup(){const g=siteGroup.children.find(c=>c.userData.site==='farmer');return g&&g.userData.farm?g:null}
+function farmWorld(o){const w=new THREE.Vector3();o.getWorldPosition(w);return w.normalize()}
+function fieldEff(s,now){ // what a field looks like right now, from its saved state
+  if(!s||!s.ph)return {ph:0};
+  const w=+s.w||0,g=(+s.g||0)+(w?Math.min(now-w,FIELD_HALF):0);
+  if(g>=FIELD_GROW)return {ph:2,rows:+s.rows||0,g:FIELD_GROW};
+  return {ph:1,g,w,thirsty:!w||now-w>=FIELD_HALF,left:w?FIELD_HALF-(now-w):0};
+}
+async function farmLoad(){try{const r=await fetch(LIVE_DB+'/fields.json');if(r.ok){farm.st=await r.json()||{};farm.loaded=true}}catch(_){}}
+farmLoad();setInterval(farmLoad,15000);
+function sickleMesh(){
+  const g=new THREE.Group();g.name='farmSickle';
+  const h=new THREE.Mesh(new THREE.CylinderGeometry(.0035,.0035,.04,5),mat('#7a4a22'));g.add(h);
+  const b=new THREE.Mesh(new THREE.TorusGeometry(.024,.0028,4,14,Math.PI*1.15),new THREE.MeshLambertMaterial({color:'#d8dde6',emissive:'#30343c',flatShading:true}));
+  b.position.set(.022,.02,0);b.rotation.z=Math.PI*.05;g.add(b);
+  g.position.y=.05;g.rotation.x=1.4;return g;
+}
+function canMesh(){
+  const g=new THREE.Group();g.name='farmCan';const m=mat('#3f8fd6');
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.014,.016,.026,8),m);g.add(body);
+  const sp=new THREE.Mesh(new THREE.CylinderGeometry(.003,.004,.03,5),m);sp.position.set(.02,.006,0);sp.rotation.z=-1;g.add(sp);
+  g.position.y=.055;return g;
+}
+function farmTools(){ // sickle in the right hand while you have the farm job, a watering can while you water
+  for(const f of [meFig,play&&play.av&&play.av.fig]){
+    if(!f)continue;const ar=f.getObjectByName('armR');if(!ar)continue;
+    let s=ar.getObjectByName('farmSickle'),c=ar.getObjectByName('farmCan');
+    const can=!!(farm.act&&farm.act.kind==='water');
+    if(farm.job&&!can&&!s)ar.add(s=sickleMesh());else if((!farm.job||can)&&s){ar.remove(s);s=null}
+    if(can&&!c)ar.add(canMesh());else if(!can&&c)ar.remove(c);
+    const sw=ar.getObjectByName('bossSword');if(sw&&farm.job)sw.visible=false;
+  }
+}
+function fieldTag(fd,txt,col){
+  if(fd.txt===txt)return;fd.txt=txt;
+  const c=fd.canvas,x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
+  x.font='900 46px system-ui,sans-serif';const w=Math.min(c.width-8,x.measureText(txt).width+56);
+  x.fillStyle=col||'rgba(20,18,40,.85)';x.beginPath();x.roundRect((c.width-w)/2,6,w,92,46);x.fill();
+  x.fillStyle='#fff';x.textAlign='center';x.textBaseline='middle';x.fillText(txt,c.width/2,54);
+  fd.tag.material.map.needsUpdate=true;
+}
+const fmtMin=ms=>{const m=Math.max(1,Math.ceil(ms/60000));return m+' min'};
+function farmVisual(now,t){
+  const g=farmGroup();if(!g)return;
+  g.userData.farm.fields.forEach((fd,i)=>{
+    const id='f'+(i+1),e=fieldEff(farm.st[id],now),a=farm.act&&farm.act.fid===id?farm.act:null,p=a?Math.min(1,(performance.now()-a.t0)/FARM_ACT):0;
+    const wet=e.ph===1&&!e.thirsty,wetP=a&&a.kind==='water'?p:wet?1:0;
+    fd.soil.material.color.set(wetP>0?'#6b4a2b':'#6b4a2b').lerp(new THREE.Color('#3e2a18'),wetP*.85);
+    fd.drops.visible=!!(a&&a.kind==='water');
+    if(fd.drops.visible)fd.drops.children.forEach(d=>{const k=(d.userData.ph+t*1.6)%1;d.position.set(d.userData.x,.2-k*.18,d.userData.z)});
+    const frac=e.ph===1?e.g/FIELD_GROW:0;
+    fd.rows.forEach((row,r)=>{
+      const cut=e.ph===2&&(e.rows>>r&1);
+      let sown=e.ph>=1;
+      if(a&&a.kind==='sow'){sown=true;const k=Math.floor(p*3*row.n)-r*row.n;row.seeds.children.forEach((s,c)=>s.visible=c<k)}
+      else row.seeds.children.forEach(s=>s.visible=true);
+      row.seeds.visible=!!(sown&&e.ph!==2&&(frac<.12||(a&&a.kind==='sow')));
+      row.sprouts.visible=!!(e.ph===1&&frac>=.02&&!(a&&a.kind==='sow'));
+      if(row.sprouts.visible){const sc=.3+.7*frac;row.sprouts.children.forEach(s=>{s.scale.set(1,sc,1);s.position.y=.036*sc+.006})}
+      const cutting=a&&a.kind==='cut'&&a.row===r;
+      row.wheat.visible=e.ph===2&&!cut;row.stub.visible=!!(e.ph===2&&(cut||cutting));
+      if(row.wheat.visible)row.wheat.children.forEach((s,c)=>{s.visible=!!(!cutting||c>=Math.floor(p*row.n));s.rotation.z=Math.sin(t*1.7+c*.7+r)*.06});
+    });
+    let txt,col;
+    if(a)txt={sow:'🌱 Seje se… ',water:'💧 Zalévá se… ',cut:'🌾 Seče se… '}[a.kind]+Math.round(p*100)+' %',col='rgba(40,90,40,.9)';
+    else if(e.ph===0)txt='🟫 Zorané pole · zasej',col='rgba(90,60,30,.9)';
+    else if(e.ph===2){const left=3-[0,1,2].filter(r=>e.rows>>r&1).length;txt=`🌾 Zralé obilí · ${left}/3 řádky`;col='rgba(150,110,10,.92)'}
+    else if(e.thirsty)txt='💧 Potřebuje zalít!',col='rgba(190,60,40,.92)';
+    else txt=`🌱 ${Math.floor(frac*100)} % · zalít za ${fmtMin(e.left)}`,col='rgba(30,90,150,.9)';
+    fieldTag(fd,txt,col);
+  });
+}
+function farmNear(){ // nearest field / NPC to the walking player
+  const g=farmGroup();if(!g||!play||!acct.user)return null;
+  let best=null,bd=.045;
+  g.userData.farm.fields.forEach((fd,i)=>{const d=farmWorld(fd.grp).distanceTo(play.p);if(d<bd){bd=d;best={kind:'field',fid:'f'+(i+1)}}});
+  for(const [k,o] of [['hand',g.userData.farm.hand],['baker',g.userData.farm.baker]]){const d=farmWorld(o).distanceTo(play.p);if(d<.022&&d<bd+.02){bd=d;best={kind:k}}}
+  return best;
+}
+function farmBtnText(n){
+  if(!n)return '';
+  if(n.kind==='hand')return farm.job?'🌾 Farmář':'🌾 Práce u farmáře';
+  if(n.kind==='baker')return '🍞 Pekařka';
+  const e=fieldEff(farm.st[n.fid],hlNow());
+  if(!farm.job)return '🌾 Pole · nejdřív práce u farmáře';
+  if(e.ph===0)return '🌱 Zasít pole (1 min)';
+  if(e.ph===2)return '🌾 Posekat řádek (1 min)';
+  if(e.thirsty)return '💧 Zalít pole (1 min)';
+  return '🌱 Roste · zalít za '+fmtMin(e.left);
+}
+function farmClick(){
+  const n=farm.near;if(!n||farm.act)return;
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Na farmě můžou pracovat jen přihlášení hráči.');return}
+  if(n.kind==='hand'){farmTalk('hand');return}
+  if(n.kind==='baker'){farmTalk('baker');return}
+  if(!farm.job){waterSay('🌾 Nejdřív si u farmáře vezmi práci. Dá ti srp.');return}
+  if(hp.dead)return;
+  const e=fieldEff(farm.st[n.fid],hlNow());
+  const kind=e.ph===0?'sow':e.ph===2?'cut':e.thirsty?'water':null;
+  if(!kind){waterSay('🌱 Pole je zalité. Znovu zalít půjde za '+fmtMin(e.left)+'.');return}
+  const row=kind==='cut'?[0,1,2].find(r=>!(e.rows>>r&1)):null;
+  farm.act={kind,fid:n.fid,row,t0:performance.now()};farmTools();
+  waterSay({sow:'🌱 Seješ. Zůstaň u pole 1 minutu.',water:'💧 Zaléváš. Zůstaň u pole 1 minutu.',cut:`🌾 Sečeš ${row+1}. řádek. Zůstaň u pole 1 minutu.`}[kind]);
+}
+function farmStop(msg){farm.act=null;farm.btn=undefined;farmTools();if(msg)waterSay(msg)}
+async function farmFinish(a){
+  const tok=await acct.user.getIdToken().catch(()=>null);if(!tok){farmStop('Nepodařilo se uložit. Zkus to znovu.');return}
+  let cur=null;try{const r=await fetch(LIVE_DB+'/fields/'+a.fid+'.json');if(r.ok)cur=await r.json()}catch(_){}
+  const now=hlNow(),e=fieldEff(cur,now),k=liveKey(meId),T={'.sv':'timestamp'};
+  const okNow=a.kind==='sow'?e.ph===0:a.kind==='water'?e.ph===1&&e.thirsty:e.ph===2&&!(e.rows>>a.row&1);
+  if(!okNow){farm.st[a.fid]=cur;farmStop('Někdo tě předběhl, pole už je v jiné fázi.');return}
+  let next,xpN,grain=0;
+  if(a.kind==='sow'){next={ph:1,g:0,w:0,rows:0,n:meId,t:T};xpN=5}
+  else if(a.kind==='water'){next={ph:1,g:Math.min(FIELD_GROW,e.g),w:T,rows:0,n:meId,t:T};xpN=3}
+  else{const rows=e.rows|1<<a.row;next=rows===7?{ph:0,n:meId,t:T}:{ph:1,g:+cur.g||0,w:+cur.w||0,rows,n:meId,t:T};xpN=2;grain=1+Math.floor(Math.random()*3)}
+  const body={};body['fields/'+a.fid]=next;
+  if(grain)body['grain/'+k]={c:grainCount(meId)+grain,t:T};
+  try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});
+    if(r.ok){
+      const loc={...next,t:now};if(next.w===T)loc.w=now;farm.st[a.fid]=loc;
+      if(grain){inv.grain=inv.grain||{};inv.grain[k]={c:grainCount(meId)+grain,t:now}}
+      farmStop();xpGain(xpN,'farma');
+      toast(a.kind==='sow'?'🌱 Zaseto! +5 XP. Teď pole hned zalij.':a.kind==='water'?'💧 Zalito! +3 XP. Za 30 minut bude potřeba zalít znovu.':`🌾 Posekáno! +2 XP a ${grain}× obilí do batohu.`+(next.ph===0?' Pole je zase zorané.':''));
+      if(!document.getElementById('inv').hidden)invRender();return}
+  }catch(_){}
+  farmStop('Nepodařilo se uložit. Zkus to za chvíli znovu.');
+}
+function updateFarm(now,t){
+  farmVisual(hlNow(),t||now/1000);
+  const b=document.getElementById('farmBtn');
+  if(farm.job&&play&&play.av&&play.av.fig&&!play.av.fig.getObjectByName('farmSickle')&&!(farm.act&&farm.act.kind==='water'))farmTools();
+  if(farm.act){
+    const n=farmNear();
+    if(!n||n.fid!==farm.act.fid){farmStop('Odešel jsi od pole, práce se přerušila.');b.hidden=true;return}
+    const el=performance.now()-farm.act.t0,left=Math.max(0,Math.ceil((FARM_ACT-el)/1000));
+    const sk=play&&play.av&&play.av.fig&&play.av.fig.getObjectByName('farmSickle');if(sk&&farm.act.kind==='cut')sk.rotation.z=Math.sin(el/120)*.9;
+    const cn=play&&play.av&&play.av.fig&&play.av.fig.getObjectByName('farmCan');if(cn)cn.rotation.z=-.6+Math.sin(el/400)*.2;
+    b.hidden=false;b.disabled=true;b.textContent={sow:'🌱 Seješ… ',water:'💧 Zaléváš… ',cut:'🌾 Sečeš… '}[farm.act.kind]+left+' s';b.style.setProperty('--p',Math.min(100,el/FARM_ACT*100)+'%');
+    if(el>=FARM_ACT&&!farm.act.saving){farm.act.saving=true;farmFinish(farm.act)}
+    return;
+  }
+  const n=farmNear();farm.near=n;
+  const txt=n?farmBtnText(n)+(touchUI()?'':' (F)'):'';
+  if(txt!==farm.btn){farm.btn=txt;b.hidden=!n;b.disabled=false;b.style.setProperty('--p','0%');b.textContent=txt}
+}
+// ---- the farmhand and the baker ----
+function farmTalk(who){
+  const say=document.getElementById('farmSay'),act=document.getElementById('farmActions'),note=document.getElementById('farmNote');act.replaceChildren();
+  const btn=(t,cls,fn,dis)=>{const b=document.createElement('button');b.type='button';if(cls)b.className=cls;b.textContent=t;b.onclick=fn;b.disabled=!!dis;act.append(b);return b};
+  const B=t=>Object.assign(document.createElement('b'),{textContent:t});
+  if(who==='hand'){
+    document.getElementById('farmTitle').textContent='🌾 Farmář';
+    if(farm.job){say.replaceChildren('Pole čekají! Zasej, hned zalij a každých ',B('30 minut'),' zalévej znovu. Po hodině je obilí zralé a posekáš ho po řádcích.');
+      btn('Jdu na to','primary',farmClose);btn('Skončit s prací','',()=>{farm.job=false;farmTools();farmClose();toast('Srp jsi vrátil. Práci farmáře už nemáš.')})}
+    else{say.replaceChildren('Potřebuju pomocníka na pole. Dám ti ',B('srp'),' a za každou práci dostaneš XP: zasetí ',B('+5'),', zalití ',B('+3'),', posekaný řádek ',B('+2'),' a k tomu ',B('1–3× obilí'),'.');
+      btn('Beru práci 🌾','primary',()=>{farm.job=true;farmTools();farmClose();toast('🌾 Jsi farmář! Srp máš v ruce. Pole jsou za farmou.')});btn('Teď ne','',farmClose)}
+    note.textContent='Srp je jen na práci, do inventáře ho nedostaneš. Když hru zavřeš, práci musíš vzít znovu.';
+  }else{
+    document.getElementById('farmTitle').textContent='🍞 Pekařka';
+    const g=grainCount(meId),b=breadCount(meId);
+    say.replaceChildren('Z ',B(GRAIN_PER_BREAD+'× obilí'),' ti upeču ',B('1 chleba'),'. Chleba vrátí ',B('+'+BREAD_HP+' HP'),', nebo ho u mě prodáš za ',B(BREAD_PRICE+' stříbrných'),'.');
+    btn(`Upéct chleba (${GRAIN_PER_BREAD}× 🌾)`,'primary',breadBake,g<GRAIN_PER_BREAD);
+    btn(`Prodat 1 chleba (+${BREAD_PRICE} 🪙)`,'',breadSell,b<1);
+    note.textContent=`Máš ${g}× 🌾 obilí · ${b}× 🍞 chleba.`;
+  }
+  keys.clear();document.getElementById('farmBox').hidden=false;
+}
+function farmClose(){document.getElementById('farmBox').hidden=true}
+async function farmPatch(body){
+  const tok=await acct.user.getIdToken().catch(()=>null);if(!tok)return false;
+  try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});return r.ok}catch(_){return false}
+}
+let breadBusy=false;
+async function breadBake(){
+  if(breadBusy||!acct.user||!meId)return;const k=liveKey(meId),g=grainCount(meId),b=breadCount(meId);if(g<GRAIN_PER_BREAD)return;
+  breadBusy=true;const T={'.sv':'timestamp'},body={};body['grain/'+k]={c:g-GRAIN_PER_BREAD,t:T};body['bread/'+k]={c:b+1,t:T};
+  if(await farmPatch(body)){inv.grain[k]={c:g-GRAIN_PER_BREAD,t:Date.now()};inv.bread[k]={c:b+1,t:Date.now()};toast('🍞 Upečeno! Chleba máš v inventáři.')}else toast('Pečení se nepovedlo. Zkus to znovu.');
+  breadBusy=false;farmTalk('baker');
+}
+async function breadSell(){
+  if(breadBusy||!acct.user||!meId)return;const k=liveKey(meId),b=breadCount(meId);if(b<1)return;
+  breadBusy=true;let m=+inv.money[k]||0;try{const r=await fetch(LIVE_DB+'/money/'+k+'.json');if(r.ok)m=+(await r.json())||0}catch(_){}
+  const body={};body['bread/'+k]={c:b-1,t:{'.sv':'timestamp'}};body['money/'+k]=m+BREAD_PRICE;
+  if(await farmPatch(body)){inv.bread[k]={c:b-1,t:Date.now()};inv.money[k]=m+BREAD_PRICE;toast(`🪙 Prodáno za ${BREAD_PRICE} stříbrných.`)}else toast('Prodej se nepovedl. Zkus to znovu.');
+  breadBusy=false;farmTalk('baker');
+}
+async function breadEat(){
+  const det=document.getElementById('invDetail');
+  if(hp.dead){det.textContent='🪦 Mrtvý nejí. Počkej na oživení.';return}
+  if(hp.cur>=hp.max){det.textContent='🍞 Chleba ×'+breadCount(meId)+' · máš plné životy, teď ho nepotřebuješ.';return}
+  const k=liveKey(meId),c=breadCount(meId);if(c<1)return;
+  if(await acctPut('/bread/'+k,{c:c-1,t:{'.sv':'timestamp'}})){
+    inv.bread[k]={c:c-1,t:Date.now()};const add=Math.min(BREAD_HP,hp.max-hp.cur);hp.cur+=add;hpUi();hlSave();invRender();
+    det.textContent=`🍞 Mňam! +${add} HP, máš ${hp.cur}/${hp.max}.`+(hp.sick?' Nemoc chleba nevyléčí, na tu jsou antibiotika.':'');
+  }else det.textContent='Nepodařilo se sníst chleba. Zkus to znovu.';
+}
+document.getElementById('farmBtn').onclick=farmClick;
+document.getElementById('farmClose').onclick=farmClose;
+document.getElementById('farmBox').addEventListener('keydown',e=>{if(e.key==='Escape')farmClose();e.stopPropagation()});
+document.getElementById('farmBox').addEventListener('click',e=>{if(e.target.id==='farmBox')farmClose()});
+
 
 // ---------- launch gift: everyone who signs in on 18. 11. 2026 between 18:00 and midnight gets the green Obyčejný meč ----------
 const GIFT_FROM=1795021200000,GIFT_TO=1795042800000;
@@ -3624,6 +3895,8 @@ const ITEMS={
   basic_sword:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'common',dmg:1.2,desc:'Klasický ocelový meč. 1,2× DMG v klikačkách na příšery.'},
   basic_sword_g:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'uncommon',dmg:1.3,desc:'Klasický meč se zeleným kamenem. 1,3× DMG v klikačkách na příšery.'},
   meds:{name:'Antibiotika',slot:'bag',icon:'💊',stack:true,rarity:'uncommon',use:'heal',desc:'Uvařená v lékárně ze 3 léčivých bylin. Vyléčí chybějící životy. Hodnota 1 zlatý.'},
+  grain:{name:'Obilí',slot:'bag',icon:'🌾',stack:true,rarity:'common',desc:'Posekané na farmě. U pekařky z 3 kusů upečeš chleba.'},
+  bread:{name:'Chleba',slot:'bag',icon:'🍞',stack:true,rarity:'common',use:'eat',desc:'Upečený z obilí. Doplní 20 HP. U pekařky na farmě ho prodáš za 5 stříbrných.'},
   herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 15 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
@@ -3632,11 +3905,14 @@ const wallet=id=>{const k=liveKey(id||''),s=Math.max(0,Math.floor(+inv.money[k]|
 const medCount=id=>+((inv.meds||{})[liveKey(id||'')]||{}).c||0;
 const herbCount=id=>+((inv.herbs[liveKey(id)]||{}).c)||0;
 const invKey=id=>liveKey(id);
+const stackN=item=>item==='meds'?medCount(meId):item==='grain'?grainCount(meId):item==='bread'?breadCount(meId):herbCount(meId);
 function invOwned(id){
   const own=Object.keys(inv.items[invKey(id)]||{}).filter(k=>ITEMS[k]);
   if(SWORD_OWNER&&id===SWORD_OWNER&&!own.includes('boss_sword'))own.push('boss_sword');
   if(herbCount(id)>0&&!own.includes('herb'))own.push('herb');
   if(medCount(id)>0&&!own.includes('meds'))own.push('meds');
+  if(grainCount(id)>0&&!own.includes('grain'))own.push('grain');
+  if(breadCount(id)>0&&!own.includes('bread'))own.push('bread');
   if(((inv.gifts||{})[liveKey(id)]||{}).launch&&!own.includes('basic_sword_g'))own.push('basic_sword_g');
   return own;
 }
@@ -3655,8 +3931,8 @@ function invRefreshFigs(id){
 }
 async function invLoad(){
   try{
-    const [it,eq,mo,hb,di,md,gf]=await Promise.all(['items','equip','money','herbs','diamonds','meds','gifts'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
-    inv.items=it||{};inv.equip=eq||{};inv.money=mo||{};inv.herbs=hb||{};inv.dia=di||{};inv.meds=md||{};inv.gifts=gf||{};inv.loaded=true;
+    const [it,eq,mo,hb,di,md,gf,gr,br]=await Promise.all(['items','equip','money','herbs','diamonds','meds','gifts','grain','bread'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
+    inv.items=it||{};inv.equip=eq||{};inv.money=mo||{};inv.herbs=hb||{};inv.dia=di||{};inv.meds=md||{};inv.gifts=gf||{};inv.grain=gr||{};inv.bread=br||{};inv.loaded=true;
     if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);
   }catch(_){}
 }
@@ -3667,7 +3943,7 @@ function invCell(key,label,icon,item,cls){
   if(it){b.classList.add('full');const ry=RARITY[it.rarity||'common'];b.style.borderColor=ry.color;b.style.boxShadow=`0 0 14px ${ry.color}55 inset`;b.setAttribute('aria-label',label+': '+it.name+', '+ry.name)}
   else b.setAttribute('aria-label',label+': prázdné');
   const ic=document.createElement('span');ic.className='ic';ic.textContent=it?it.icon:icon;ic.setAttribute('aria-hidden','true');
-  const lb=document.createElement('span');lb.className='lb';lb.textContent=it?(it.stack?it.name.split(' ').pop()+' ×'+(item==='meds'?medCount(meId):herbCount(meId)):it.name.split(' ')[0]):label;
+  const lb=document.createElement('span');lb.className='lb';lb.textContent=it?(it.stack?it.name.split(' ').pop()+' ×'+stackN(item):it.name.split(' ')[0]):label;
   b.append(ic,lb);if(inv.sel===key)b.classList.add('sel');
   b.onclick=()=>invClick(key);return b;
 }
@@ -3700,7 +3976,7 @@ async function invClick(key){
   const st=invState(meId),item=st[key],det=document.getElementById('invDetail');
   if(!item){const lbl=(INV_SLOTS.find(x=>x[0]===key)||[0,'Slot v batohu'])[1];det.textContent=INV_BAG.includes(key)?'Volný slot v batohu.':`${lbl}: prázdné. Věc sem dáš klepnutím na ni v batohu.`;return}
   const it=ITEMS[item],next={...st};
-  if(it.slot==='bag'){if(it.use==='heal'){medUse();return}det.replaceChildren();const bb=document.createElement('b');bb.textContent=it.name+(it.stack?' ×'+herbCount(meId):'');det.append(bb,' · '+it.desc);return}
+  if(it.slot==='bag'){if(it.use==='heal'){medUse();return}if(it.use==='eat'){breadEat();return}det.replaceChildren();const bb=document.createElement('b');bb.textContent=it.name+(it.stack?' ×'+stackN(item):'');det.append(bb,' · '+it.desc);return}
   if(INV_BAG.includes(key)){const was=next[it.slot];next[it.slot]=item;if(was)next[key]=was;else delete next[key]}
   else{const free=INV_BAG.slice(0,invBagN(meId)).find(b=>!next[b]);if(!free){det.textContent='Batoh je plný.';return}next[free]=item;delete next[key]}
   const saved=inv.equip[invKey(meId)];inv.equip[invKey(meId)]=next;invRender();invRefreshFigs(meId);
@@ -3962,6 +4238,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyF'&&!e.repeat&&deadNear.id){graveRevive(deadNear.id);return}
   if(e.code==='KeyF'&&!e.repeat&&shop.near){shopOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&lab.near&&!lab.job){labOpen();return}
+  if(e.code==='KeyF'&&!e.repeat&&farm.near&&!farm.act){farmClick();return}
   keys.add(e.code);
   if(move||e.code==='Space')e.preventDefault();
 });
