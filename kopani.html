@@ -196,8 +196,8 @@ async function flush(){
   st.sending=true;const n=Math.min(SEND_MAX,st.pending),k=liveKey(st.nick);
   try{const tok=await st.user.getIdToken();
     const r=await fetch(`${LIVE_DB}/dig/${k}.json?auth=${encodeURIComponent(tok)}`,{method:'PUT',body:JSON.stringify({c:st.base+n,n:st.nick,t:{'.sv':'timestamp'}})});
-    if(r.ok){st.base+=n;st.pending-=n;st.all[k]={c:st.base,n:st.nick};lastSend=Date.now();boardRender()}
-    else{const cur=await fetch(`${LIVE_DB}/dig/${k}.json`).then(x=>x.json()).catch(()=>null);if(cur&&+cur.c>st.base)st.base=+cur.c;lastSend=Date.now()}
+    if(r.ok){st.base+=n;st.pending-=n;if(st.fails){st.fails=0;$('note').textContent='Hraješ jako @'+st.nick+' · postup se ukládá sám'}st.all[k]={c:st.base,n:st.nick};lastSend=Date.now();boardRender()}
+    else{const cur=await fetch(`${LIVE_DB}/dig/${k}.json`).then(x=>x.json()).catch(()=>null);if(cur&&+cur.c>st.base)st.base=+cur.c;lastSend=Date.now();st.fails=(st.fails||0)+1;if(st.fails>=3)$('note').textContent='⚠️ Nedaří se uložit postup. Obnov stránku nebo se přihlas znovu na planetě.'}
   }catch(_){lastSend=Date.now()}
   st.sending=false;if(st.pending)save();
 }
@@ -217,14 +217,19 @@ setInterval(boardLoad,10000);
 
 // ---------- who is playing: same Google login as the planet ----------
 const load=src=>new Promise((ok,bad)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.append(s)});
-function guest(msg){ // no login, no digging
+function guest(msg,expired){ // no login, no digging; a returning player still sees how deep they are
   st.user=null;st.nick=null;st.ready=false;boardLoad();
+  let last='';try{last=localStorage.getItem('planeta-dig-nick')||''}catch(_){}
+  if(expired&&!msg)msg='Přihlášení po hodině vypršelo. Přihlas se znovu na planetě a kopej dál.';
   if(msg)$('gateP').textContent=msg;$('gate').hidden=false;$('note').textContent='Kopat můžou jen přihlášení hráči.';$('title').style.opacity=0;
+  if(last)fetch(`${LIVE_DB}/dig/${liveKey(last)}.json`).then(r=>r.ok?r.json():null).then(d=>{const c=+(d&&d.c)||0;if(!c)return;
+    st.clicks=c;st.shown=c*STEP;$('gateT').textContent='Tvůj postup je uložený';
+    $('gateP').textContent=`@${last}: ${fmtM(c)} pod povrchem. `+(msg||'Přihlas se znovu na planetě a kopej dál.')}).catch(()=>{});
 }
 async function start(){
   try{
     let at=0;try{at=+localStorage.getItem(LOGIN_AT)||0}catch(_){}
-    if(!at||Date.now()-at>SESSION_MS){guest();return}
+    if(!at||Date.now()-at>SESSION_MS){guest('',!!at);return}
     const B='https://www.gstatic.com/firebasejs/10.12.2/';
     await load(B+'firebase-app-compat.js');await load(B+'firebase-auth-compat.js');
     if(!firebase.apps.length)firebase.initializeApp({apiKey:FB_API_KEY,authDomain:'planetafolloweru.firebaseapp.com',databaseURL:LIVE_DB,projectId:'planetafolloweru'});
@@ -232,7 +237,7 @@ async function start(){
     if(!u){guest();return}
     const tok=await u.getIdToken(),a=await fetch(`${LIVE_DB}/accounts/${u.uid}.json?auth=${encodeURIComponent(tok)}`).then(r=>r.ok?r.json():null);
     if(!a||!a.nick){guest('Na planetě si ještě vyber svou postavu (nick). Pak můžeš kopat.');return}
-    st.user=u;st.nick=a.nick;
+    st.user=u;st.nick=a.nick;try{localStorage.setItem('planeta-dig-nick',a.nick)}catch(_){}
     const cur=await fetch(`${LIVE_DB}/dig/${liveKey(a.nick)}.json`).then(r=>r.ok?r.json():null).catch(()=>null);
     st.base=+(cur&&cur.c)||0;st.clicks=st.base;st.shown=st.clicks*STEP;st.ready=true;spawn();boardLoad();if(st.base)$('title').style.opacity=0;
     $('note').textContent='Hraješ jako @'+a.nick+' · postup se ukládá sám';
