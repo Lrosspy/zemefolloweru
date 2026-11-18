@@ -3560,12 +3560,21 @@ function labStart(){
   toast('⚗️ Vaříš antibiotika. Zůstaň u stolu 1 minutu.');
 }
 function labStop(msg){lab.job=null;const g=labGroup();if(g)g.userData.lab.bubbles.visible=false;lab.near=undefined;if(msg)waterSay(msg)}
+const freshC=async path=>{try{const r=await fetch(LIVE_DB+'/'+path+'.json?t='+Date.now(),{cache:'no-store'});if(r.ok){const d=await r.json();return +(d&&d.c)||0}}catch(_){}return null};
 async function labFinish(){
-  const k=liveKey(meId),h=herbCount(meId),m=medCount(meId);
-  const tok=await acct.user.getIdToken();
+  const k=liveKey(meId);
+  const tok=acct.user?await acct.user.getIdToken().catch(()=>null):null;
+  if(!tok){labStop('Přihlášení vypršelo, přihlas se znovu. Byliny ti zůstaly.');return}
+  // counts straight from the server, so an old number in this tab can't make the save fail
+  const [hs,ms]=await Promise.all([freshC('herbs/'+k),freshC('meds/'+k)]);
+  const h=hs??herbCount(meId),m=ms??medCount(meId);
+  if(h<MED_HERBS){inv.herbs[k]={c:h,t:Date.now()};labStop('Nemáš dost bylin (máš '+h+'×, potřebuješ '+MED_HERBS+'×).');return}
   const body={};body['herbs/'+k]={c:h-MED_HERBS,t:{'.sv':'timestamp'}};body['meds/'+k]={c:m+1,t:{'.sv':'timestamp'}};
   try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});
-    if(r.ok){inv.herbs[k]={c:h-MED_HERBS,t:Date.now()};inv.meds[k]={c:m+1,t:Date.now()};labStop();toast('💊 Antibiotika jsou hotová! Najdeš je v inventáři.');return}}catch(_){}
+    if(r.ok){inv.herbs[k]={c:h-MED_HERBS,t:Date.now()};inv.meds[k]={c:m+1,t:Date.now()};labStop();toast('💊 Antibiotika jsou hotová! Máš jich '+(m+1)+'× v inventáři (Suroviny a jídlo).');if(!document.getElementById('inv').hidden)invRender();return}
+    const why=await r.text().catch(()=>'');console.warn('labFinish',r.status,why);
+    if(r.status===401||/permission/i.test(why)){labStop('Server vaření odmítl (poslední várka byla před méně než minutou, nebo vypršelo přihlášení). Byliny ti zůstaly, zkus to znovu.');return}
+  }catch(_){}
   labStop('Vaření se nepovedlo uložit. Byliny ti zůstaly.');
 }
 function updateLab(){
@@ -3817,14 +3826,16 @@ async function farmPatch(body){
 }
 let breadBusy=false;
 async function breadBake(){
-  if(breadBusy||!acct.user||!meId)return;const k=liveKey(meId),g=grainCount(meId),b=breadCount(meId);if(g<GRAIN_PER_BREAD)return;
+  if(breadBusy||!acct.user||!meId)return;const k=liveKey(meId);
+  const [gs,bs]=await Promise.all([freshC('grain/'+k),freshC('bread/'+k)]);const g=gs??grainCount(meId),b=bs??breadCount(meId);
+  if(g<GRAIN_PER_BREAD){inv.grain[k]={c:g,t:Date.now()};toast('Nemáš dost obilí ('+g+'×).');farmTalk('baker');return}
   breadBusy=true;const T={'.sv':'timestamp'},body={};body['grain/'+k]={c:g-GRAIN_PER_BREAD,t:T};body['bread/'+k]={c:b+1,t:T};
   if(await farmPatch(body)){inv.grain[k]={c:g-GRAIN_PER_BREAD,t:Date.now()};inv.bread[k]={c:b+1,t:Date.now()};toast('🍞 Upečeno! Chleba máš v inventáři.')}else toast('Pečení se nepovedlo. Zkus to znovu.');
   breadBusy=false;farmTalk('baker');
 }
 async function breadSell(){
   if(breadBusy||!acct.user||!meId)return;const k=liveKey(meId),b=breadCount(meId);if(b<1)return;
-  breadBusy=true;let m=+inv.money[k]||0;try{const r=await fetch(LIVE_DB+'/money/'+k+'.json');if(r.ok)m=+(await r.json())||0}catch(_){}
+  breadBusy=true;let m=+inv.money[k]||0;const bf=await freshC('bread/'+k);if(bf!=null&&bf!==b){inv.bread[k]={c:bf,t:Date.now()};breadBusy=false;farmTalk('baker');if(bf<1)return;return breadSell()}try{const r=await fetch(LIVE_DB+'/money/'+k+'.json');if(r.ok)m=+(await r.json())||0}catch(_){}
   const body={};body['bread/'+k]={c:b-1,t:{'.sv':'timestamp'}};body['money/'+k]=m+BREAD_PRICE;
   if(await farmPatch(body)){inv.bread[k]={c:b-1,t:Date.now()};inv.money[k]=m+BREAD_PRICE;toast(`🍞 Prodáno za ${BREAD_PRICE} stříbrných.`)}else toast('Prodej se nepovedl. Zkus to znovu.');
   breadBusy=false;farmTalk('baker');
