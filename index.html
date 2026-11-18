@@ -210,6 +210,7 @@ body.playing .admin-key{display:none}
 .lab-btn{background:#2a9a6a}
 .revive-btn{background:#7a5ad1}
 .farm-btn{background:#b9861c}
+.dig-btn{background:#8a5a3b}
 .lab-recipe{display:flex;align-items:center;justify-content:center;gap:16px;margin:10px 0;padding:14px;border-radius:14px;background:rgba(47,179,106,.12);border:1px solid rgba(47,179,106,.4)}
 .lab-recipe span{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:30px}
 .lab-recipe small{font-size:12px;color:var(--ink-dim);font-weight:800}
@@ -564,6 +565,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <button class="water-btn lab-btn" id="labBtn" type="button" hidden>⚗️ Lékárnický stůl</button>
   <button class="water-btn revive-btn" id="reviveBtn" type="button" hidden>✨ Oživit</button>
   <button class="water-btn farm-btn" id="farmBtn" type="button" hidden>🌾 Pole</button>
+  <button class="water-btn dig-btn" id="digBtn" type="button" hidden>⛏️ Cesta do středu země</button>
 </div>
 
 <div class="chat" id="chat" aria-label="Chat planety">
@@ -1263,6 +1265,12 @@ const boss=new THREE.Group();scene.add(boss);
   const cv=document.createElement('canvas');cv.width=640;cv.height=210;const tex=new THREE.CanvasTexture(cv);
   const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));tag.scale.set(.96,.315,1);tag.position.y=2.35;tag.renderOrder=5;boss.add(tag);
   boss.userData={body,head,lower,eyes,glow,wisps,seed,pos,fall:0,tag,cv,tex,tagKey:'',tagAt:0};
+  // the boss is gone: only the black hole stays, now the way down to "Cesta do středu země"
+  body.visible=glow.visible=wisps.visible=tag.visible=false;
+  {const dc=document.createElement('canvas');dc.width=760;dc.height=150;const x=dc.getContext('2d');
+    x.fillStyle='rgba(20,14,10,.88)';x.beginPath();x.roundRect(6,6,748,138,69);x.fill();x.lineWidth=6;x.strokeStyle='#ffc300';x.stroke();
+    x.fillStyle='#fff4e2';x.font='900 58px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('⛏️ Cesta do středu země',380,78);
+    const dt=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(dc),transparent:true,depthWrite:false}));dt.scale.set(.95,.19,1);dt.position.y=.42;dt.renderOrder=5;boss.add(dt)}
   placeOn(boss,BASE.dir,0,0);faceToward(boss,BASE.dir,tangentOf(BASE.dir));boss.scale.setScalar(BASE.scale);
 })();
 function drawBossTag(u,dead,hp){
@@ -2750,7 +2758,7 @@ canvas.addEventListener('pointerup',e=>{
   mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
   ray.setFromCamera(mouse,camera);
   const hit=ray.intersectObjects([planet,townGroup],true)[0];
-  const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){openBoss();return}
+  const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){digOpen();return}
   const qh=questNpc&&ray.intersectObject(questNpc,true)[0];if(qh&&(!hit||qh.distance<hit.distance+.01)){questOpen();return}
   {const sg=siteGroup.children.find(c=>c.userData.site==='shop'),sh=sg&&ray.intersectObject(sg,true)[0];if(sh&&(!hit||sh.distance<hit.distance+.01)){if(play&&shop.near)shopOpen();else toast('🛒 Obchod planety: dojdi ke dveřím za svou postavou a otevři nabídku.');return}}
   {const gh=ray.intersectObject(deadGroup,true)[0];if(gh&&(!hit||gh.distance<hit.distance+.01)){const id=gh.object.userData.graveOf;toast(id===meId?'🪦 Tohle je tvůj hrobeček. Počkej, až tě někdo oživí.':`🪦 Tady leží @${id}. Dojdi sem za postavou a oživ ho!`);return}}
@@ -2850,7 +2858,7 @@ function loop(now){
   updateWanderers(now);
   updateFox(now);
   updateHidden();
-  if(!reduce){if(!MYSTERY.done)animateMystery(now/1000);animateBoss(now/1000);animateComet(now);animateIce(now)}
+  if(!reduce){if(!MYSTERY.done)animateMystery(now/1000);animateComet(now);animateIce(now)}
   if(meFig&&!reduce)meMarker.position.y=.25+Math.sin(now/300)*.025, meMarker.rotation.y=now/600;
   if(!reduce){ // residents wave: arm raised to the side, swinging back and forth
     const T=now/1000;
@@ -3130,7 +3138,7 @@ setTimeout(()=>{
   acctListen().then(a=>back?a.getRedirectResult():null).then(()=>{if(!acct.user&&welcomeMsg.textContent==='Přihlašuji…')welcomeMsg.textContent=''}).catch(()=>{welcomeMsg.textContent=''});
 },0);
 meBtn.onclick=()=>applyMe(true);
-document.getElementById('games').onclick=()=>openBoss();
+document.getElementById('games').onclick=()=>digOpen();
 
 // ---------- leveling: XP from playing, levels 1–50 ----------
 // XP = earned (/xp/<nick>.x: watering, daily login) + 5 per day of following + boss (badge 100 + 1 per 100 hits, max 600) + admin bonus (/xpbonus/<nick>).
@@ -3817,6 +3825,7 @@ async function breadEat(){
   }else det.textContent='Nepodařilo se sníst chleba. Zkus to znovu.';
 }
 document.getElementById('farmBtn').onclick=farmClick;
+document.getElementById('digBtn').onclick=digOpen;
 document.getElementById('farmClose').onclick=farmClose;
 document.getElementById('farmBox').addEventListener('keydown',e=>{if(e.key==='Escape')farmClose();e.stopPropagation()});
 document.getElementById('farmBox').addEventListener('click',e=>{if(e.target.id==='farmBox')farmClose()});
@@ -4111,8 +4120,23 @@ async function petClaim(){ // 'ok' | 'full' | 'err'
   }catch(_){return 'err'}
 }
 function petsLeft(){return Math.max(0,PET_LIMIT-pets.owners.size)}
-function updateAbduct(P,now,dt){ // the UFO base is gone (aliens can't be won anymore); near the boss just a hint
-  if(!P.bossHint&&P.p.angleTo(BASE.dir)<.4){P.bossHint=true;sayPlay(bossDead()?'💀 Tady leží poražený Boss ze záhrobí.':'💀 Boss ze záhrobí! Klikni na jeho jmenovku nebo na Minihry a bouchni ho mečem.',6000)}
+const dig={near:false};
+function digLook(){ // colours of my character for the 2D game
+  const r=residentById.get(meId);if(!r)return '';
+  let shirt,hat='',skin;const pr=rnd(hash(r.id));
+  if(r.role==='gardener'){shirt='#3f9a6a';hat='straw';skin=SKINS[Math.floor(pr()*4)]}
+  else if(ROLE_LOOK[r.role]){[shirt,hat]=ROLE_LOOK[r.role];hat=hat||'';skin=SKINS[Math.floor(pr()*4)]}
+  else{shirt=ROOFS[Math.floor(pr()*ROOFS.length)];skin=SKINS[Math.floor(pr()*4)]}
+  return '?'+new URLSearchParams({s:shirt,k:skin,h:hat}).toString();
+}
+function digOpen(){
+  if(play&&dig.near){location.href='kopani.html'+digLook();return}
+  toast('⛏️ Cesta do středu země: dojdi svou postavou k černé díře na druhé straně planety (kde býval boss) a kopej co nejhlouběji.');
+}
+function updateAbduct(P,now,dt){ // near the black hole (where the boss used to be): the digging minigame
+  const near=P.p.angleTo(BASE.dir)<.13;
+  if(!P.bossHint&&near){P.bossHint=true;sayPlay('⛏️ Cesta do středu země! Kopej co nejhlouběji.',5000)}
+  if(near!==dig.near){dig.near=near;const b=document.getElementById('digBtn');b.hidden=!near;b.textContent='⛏️ Cesta do středu země'+(touchUI()?'':' (F)')}
   return 0;
 }
 
@@ -4138,6 +4162,7 @@ function startPlay(){
   updateChip();
 }
 function stopPlay(){
+  dig.near=false;document.getElementById("digBtn").hidden=true;
   if(!play)return;
   const p=play.p.clone();
   liveLeave();
@@ -4220,6 +4245,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyF'&&!e.repeat&&shop.near){shopOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&lab.near&&!lab.job){labOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&farm.near&&!farm.act){farmClick();return}
+  if(e.code==='KeyF'&&!e.repeat&&dig.near&&play){digOpen();return}
   keys.add(e.code);
   if(move||e.code==='Space')e.preventDefault();
 });

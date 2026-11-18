@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0a1a">
+<title>Cesta do středu země · Planeta followerů</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%23b87a56'/%3E%3Cpath d='M14 26q18-14 36 0' stroke='%23d8dde6' stroke-width='6' fill='none' stroke-linecap='round'/%3E%3Cpath d='M32 22v28' stroke='%237a4a22' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito+Sans:opsz,wght@6..12,700;6..12,900&display=swap">
+<style>
+:root{--ink:#fff4e2;--dim:#d9cbb4;--sun:#ffc300;--panel:rgba(16,12,10,.78);--line:rgba(255,226,180,.2);
+  --display:"Bungee",ui-rounded,system-ui,sans-serif;--body:"Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark}
+html,body{height:100%;margin:0}
+body{background:#2a1a10;color:var(--ink);font-family:var(--body);overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+.hud{position:fixed;pointer-events:none;z-index:2}
+.depth{top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%);text-align:center}
+.depth b{display:block;font-family:var(--display);font-size:clamp(34px,8vw,56px);line-height:1;letter-spacing:.5px;text-shadow:0 4px 0 rgba(0,0,0,.45)}
+.depth span{font-size:12px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+.board{top:calc(env(safe-area-inset-top,0px) + 12px);left:12px;width:min(210px,38vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:13px;backdrop-filter:blur(6px)}
+.board h2{margin:0 0 6px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--sun)}
+.board ol{margin:0;padding:0;list-style:none;max-height:min(46vh,330px);overflow:hidden}
+.board li{display:flex;gap:6px;align-items:baseline;padding:2px 0;white-space:nowrap}
+.board li i{font-style:normal;color:var(--dim);width:18px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+.board li span{overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.board li b{font-variant-numeric:tabular-nums;flex:none}
+.board li.me{color:var(--sun)}
+.board .sep{color:var(--dim);padding:0;line-height:1}
+.back{position:fixed;z-index:3;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;font:900 14px var(--body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:10px 16px;text-decoration:none}
+.note{bottom:calc(env(safe-area-inset-bottom,0px) + 14px);left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);text-align:center;font-size:13px;font-weight:700;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 14px;color:var(--dim)}
+.note b{color:var(--ink)}
+.title{top:30%;left:50%;transform:translate(-50%,-50%);text-align:center;font-family:var(--display);font-size:clamp(26px,6vw,46px);line-height:1.05;text-shadow:0 5px 0 rgba(0,0,0,.4);transition:opacity .8s}
+.title small{display:block;font:900 15px var(--body);margin-top:10px;color:var(--ink)}
+@media (max-width:520px){.board{font-size:12px;padding:8px 10px}.board ol{max-height:30vh}.depth{top:calc(env(safe-area-inset-top,0px) + 112px)}.title{top:36%}}
+</style>
+</head>
+<body>
+<canvas id="cv" aria-label="Hra: klikej na kolečka s krumpáčem a kopej hlouběji"></canvas>
+<div class="hud depth" aria-live="polite"><b id="meters">0,0 m</b><span>pod povrchem</span></div>
+<div class="hud board"><h2>⛏ Nejhlouběji</h2><ol id="board"><li><span>Načítám…</span></li></ol></div>
+<a class="back" href="./">← Planeta</a>
+<div class="hud title" id="title">Cesta do<br>středu země<small>Klikej na kolečka s krumpáčem</small></div>
+<p class="hud note" id="note">Načítám…</p>
+<script>
+(()=>{
+const LIVE_DB='https://planetafolloweru-default-rtdb.europe-west1.firebasedatabase.app';
+const FB_API_KEY='AIzaSyALYbgJBfpRJSw2UHdCbFxwz5hHkiIiS_E';
+const SESSION_MS=60*60*1000,LOGIN_AT='planeta-login-at',GUEST='planeta-dig-guest';
+const STEP=.5,SEND_MAX=40; // every hit = 50 cm deeper; at most 40 hits per save
+const $=id=>document.getElementById(id);
+const liveKey=id=>id.replace(/\./g,'-');
+const q=new URLSearchParams(location.search);
+const look={shirt:q.get('s')||'#c4523a',skin:q.get('k')||'#f1c9a5',hat:q.get('h')||''};
+const st={clicks:0,shown:0,base:0,pending:0,sending:false,nick:null,user:null,ready:false,all:{}};
+
+// ---------- canvas ----------
+const cv=$('cv'),c=cv.getContext('2d');let W=0,H=0,DPR=1;
+function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;c.setTransform(DPR,0,0,DPR,0,0)}
+addEventListener('resize',resize);resize();
+const PY=()=>H*.55;                 // the player's height on screen
+const PXM=()=>PY()/100;             // pixels per metre: the surface leaves the screen at 100 m
+const PR=()=>Math.max(22,Math.min(34,W*.06)); // player radius
+
+function h32(x,y){let h=(x*374761393+y*668265263)|0;h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967296}
+const mix=(a,b,t)=>a.map((v,i)=>Math.round(v+(b[i]-v)*t));
+const hex=s=>[1,3,5].map(i=>parseInt(s.slice(i,i+2),16));
+const DIRT=[[0,hex('#b87a56')],[150,hex('#9a5f3e')],[400,hex('#6e402a')],[800,hex('#4a2a1c')],[1500,hex('#2e1a12')],[3000,hex('#1a0e0a')],[6000,hex('#0e0806')]];
+function dirtAt(m){if(m<=0)return DIRT[0][1];for(let i=1;i<DIRT.length;i++)if(m<DIRT[i][0]){const [a,ca]=DIRT[i-1],[b,cb]=DIRT[i];return mix(ca,cb,(m-a)/(b-a))}return DIRT[DIRT.length-1][1]}
+const rgb=(a,k=1)=>`rgb(${a.map(v=>Math.max(0,Math.min(255,Math.round(v*k)))).join(',')})`;
+
+function drawWorld(t){
+  const d=st.shown,pxm=PXM(),py=PY(),sy=py-d*pxm; // screen y of the surface
+  // sky
+  if(sy>0){const g=c.createLinearGradient(0,0,0,sy);g.addColorStop(0,'#7cc8ec');g.addColorStop(1,'#a6dcf0');c.fillStyle=g;c.fillRect(0,0,W,sy);
+    c.fillStyle='rgba(255,255,255,.85)';for(let i=0;i<4;i++){const x=((i*W*.31+t*8*(i%2?1:.6))%(W+200))-100,y=sy-60-i*38-(i%2)*20;if(y<-20)continue;c.beginPath();c.ellipse(x,y,46,14,0,0,7);c.ellipse(x+30,y-8,30,12,0,0,7);c.fill()}}
+  // dirt, drawn in bands so it darkens with depth
+  const top=Math.max(0,sy),band=6;
+  for(let y=Math.floor(top);y<H;y+=band){const m=d+(y-py)/pxm;c.fillStyle=rgb(dirtAt(m));c.fillRect(0,y,W,band+1)}
+  // specks and stones, fixed in the ground so they scroll past
+  const cell=26,m0=Math.floor((d-py/pxm)/ (cell/pxm)),m1=Math.ceil((d+(H-py)/pxm)/(cell/pxm));
+  for(let j=m0;j<=m1;j++){const wy=j*cell/pxm,y=py+(wy-d)*pxm;if(y<sy+4)continue;
+    for(let i=0;i<=Math.ceil(W/cell);i++){const r=h32(i,j);if(r>.34)continue;const x=i*cell+h32(i+7,j)*cell,sz=2+r*14,base=dirtAt(wy);
+      c.fillStyle=rgb(base,r<.06?1.45:.72);c.beginPath();if(r<.06)c.ellipse(x,y,sz*.9,sz*.6,r*9,0,7);else c.arc(x,y,1.2+r*3,0,7);c.fill()}}
+  // strata lines + depth marks every 10 m (labels every 50 m)
+  c.font='900 12px "Nunito Sans",system-ui,sans-serif';c.textAlign='right';
+  const step=10,first=Math.ceil((d-py/pxm)/step)*step;
+  for(let m=Math.max(step,first);m<=d+(H-py)/pxm;m+=step){const y=py+(m-d)*pxm;
+    c.strokeStyle='rgba(0,0,0,.12)';c.lineWidth=1;c.beginPath();for(let x=0;x<=W;x+=24){c.lineTo(x,y+Math.sin(x*.03+m)*3)}c.stroke();
+    if(m%50===0){c.fillStyle='rgba(255,240,220,.55)';c.fillText(m+' m',W-12,y-4)}}
+  // the shaft dug so far
+  const r=PR();if(d>0){const g=c.createLinearGradient(0,top,0,py);g.addColorStop(0,'rgba(0,0,0,.35)');g.addColorStop(1,'rgba(0,0,0,.5)');c.fillStyle=g;c.fillRect(W/2-r*1.05,top,r*2.1,py-top)}
+  // grass and the surface line
+  if(sy>-10&&sy<H){c.fillStyle='#5aa83c';c.fillRect(0,sy-5,W/2-r*1.05,7);c.fillRect(W/2+r*1.05,sy-5,W,7);c.strokeStyle='#111';c.lineWidth=3;
+    c.beginPath();c.moveTo(0,sy);c.lineTo(W/2-r*1.05,sy);c.moveTo(W/2+r*1.05,sy);c.lineTo(W,sy);c.stroke()}
+  // lava on the sides from 1000 m down
+  drawLava(t,d,py,pxm);
+}
+function drawLava(t,d,py,pxm){
+  const from=1000,yStart=py+(from-d)*pxm;if(yStart>H)return;
+  for(const side of [-1,1]){
+    c.beginPath();const y0=Math.max(-10,yStart);
+    const wAt=y=>{const m=d+(y-py)/pxm;return Math.min(W*.27,12+(m-from)*.06)+Math.sin(y*.045+t*1.8)*6+Math.sin(y*.013-t)*9};
+    const X=w=>side<0?w:W-w;
+    c.moveTo(X(0),y0);for(let y=y0;y<=H+10;y+=8)c.lineTo(X(Math.max(0,wAt(y))),y);c.lineTo(X(0),H+10);c.closePath();
+    const g=c.createLinearGradient(side<0?0:W,0,side<0?W*.3:W*.7,0);g.addColorStop(0,'#ffde59');g.addColorStop(.35,'#ff8a1f');g.addColorStop(1,'#c2280f');
+    c.fillStyle=g;c.shadowColor='#ff6a00';c.shadowBlur=28;c.fill();c.shadowBlur=0;
+    for(let i=0;i<7;i++){const k=(t*.35+i/7)%1,y=y0+(H-y0)*((i*.37+t*.05)%1);const w=wAt(y);if(w<14)continue;
+      c.fillStyle=`rgba(255,240,150,${.7*(1-k)})`;c.beginPath();c.arc(X(w*(.25+.5*h32(i,3))),y,3+k*6,0,7);c.fill()}
+  }
+}
+function drawPlayer(t){
+  const x=W/2,y=PY(),r=PR(),bob=Math.sin(t*3)*1.5;
+  c.save();c.translate(x,y+bob);
+  c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(0,r*.95,r*.8,r*.18,0,0,7);c.fill();
+  c.beginPath();c.arc(0,0,r,0,7);c.fillStyle='#ffc31f';c.fill();
+  c.save();c.clip();
+  c.fillStyle=look.shirt;c.beginPath();c.ellipse(0,r*.95,r*.82,r*.6,0,0,7);c.fill();             // shoulders
+  c.fillStyle=look.skin;c.beginPath();c.arc(0,-r*.08,r*.46,0,7);c.fill();                        // head
+  c.fillStyle='#2b1d0e';c.beginPath();c.arc(-r*.16,-r*.12,r*.06,0,7);c.arc(r*.16,-r*.12,r*.06,0,7);c.fill();
+  c.strokeStyle='#2b1d0e';c.lineWidth=Math.max(1.5,r*.06);c.beginPath();c.arc(0,r*.02,r*.16,.2,Math.PI-.2);c.stroke();
+  hatDraw(r);
+  c.restore();
+  c.lineWidth=3;c.strokeStyle='#111';c.beginPath();c.arc(0,0,r,0,7);c.stroke();
+  if(st.nick){c.font='900 13px "Nunito Sans",system-ui,sans-serif';c.textAlign='left';c.fillStyle='rgba(0,0,0,.55)';const tx='@'+st.nick,tw=c.measureText(tx).width;
+    c.beginPath();c.roundRect(r+8,-12,tw+14,24,12);c.fill();c.fillStyle='#fff4e2';c.fillText(tx,r+15,5)}
+  c.restore();
+}
+function hatDraw(r){
+  const h=look.hat,col={straw:'#e8c35a',helmet:'#f2c230',fire:'#d6332f',cowboy:'#7a5230',cap:'#2f5d9e',chef:'#ffffff',beret:'#3b2418',crown:'#ffd23a'}[h];
+  if(!col)return;c.fillStyle=col;
+  if(h==='chef'){c.beginPath();c.ellipse(0,-r*.62,r*.36,r*.24,0,0,7);c.fill();c.fillRect(-r*.26,-r*.6,r*.52,r*.16);return}
+  if(h==='crown'){c.beginPath();c.moveTo(-r*.34,-r*.42);for(let i=0;i<=4;i++){c.lineTo(-r*.34+i*r*.17,-r*(i%2?.56:.74))}c.lineTo(r*.34,-r*.42);c.fill();return}
+  c.beginPath();c.ellipse(0,-r*.44,r*.6,r*.1,0,0,7);c.fill();c.beginPath();c.ellipse(0,-r*.52,r*.32,r*.2,0,Math.PI,0);c.fill();
+}
+
+// ---------- click targets ----------
+const tg={x:0,y:0,born:0,last:null,hits:[]};const TR=()=>Math.max(30,Math.min(44,W*.075));
+function spawn(){
+  const r=TR(),pad=r+12;let x,y,tries=0;
+  do{x=W*.2+Math.random()*W*.6;y=Math.max(H*.24,150)+Math.random()*(H*.78-Math.max(H*.24,150));tries++}
+  while(tries<60&&((tg.last&&Math.hypot(x-tg.last[0],y-tg.last[1])<Math.max(140,r*4))||Math.hypot(x-W/2,y-PY())<PR()+r+20||x<pad||x>W-pad));
+  tg.last=[tg.x||x,tg.y||y];tg.x=x;tg.y=y;tg.born=performance.now();
+}
+function drawPick(x,y,s,rot){
+  c.save();c.translate(x,y);c.rotate(rot);
+  c.strokeStyle='#7a4a22';c.lineWidth=s*.16;c.lineCap='round';c.beginPath();c.moveTo(-s*.42,s*.42);c.lineTo(s*.22,-s*.22);c.stroke();
+  c.strokeStyle='#d8dde6';c.lineWidth=s*.17;c.beginPath();c.moveTo(-s*.18,-s*.5);c.quadraticCurveTo(s*.35,-s*.45,s*.52,s*.12);c.stroke();
+  c.strokeStyle='#5d6270';c.lineWidth=2;c.beginPath();c.moveTo(-s*.18,-s*.5);c.quadraticCurveTo(s*.35,-s*.45,s*.52,s*.12);c.stroke();
+  c.restore();
+}
+function drawTarget(t){
+  const r=TR(),age=(performance.now()-tg.born)/1000,pop=Math.min(1,age*6),s=r*(.6+.4*pop)*(1+Math.sin(t*5)*.04);
+  c.save();c.globalAlpha=pop;
+  c.fillStyle='rgba(255,195,0,.22)';c.beginPath();c.arc(tg.x,tg.y,s*1.35,0,7);c.fill();
+  c.fillStyle='#fff4e2';c.beginPath();c.arc(tg.x,tg.y,s,0,7);c.fill();
+  c.lineWidth=5;c.strokeStyle='#ffc300';c.stroke();c.lineWidth=2;c.strokeStyle='#2b1d0e';c.beginPath();c.arc(tg.x,tg.y,s+3,0,7);c.stroke();
+  drawPick(tg.x,tg.y,s*1.15,Math.sin(t*4)*.12);
+  c.restore();
+}
+const parts=[];
+function burst(x,y){const col=rgb(dirtAt(st.clicks*STEP));for(let i=0;i<14;i++){const a=Math.random()*6.28,v=80+Math.random()*220;parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-120,l:1,col:Math.random()<.4?'#ffc300':col})}
+  parts.push({x,y,txt:'+50 cm',l:1,vy:-70,vx:0})}
+function drawParts(dt){for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.l-=dt*1.6;if(p.l<=0){parts.splice(i,1);continue}
+  p.x+=p.vx*dt;p.y+=p.vy*dt;if(!p.txt)p.vy+=600*dt;c.globalAlpha=Math.max(0,p.l);
+  if(p.txt){c.font='900 18px "Nunito Sans",system-ui,sans-serif';c.textAlign='center';c.fillStyle='#fff4e2';c.strokeStyle='rgba(0,0,0,.6)';c.lineWidth=4;c.strokeText(p.txt,p.x,p.y);c.fillText(p.txt,p.x,p.y)}
+  else{c.fillStyle=p.col;c.fillRect(p.x-3,p.y-3,6,6)}c.globalAlpha=1}}
+
+function hit(ev){
+  if(!st.ready)return;
+  const b=cv.getBoundingClientRect(),x=ev.clientX-b.left,y=ev.clientY-b.top;
+  if(Math.hypot(x-tg.x,y-tg.y)>TR()*1.15)return; // only a hit inside the circle digs
+  if(performance.now()-tg.born<90)return;       // a fresh circle can't be hit in the same instant
+  st.clicks++;st.pending++;burst(tg.x,tg.y);spawn();save();
+  $('title').style.opacity=0;
+}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();hit(e)});
+
+// ---------- saving + leaderboard ----------
+function fmtM(cl){return (cl*STEP).toLocaleString('cs-CZ',{minimumFractionDigits:1,maximumFractionDigits:1})+' m'}
+let saveT=null,lastSend=0;
+function save(){
+  if(!st.user){try{localStorage.setItem(GUEST,String(st.clicks))}catch(_){}st.pending=0;return}
+  if(!saveT)saveT=setTimeout(flush,Math.max(400,1600-(Date.now()-lastSend)));
+}
+async function flush(){
+  saveT=null;if(st.sending||!st.pending||!st.user)return;
+  st.sending=true;const n=Math.min(SEND_MAX,st.pending),k=liveKey(st.nick);
+  try{const tok=await st.user.getIdToken();
+    const r=await fetch(`${LIVE_DB}/dig/${k}.json?auth=${encodeURIComponent(tok)}`,{method:'PUT',body:JSON.stringify({c:st.base+n,n:st.nick,t:{'.sv':'timestamp'}})});
+    if(r.ok){st.base+=n;st.pending-=n;st.all[k]={c:st.base,n:st.nick};lastSend=Date.now();boardRender()}
+    else{const cur=await fetch(`${LIVE_DB}/dig/${k}.json`).then(x=>x.json()).catch(()=>null);if(cur&&+cur.c>st.base)st.base=+cur.c;lastSend=Date.now()}
+  }catch(_){lastSend=Date.now()}
+  st.sending=false;if(st.pending)save();
+}
+addEventListener('pagehide',()=>{try{if(!st.user)localStorage.setItem(GUEST,String(st.clicks))}catch(_){}});
+async function boardLoad(){try{const r=await fetch(LIVE_DB+'/dig.json');if(r.ok){st.all=await r.json()||{};boardRender()}}catch(_){}}
+function boardRender(){
+  const rows=Object.entries(st.all).filter(([,v])=>v&&+v.c>0).map(([k,v])=>({k,n:v.n||k,c:+v.c}));
+  const mk=st.nick&&liveKey(st.nick);
+  if(mk){const me=rows.find(r=>r.k===mk);const c2=st.base+st.pending;if(me)me.c=Math.max(me.c,c2);else if(c2>0)rows.push({k:mk,n:st.nick,c:c2})}
+  rows.sort((a,b)=>b.c-a.c);
+  const ol=$('board');ol.replaceChildren();
+  const add=(r,i)=>{const li=document.createElement('li');if(r.k===mk)li.className='me';const a=document.createElement('i');a.textContent=(i+1)+'.';const s=document.createElement('span');s.textContent='@'+r.n;const b=document.createElement('b');b.textContent=fmtM(r.c);li.append(a,s,b);ol.append(li)};
+  rows.slice(0,10).forEach(add);
+  const mi=rows.findIndex(r=>r.k===mk);if(mi>=10){const sep=document.createElement('li');sep.className='sep';sep.textContent='…';ol.append(sep);add(rows[mi],mi)}
+  if(!rows.length){const li=document.createElement('li');li.textContent='Zatím nikdo nekope. Buď první!';ol.append(li)}
+}
+setInterval(boardLoad,10000);
+
+// ---------- who is playing: same Google login as the planet ----------
+const load=src=>new Promise((ok,bad)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.append(s)});
+function guest(msg){
+  st.user=null;st.nick=null;let g=0;try{g=+localStorage.getItem(GUEST)||0}catch(_){}
+  st.clicks=g;st.shown=g*STEP;st.ready=true;spawn();boardLoad();if(g)$('title').style.opacity=0;
+  $('note').replaceChildren(msg||'Nejsi přihlášený: postup se ukládá jen v tomhle prohlížeči. ',Object.assign(document.createElement('b'),{textContent:'Přihlas se na planetě'}),' a dostaneš se do žebříčku.');
+}
+async function start(){
+  try{
+    let at=0;try{at=+localStorage.getItem(LOGIN_AT)||0}catch(_){}
+    if(!at||Date.now()-at>SESSION_MS){guest();return}
+    const B='https://www.gstatic.com/firebasejs/10.12.2/';
+    await load(B+'firebase-app-compat.js');await load(B+'firebase-auth-compat.js');
+    if(!firebase.apps.length)firebase.initializeApp({apiKey:FB_API_KEY,authDomain:'planetafolloweru.firebaseapp.com',databaseURL:LIVE_DB,projectId:'planetafolloweru'});
+    const u=await new Promise(ok=>{const off=firebase.auth().onAuthStateChanged(x=>{off();ok(x)})});
+    if(!u){guest();return}
+    const tok=await u.getIdToken(),a=await fetch(`${LIVE_DB}/accounts/${u.uid}.json?auth=${encodeURIComponent(tok)}`).then(r=>r.ok?r.json():null);
+    if(!a||!a.nick){guest('Na planetě si ještě vyber postavu: zatím se postup ukládá jen v tomhle prohlížeči. ');return}
+    st.user=u;st.nick=a.nick;
+    const cur=await fetch(`${LIVE_DB}/dig/${liveKey(a.nick)}.json`).then(r=>r.ok?r.json():null).catch(()=>null);
+    st.base=+(cur&&cur.c)||0;st.clicks=st.base;st.shown=st.clicks*STEP;st.ready=true;spawn();boardLoad();if(st.base)$('title').style.opacity=0;
+    $('note').textContent='Hraješ jako @'+a.nick+' · postup se ukládá sám';
+  }catch(_){guest()}
+}
+start();
+
+// ---------- loop ----------
+let lastT=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-lastT)/1000);lastT=now;const t=now/1000;
+  const target=st.clicks*STEP;st.shown+=(target-st.shown)*Math.min(1,dt*7);if(Math.abs(target-st.shown)<.005)st.shown=target;
+  c.clearRect(0,0,W,H);drawWorld(t);drawPlayer(t);if(st.ready)drawTarget(t);drawParts(dt);
+  $('meters').textContent=fmtM(st.clicks);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
