@@ -3070,7 +3070,7 @@ async function acctFetch(path,opt){
 }
 async function acctGet(path){const r=await acctFetch(path);if(!r.ok)throw new Error(r.status);return r.json()}
 function acctPut(path,val){return acctFetch(path,{method:'PUT',body:JSON.stringify(val)}).then(r=>r.ok)}
-function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true);setTimeout(()=>{try{invLoad()}catch(_){}try{xpDailyLogin()}catch(_){}try{launchGift()}catch(_){}try{hlLogin()}catch(_){}},1500)}
+function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true);setTimeout(()=>{try{invLoad()}catch(_){}try{xpDailyLogin()}catch(_){}try{launchGift()}catch(_){}try{hatGift()}catch(_){}try{hlLogin()}catch(_){}},1500)}
 async function acctLogout(msg){
   try{questDrop()}catch(_){}
   clearTimeout(acct.timer);try{localStorage.removeItem(LOGIN_AT)}catch(_){}
@@ -3875,6 +3875,31 @@ document.getElementById('farmBox').addEventListener('click',e=>{if(e.target.id==
 
 // ---------- launch gift: everyone who signs in on 18. 11. 2026 between 18:00 and midnight gets the green Obyčejný meč ----------
 const GIFT_FROM=1795021200000,GIFT_TO=1795042800000;
+const HAT_FROM=1795042800000,HAT_TO=1795129200000; // 19. 11. 2026, 0:00–24:00 Prague
+async function hatGift(){ // the repairman's cap for everyone who connects on 19 Nov
+  if(!meId||!acct.user)return;const now=Date.now()+(typeof water!=='undefined'?water.skew:0);
+  if(now<HAT_FROM||now>=HAT_TO)return;
+  const k=liveKey(meId);if(((inv.gifts||{})[k]||{}).hat)return;
+  try{if(await acctPut('/gifts/'+k+'/hat',{'.sv':'timestamp'})){inv.gifts=inv.gifts||{};inv.gifts[k]={...(inv.gifts[k]||{}),hat:Date.now()};hatRefresh();toast('🎁 Dárek: Klobouk opraváře (modrý, vzácný)! V Cestě do středu země kopeš o 1 m rychleji. Najdeš ho v inventáři.')}}catch(_){}
+}
+function capMesh(){ // low-poly repairman's cap: amber dome, navy straps, brown band, peak to the front
+  const g=new THREE.Group();g.name='repairHat';const amber=mat('#e8a33a'),navy=mat('#2b3150'),brown=mat('#5a3b28');
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(.03,8,5,0,Math.PI*2,0,Math.PI/2),amber);g.add(dome);
+  const band=new THREE.Mesh(new THREE.CylinderGeometry(.031,.031,.008,8),brown);band.position.y=.003;g.add(band);
+  const peak=new THREE.Mesh(new THREE.BoxGeometry(.04,.004,.026),amber);peak.position.set(0,.002,.034);g.add(peak);
+  for(const r of [0,Math.PI/2]){const st=new THREE.Mesh(new THREE.TorusGeometry(.03,.003,3,10,Math.PI),navy);st.rotation.y=r;g.add(st)}
+  const badge=new THREE.Mesh(new THREE.BoxGeometry(.016,.011,.003),brown);badge.position.set(0,.016,.026);badge.rotation.x=-.5;g.add(badge);
+  g.position.y=.104;return g;
+}
+function hatRefresh(){ // put the cap on every figure whose owner wears it
+  try{
+    const wear=new Map();
+    scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup)return;
+      if(!wear.has(id))wear.set(id,((inv.gifts||{})[liveKey(id)]||{}).hat?invWears(id,'repair_hat'):false);
+      let h=o.getObjectByName('repairHat');if(wear.get(id)&&!h&&o.children.some(c=>c.isMesh))o.add(capMesh());else if(!wear.get(id)&&h&&h.parent===o)o.remove(h)});
+    if(play&&play.av&&play.av.fig&&meId){const f=play.av.fig,h=f.getObjectByName('repairHat'),w=invWears(meId,'repair_hat');if(w&&!h)f.add(capMesh());else if(!w&&h)h.parent.remove(h)}
+  }catch(_){}
+}
 async function launchGift(){
   if(!meId||!acct.user)return;const now=Date.now()+(typeof water!=='undefined'?water.skew:0);
   if(now<GIFT_FROM||now>=GIFT_TO)return;
@@ -3923,7 +3948,8 @@ const INV_SLOTS=[ // [key, label, empty icon, grid cell 1–12 (3 columns)]
 const INV_BAG=['bag1','bag2','bag3','bag4','bag5','bag6','bag7','bag8','bag9','bag10'];
 const invBagN=id=>INV_BAG.length; // 10 bag slots for everyone
 const ITEMS={
-  boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',rarity:'rare',dmg:2,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery.'},
+  boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',rarity:'rare',dmg:2,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery a 2× rychlejší kopání v Cestě do středu země.'},
+  repair_hat:{name:'Klobouk opraváře',slot:'helmet',icon:'🧢',img:'img/klobouk-opravare.png',rarity:'rare',desc:'Dárek pro každého, kdo se připojil 19. 11. V Cestě do středu země kopeš o 1 m rychleji (každé kliknutí +1 m navíc).'},
   basic_sword:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'common',dmg:1.2,desc:'Klasický ocelový meč. 1,2× DMG v klikačkách na příšery.'},
   basic_sword_g:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'uncommon',dmg:1.3,desc:'Klasický meč se zeleným kamenem. 1,3× DMG v klikačkách na příšery.'},
   meds:{name:'Antibiotika',slot:'bag',icon:'💊',stack:true,rarity:'uncommon',use:'heal',desc:'Uvařená v lékárně ze 3 léčivých bylin. Vyléčí chybějící životy. Hodnota 1 zlatý.'},
@@ -3946,6 +3972,7 @@ function invOwned(id){
   if(grainCount(id)>0&&!own.includes('grain'))own.push('grain');
   if(breadCount(id)>0&&!own.includes('bread'))own.push('bread');
   if(((inv.gifts||{})[liveKey(id)]||{}).launch&&!own.includes('basic_sword_g'))own.push('basic_sword_g');
+  if(((inv.gifts||{})[liveKey(id)]||{}).hat&&!own.includes('repair_hat'))own.push('repair_hat');
   return own;
 }
 function invState(id){ // {slot: itemId} with every owned item either worn or in the bag
@@ -3967,7 +3994,7 @@ async function invLoad(){ // a failed read (network hiccup) must never look like
   const res=await Promise.all(keys.map(k=>fetch(LIVE_DB+'/'+k+'.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json().then(v=>({ok:true,v})):{ok:false}).catch(()=>({ok:false}))));
   let bad=0;res.forEach((r,i)=>{if(r.ok)inv[dst[i]]=r.v||{};else{bad++;inv[dst[i]]=inv[dst[i]]||{}}});
   if(!bad){inv.loaded=true;invTry=0}else setTimeout(invLoad,Math.min(30000,2000*++invTry));
-  try{if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);if(meId){invRefreshFigs(meId);if(!document.getElementById('inv').hidden)invRender();lvlCard()}}catch(_){}
+  try{hatRefresh();if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);if(meId){invRefreshFigs(meId);if(!document.getElementById('inv').hidden)invRender();lvlCard()}}catch(_){}
   return !bad;
 }
 setTimeout(invLoad,0);setInterval(()=>{if(meId&&document.visibilityState==='visible')invLoad()},120000); // setTimeout: LIVE_DB is declared further down, a direct call here threw and the inventory never loaded
@@ -3976,7 +4003,8 @@ function invCell(key,label,icon,item,cls){
   const it=item&&ITEMS[item];
   if(it){b.classList.add('full');const ry=RARITY[it.rarity||'common'];b.style.borderColor=ry.color;b.style.boxShadow=`0 0 14px ${ry.color}55 inset`;b.setAttribute('aria-label',label+': '+it.name+', '+ry.name)}
   else b.setAttribute('aria-label',label+': prázdné');
-  const ic=document.createElement('span');ic.className='ic';ic.textContent=it?it.icon:icon;ic.setAttribute('aria-hidden','true');
+  const ic=document.createElement('span');ic.className='ic';ic.setAttribute('aria-hidden','true');
+  if(it&&it.img){const im=document.createElement('img');im.src=it.img;im.alt='';im.style.cssText='width:2.1em;height:2.1em;object-fit:contain;display:block;margin:0 auto';ic.append(im)}else ic.textContent=it?it.icon:icon;
   const lb=document.createElement('span');lb.className='lb';lb.textContent=it?(it.stack?it.name.split(' ').pop()+' ×'+stackN(item):it.name.split(' ')[0]):label;
   b.append(ic,lb);if(inv.sel===key)b.classList.add('sel');
   b.onclick=()=>invClick(key);return b;
@@ -4013,7 +4041,7 @@ async function invClick(key){
   if(it.slot==='bag'){if(it.use==='heal'){medUse();return}if(it.use==='eat'){breadEat();return}det.replaceChildren();const bb=document.createElement('b');bb.textContent=it.name+(it.stack?' ×'+stackN(item):'');det.append(bb,' · '+it.desc);return}
   if(INV_BAG.includes(key)){const was=next[it.slot];next[it.slot]=item;if(was)next[key]=was;else delete next[key]}
   else{const free=INV_BAG.slice(0,invBagN(meId)).find(b=>!next[b]);if(!free){det.textContent='Batoh je plný.';return}next[free]=item;delete next[key]}
-  const saved=inv.equip[invKey(meId)];inv.equip[invKey(meId)]=next;invRender();invRefreshFigs(meId);
+  const saved=inv.equip[invKey(meId)];inv.equip[invKey(meId)]=next;invRender();invRefreshFigs(meId);hatRefresh();
   det.replaceChildren();const b=document.createElement('b');b.textContent=it.name;const ry=RARITY[it.rarity||'common'],rb=document.createElement('b');rb.textContent=ry.name;rb.style.color=ry.color;det.append(b,' · ',rb,' · '+it.desc+(invWears(meId,item)?' Máš ho na sobě.':' Je v batohu.'));
   if(!await invSave(next)){if(saved)inv.equip[invKey(meId)]=saved;else delete inv.equip[invKey(meId)];invRender();invRefreshFigs(meId);det.textContent='Nepodařilo se uložit. Zkus to znovu.'}
 }

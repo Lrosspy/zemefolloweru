@@ -55,7 +55,8 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crossh
 const LIVE_DB='https://planetafolloweru-default-rtdb.europe-west1.firebasedatabase.app';
 const FB_API_KEY='AIzaSyALYbgJBfpRJSw2UHdCbFxwz5hHkiIiS_E';
 const SESSION_MS=60*60*1000,LOGIN_AT='planeta-login-at',GUEST='planeta-dig-guest';
-const STEP=.5,SEND_MAX=40; // every hit = 50 cm deeper; at most 40 hits per save
+const STEP=.5,SEND_MAX=200; // progress is counted in 50 cm units; at most 200 units per save
+const SWORD_OWNER='___1kelly1___';let perHit=1; // units per hit: 1 = 50 cm, the cap adds 2 (+1 m), the boss sword doubles it
 const $=id=>document.getElementById(id);
 const liveKey=id=>id.replace(/\./g,'-');
 const q=new URLSearchParams(location.search);
@@ -168,7 +169,7 @@ function drawTarget(t){
 }
 const parts=[];
 function burst(x,y){const col=rgb(dirtAt(st.clicks*STEP));for(let i=0;i<14;i++){const a=Math.random()*6.28,v=80+Math.random()*220;parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-120,l:1,col:Math.random()<.4?'#ffc300':col})}
-  parts.push({x,y,txt:'+50 cm',l:1,vy:-70,vx:0})}
+  parts.push({x,y,txt:'+'+(perHit*STEP).toLocaleString('cs-CZ')+' m',l:1,vy:-70,vx:0})}
 function drawParts(dt){for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.l-=dt*1.6;if(p.l<=0){parts.splice(i,1);continue}
   p.x+=p.vx*dt;p.y+=p.vy*dt;if(!p.txt)p.vy+=600*dt;c.globalAlpha=Math.max(0,p.l);
   if(p.txt){c.font='900 18px "Nunito Sans",system-ui,sans-serif';c.textAlign='center';c.fillStyle='#fff4e2';c.strokeStyle='rgba(0,0,0,.6)';c.lineWidth=4;c.strokeText(p.txt,p.x,p.y);c.fillText(p.txt,p.x,p.y)}
@@ -179,7 +180,7 @@ function hit(ev){
   const b=cv.getBoundingClientRect(),x=ev.clientX-b.left,y=ev.clientY-b.top;
   if(Math.hypot(x-tg.x,y-tg.y)>TR()*1.15)return; // only a hit inside the circle digs
   if(performance.now()-tg.born<90)return;       // a fresh circle can't be hit in the same instant
-  st.clicks++;st.pending++;burst(tg.x,tg.y);spawn();save();
+  st.clicks+=perHit;st.pending+=perHit;burst(tg.x,tg.y);spawn();save();
   $('title').style.opacity=0;
 }
 cv.addEventListener('pointerdown',e=>{e.preventDefault();hit(e)});
@@ -196,7 +197,7 @@ async function flush(){
   st.sending=true;const n=Math.min(SEND_MAX,st.pending),k=liveKey(st.nick);
   try{const tok=await st.user.getIdToken();
     const r=await fetch(`${LIVE_DB}/dig/${k}.json?auth=${encodeURIComponent(tok)}`,{method:'PUT',body:JSON.stringify({c:st.base+n,n:st.nick,t:{'.sv':'timestamp'}})});
-    if(r.ok){st.base+=n;st.pending-=n;if(st.fails){st.fails=0;$('note').textContent='Hraješ jako @'+st.nick+' · postup se ukládá sám'}st.all[k]={c:st.base,n:st.nick};lastSend=Date.now();boardRender()}
+    if(r.ok){st.base+=n;st.pending-=n;if(st.fails){st.fails=0;$('note').textContent='Hraješ jako @'+st.nick+' · '+(perHit*STEP).toLocaleString('cs-CZ')+' m za kliknutí · postup se ukládá sám'}st.all[k]={c:st.base,n:st.nick};lastSend=Date.now();boardRender()}
     else{const cur=await fetch(`${LIVE_DB}/dig/${k}.json`).then(x=>x.json()).catch(()=>null);if(cur&&+cur.c>st.base)st.base=+cur.c;lastSend=Date.now();st.fails=(st.fails||0)+1;if(st.fails>=3)$('note').textContent='⚠️ Nedaří se uložit postup. Obnov stránku nebo se přihlas znovu na planetě.'}
   }catch(_){lastSend=Date.now()}
   st.sending=false;if(st.pending)save();
@@ -240,7 +241,9 @@ async function start(){
     st.user=u;st.nick=a.nick;try{localStorage.setItem('planeta-dig-nick',a.nick)}catch(_){}
     const cur=await fetch(`${LIVE_DB}/dig/${liveKey(a.nick)}.json`).then(r=>r.ok?r.json():null).catch(()=>null);
     st.base=+(cur&&cur.c)||0;st.clicks=st.base;st.shown=st.clicks*STEP;st.ready=true;spawn();boardLoad();if(st.base)$('title').style.opacity=0;
-    $('note').textContent='Hraješ jako @'+a.nick+' · postup se ukládá sám';
+    let g={};try{g=await fetch(`${LIVE_DB}/gifts/${liveKey(a.nick)}.json`).then(r=>r.ok?r.json():{})||{}}catch(_){}
+    const hat=!!g.hat,sword=a.nick===SWORD_OWNER;perHit=(1+(hat?2:0))*(sword?2:1);
+    $('note').textContent='Hraješ jako @'+a.nick+' · '+(perHit*STEP).toLocaleString('cs-CZ')+' m za kliknutí'+(hat?' · 🧢 Klobouk opraváře +1 m':'')+(sword?' · 🗡️ Zubatý meč ×2':'')+' · postup se ukládá sám';
   }catch(_){guest()}
 }
 start();
