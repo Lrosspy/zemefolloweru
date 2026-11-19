@@ -364,8 +364,6 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     </div>
     <h3 class="inv-sub">V batohu</h3>
     <div class="inv-bag" id="invBag" aria-label="Batoh"></div>
-    <h3 class="inv-sub" id="invMatsH" hidden>Suroviny a jídlo</h3>
-    <div class="inv-bag" id="invMats" aria-label="Suroviny a jídlo"></div>
     <p class="inv-detail" id="invDetail" role="status" aria-live="polite">Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.</p>
   </div>
 </section>
@@ -3939,8 +3937,8 @@ function invOwned(id){
 }
 function invState(id){ // {slot: itemId} with every owned item either worn or in the bag
   const own=invOwned(id),saved=inv.equip[invKey(id)],st={},used=new Set();
-  if(saved)for(const [sl,it] of Object.entries(saved))if(own.includes(it)&&!ITEMS[it].stack&&!used.has(it)&&(INV_BAG.includes(sl)||ITEMS[it].slot===sl)){st[sl]=it;used.add(it)}
-  for(const it of own){if(used.has(it)||ITEMS[it].stack)continue;const sl=ITEMS[it].slot; // stackable materials live in their own row, never in a bag slot
+  if(saved)for(const [sl,it] of Object.entries(saved))if(own.includes(it)&&!used.has(it)&&(INV_BAG.includes(sl)||ITEMS[it].slot===sl)){st[sl]=it;used.add(it)}
+  for(const it of own){if(used.has(it))continue;const sl=ITEMS[it].slot;
     const free=!saved&&sl!=='bag'&&!st[sl]?sl:INV_BAG.slice(0,invBagN(id)).find(b=>!st[b]);if(free){st[free]=it;used.add(it)}}
   return st;
 }
@@ -3986,7 +3984,6 @@ function invRender(){
     const [k,l,i]=cells[c];doll.append(invCell(k,l,i,st[k]));
   }
   INV_BAG.forEach((k,n)=>{if(n<invBagN(meId)||st[k])bag.append(invCell(k,'Slot '+(n+1),'＋',st[k]));else{const c=invCell(k,'Od levelu '+(n===3?10:20),'🔒',null);c.disabled=true;c.style.opacity=.45;bag.append(c)}});
-  const mats=document.getElementById('invMats'),own=invOwned(meId).filter(i=>ITEMS[i].stack);mats.replaceChildren(...own.map(i=>invCell('mat:'+i,ITEMS[i].name,ITEMS[i].icon,i)));document.getElementById('invMatsH').hidden=!own.length;
   const m=wallet(meId);document.getElementById('invGold').textContent=m.gold.toLocaleString('cs-CZ');document.getElementById('invSilver').textContent=String(m.silver);document.getElementById('invDia').textContent=m.dia.toLocaleString('cs-CZ');
   document.getElementById('invWho').textContent='@'+meNick.replace(/^@+/,'')+(invOwned(meId).length?'':' · zatím nemáš žádné věci. Brzy je půjde získat ve hře.');
 }
