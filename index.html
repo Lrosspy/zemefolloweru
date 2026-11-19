@@ -3909,8 +3909,8 @@ const INV_SLOTS=[ // [key, label, empty icon, grid cell 1–12 (3 columns)]
   ['weapon','Zbraň','🗡️',4],['armor','Brnění / vesta','🦺',5],['shield','Štít','🛡️',6],
   ['gloves','Rukavice','🧤',7],['pants','Kalhoty','👖',8],['bracelet','Náramek','⌚',9],
   ['backpack','Batoh','🎒',10],['boots','Boty','🥾',11],['banner','Banner','🚩',12]];
-const INV_BAG=['bag1','bag2','bag3','bag4','bag5'];
-const invBagN=id=>{try{const L=lvlOf(id);return 3+(L>=10?1:0)+(L>=20?1:0)}catch(_){return 3}}; // L10 and L20 each open one more bag slot
+const INV_BAG=['bag1','bag2','bag3','bag4','bag5','bag6','bag7','bag8','bag9','bag10'];
+const invBagN=id=>INV_BAG.length; // 10 bag slots for everyone
 const ITEMS={
   boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',rarity:'rare',dmg:2,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery.'},
   basic_sword:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'common',dmg:1.2,desc:'Klasický ocelový meč. 1,2× DMG v klikačkách na příšery.'},
