@@ -3421,10 +3421,10 @@ document.getElementById('questBtn').onclick=questOpen;
 // ---------- health: every player starts each visit with 100 HP (damage comes later); medicine heals what's missing ----------
 // ---------- health, illness, death ----------
 // /health/<nick> = {hp, sick, tk (last hourly tick while sick), dead, dAt (time of death), imm (no illness until), t}.
-// Health stays between visits. Ill: −10 HP every hour, also while offline. 10 % chance to fall ill on every visit and then
+// Health stays between visits. Ill: −10 HP every hour, also while offline. 5 % chance to fall ill on every visit and then
 // every 30 minutes while playing. Antibiotics cure the illness, heal to 100 and protect for an hour.
 // 0 HP = a gravestone; another player can revive you there, or you come back by yourself after 2 hours.
-const H_MS=3600000,REVIVE_MS=2*H_MS,SICK_CHANCE=.1;
+const H_MS=3600000,REVIVE_MS=2*H_MS,SICK_CHANCE=.05;
 const hp={cur:100,max:100,sick:false,dead:false,dAt:0,imm:0,tk:0,loaded:false};
 const hl={all:{}};
 const hlNow=()=>Date.now()+(typeof water!=='undefined'?water.skew:0);
