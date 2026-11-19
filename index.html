@@ -3918,7 +3918,7 @@ const ITEMS={
   meds:{name:'Antibiotika',slot:'bag',icon:'💊',stack:true,rarity:'uncommon',use:'heal',desc:'Uvařená v lékárně ze 3 léčivých bylin. Vyléčí chybějící životy. Hodnota 1 zlatý.'},
   grain:{name:'Obilí',slot:'bag',icon:'🌾',stack:true,rarity:'common',desc:'Posekané na farmě. U pekařky z 5 kusů upečeš chleba.'},
   bread:{name:'Chleba',slot:'bag',icon:'🍞',stack:true,rarity:'common',use:'eat',desc:'Upečený z obilí. Doplní 20 HP. U pekařky na farmě ho prodáš za 5 stříbrných.'},
-  herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 15 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
+  herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 25 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
 // money: /money/<nick> = silver coins in total (100 silver = 1 gold); /diamonds/<nick> = diamonds (bought for real money, set by the admin for now)
@@ -3969,7 +3969,7 @@ function invCell(key,label,icon,item,cls){
   b.onclick=()=>invClick(key);return b;
 }
 async function herbRoll(){
-  if(Math.random()>=.15||!acct.user||!meId)return;
+  if(Math.random()>=.25||!acct.user||!meId)return;
   const k=liveKey(meId);
   const got=Math.random()<.5?1:2; // a find is always 1–2 herbs
   try{const cur=await acctGet('/herbs/'+k),c=(+(cur&&cur.c)||0)+got;
