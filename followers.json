@@ -1,6 +1,6 @@
 {
- "updated": 1795106000000,
- "changedAt": 1795067524661,
+ "updated": 1795122352540,
+ "changedAt": 1795122352540,
  "followers": [
   {
    "id": "lubikosuch",
@@ -1833,6 +1833,11 @@
    "id": "wario.galago",
    "name": "@wario.galago",
    "at": 1795067524667
+  },
+  {
+   "id": "call6me6lucif6er",
+   "name": "@call6me6lucif6er",
+   "at": 1795122352540
   }
  ]
 }
