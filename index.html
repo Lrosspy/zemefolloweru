@@ -3568,12 +3568,17 @@ async function labFinish(){
   const h=hs??herbCount(meId),m=ms??medCount(meId);
   if(h<MED_HERBS){inv.herbs[k]={c:h,t:Date.now()};labStop('Nemáš dost bylin (máš '+h+'×, potřebuješ '+MED_HERBS+'×).');return}
   const body={};body['herbs/'+k]={c:h-MED_HERBS,t:{'.sv':'timestamp'}};body['meds/'+k]={c:m+1,t:{'.sv':'timestamp'}};
+  const done=()=>{inv.herbs[k]={c:h-MED_HERBS,t:Date.now()};inv.meds[k]={c:m+1,t:Date.now()};labStop();toast('💊 Antibiotika jsou hotová! Máš jich '+(m+1)+'× v batohu.');if(!document.getElementById('inv').hidden)invRender()};
+  let denied=false;
   try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});
-    if(r.ok){inv.herbs[k]={c:h-MED_HERBS,t:Date.now()};inv.meds[k]={c:m+1,t:Date.now()};labStop();toast('💊 Antibiotika jsou hotová! Máš jich '+(m+1)+'× v inventáři (Suroviny a jídlo).');if(!document.getElementById('inv').hidden)invRender();return}
-    const why=await r.text().catch(()=>'');console.warn('labFinish',r.status,why);
-    if(r.status===401||/permission/i.test(why)){labStop('Server vaření odmítl (poslední várka byla před méně než minutou, nebo vypršelo přihlášení). Byliny ti zůstaly, zkus to znovu.');return}
-  }catch(_){}
-  labStop('Vaření se nepovedlo uložit. Byliny ti zůstaly.');
+    if(r.ok){done();return}
+    const why=await r.text().catch(()=>'');console.warn('labFinish',r.status,why);denied=r.status===401||/permission/i.test(why);
+  }catch(e){console.warn('labFinish',e)}
+  // the answer can get lost on the way back even when the server saved it: ask the server what it has now
+  const [h2,m2]=await Promise.all([freshC('herbs/'+k),freshC('meds/'+k)]);
+  if(m2!=null&&m2>=m+1&&h2!=null&&h2<=h-MED_HERBS){done();return}
+  if(h2!=null)inv.herbs[k]={c:h2,t:Date.now()};if(m2!=null)inv.meds[k]={c:m2,t:Date.now()};
+  labStop(denied?'Server vaření odmítl (poslední várka byla před méně než minutou, nebo vypršelo přihlášení). Byliny ti zůstaly, zkus to znovu.':'Vaření se nepovedlo uložit (výpadek spojení). Byliny ti zůstaly, zkus to znovu.');
 }
 function updateLab(){
   const b=document.getElementById('labBtn'),pos=play&&acct.user?labPos():null,near=!!(pos&&pos.distanceTo(play.p)<.025);
@@ -3766,15 +3771,22 @@ async function farmFinish(a){
   else if(a.kind==='water'){next={ph:1,g:Math.min(FIELD_GROW,e.g),w:T,rows:0,n:meId,t:T};xpN=3}
   else{const rows=e.rows|1<<a.row;next=rows===7?{ph:0,n:meId,t:T}:{ph:1,g:+cur.g||0,w:+cur.w||0,rows,n:meId,t:T};xpN=2;grain=1+Math.floor(Math.random()*3)}
   const body={};body['fields/'+a.fid]=next;
-  if(grain)body['grain/'+k]={c:grainCount(meId)+grain,t:T};
-  try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});
-    if(r.ok){
+  const g0=grain?((await freshC('grain/'+k))??grainCount(meId)):0;
+  if(grain)body['grain/'+k]={c:g0+grain,t:T};
+  let ok=false;
+  try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});ok=r.ok}catch(_){}
+  if(!ok){ // the reply may have been lost although the server saved it
+    try{const r2=await fetch(LIVE_DB+'/fields/'+a.fid+'.json?t='+Date.now(),{cache:'no-store'});const c2=r2.ok?await r2.json():null;
+      ok=!!(c2&&c2.n===meId&&+c2.t>(+(cur&&cur.t)||0)&&c2.ph===next.ph&&(+c2.rows||0)===(+next.rows||0))}catch(_){}
+  }
+  {
+    if(ok){
       const loc={...next,t:now};if(next.w===T)loc.w=now;farm.st[a.fid]=loc;
-      if(grain){inv.grain=inv.grain||{};inv.grain[k]={c:grainCount(meId)+grain,t:now}}
+      if(grain){inv.grain=inv.grain||{};inv.grain[k]={c:g0+grain,t:now}}
       farmStop();xpGain(xpN,'farma');
       toast(a.kind==='sow'?'🌱 Zaseto! +5 XP. Teď pole hned zalij.':a.kind==='water'?'💧 Zalito! +3 XP. Za 30 minut bude potřeba zalít znovu.':`🌾 Posekáno! +2 XP a ${grain}× obilí do batohu.`+(next.ph===0?' Pole je zase zorané.':''));
       if(!document.getElementById('inv').hidden)invRender();return}
-  }catch(_){}
+  }
   farmStop('Nepodařilo se uložit. Zkus to za chvíli znovu.');
 }
 function updateFarm(now,t){
@@ -3840,7 +3852,8 @@ async function breadSell(){
   if(b<1){breadBusy=false;toast('Nemáš žádný chleba.');farmTalk('baker');return}
   let m=+inv.money[k]||0;try{const r=await fetch(LIVE_DB+'/money/'+k+'.json');if(r.ok)m=+(await r.json())||0}catch(_){}
   const body={};body['bread/'+k]={c:b-1,t:{'.sv':'timestamp'}};body['money/'+k]=m+BREAD_PRICE;
-  if(await farmPatch(body)){inv.bread[k]={c:b-1,t:Date.now()};inv.money[k]=m+BREAD_PRICE;toast(`🍞 Prodáno za ${BREAD_PRICE} stříbrných.`)}else toast('Prodej se nepovedl. Zkus to znovu.');
+  let ok=await farmPatch(body);if(!ok){const nb=await freshC('bread/'+k);ok=nb!=null&&nb<b}
+  if(ok){inv.bread[k]={c:b-1,t:Date.now()};inv.money[k]=m+BREAD_PRICE;toast(`🍞 Prodáno za ${BREAD_PRICE} stříbrných.`)}else toast('Prodej se nepovedl. Zkus to znovu.');
   breadBusy=false;farmTalk('baker');
 }
 async function breadEat(){
