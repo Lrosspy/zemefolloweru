@@ -3826,16 +3826,21 @@ async function farmPatch(body){
 }
 let breadBusy=false;
 async function breadBake(){
-  if(breadBusy||!acct.user||!meId)return;const k=liveKey(meId);
+  if(breadBusy||!acct.user||!meId)return;breadBusy=true; // lock first: a double tap must not bake twice from the same grain
+  document.querySelectorAll('#farmActions button').forEach(b=>b.disabled=true);const k=liveKey(meId);
   const [gs,bs]=await Promise.all([freshC('grain/'+k),freshC('bread/'+k)]);const g=gs??grainCount(meId),b=bs??breadCount(meId);
-  if(g<GRAIN_PER_BREAD){inv.grain[k]={c:g,t:Date.now()};toast('Nemáš dost obilí ('+g+'×).');farmTalk('baker');return}
-  breadBusy=true;const T={'.sv':'timestamp'},body={};body['grain/'+k]={c:g-GRAIN_PER_BREAD,t:T};body['bread/'+k]={c:b+1,t:T};
-  if(await farmPatch(body)){inv.grain[k]={c:g-GRAIN_PER_BREAD,t:Date.now()};inv.bread[k]={c:b+1,t:Date.now()};toast('🍞 Upečeno! Chleba máš v inventáři.')}else toast('Pečení se nepovedlo. Zkus to znovu.');
+  if(g<GRAIN_PER_BREAD){inv.grain[k]={c:g,t:Date.now()};toast('Nemáš dost obilí ('+g+'×).');breadBusy=false;farmTalk('baker');return}
+  const T={'.sv':'timestamp'},body={};body['grain/'+k]={c:g-GRAIN_PER_BREAD,t:T};body['bread/'+k]={c:b+1,t:T};
+  if(await farmPatch(body)){inv.grain[k]={c:g-GRAIN_PER_BREAD,t:Date.now()};inv.bread[k]={c:b+1,t:Date.now()};toast('🍞 Upečeno! Chleba máš v inventáři.')}
+  else{const nb=await freshC('bread/'+k),ng=await freshC('grain/'+k);if(nb!=null)inv.bread[k]={c:nb,t:Date.now()};if(ng!=null)inv.grain[k]={c:ng,t:Date.now()};
+    toast(nb!=null&&nb>b?'🍞 Upečeno! Chleba máš v inventáři.':'Pečení se nepovedlo. Zkus to znovu.')}
   breadBusy=false;farmTalk('baker');
 }
 async function breadSell(){
-  if(breadBusy||!acct.user||!meId)return;const k=liveKey(meId),b=breadCount(meId);if(b<1)return;
-  breadBusy=true;let m=+inv.money[k]||0;const bf=await freshC('bread/'+k);if(bf!=null&&bf!==b){inv.bread[k]={c:bf,t:Date.now()};breadBusy=false;farmTalk('baker');if(bf<1)return;return breadSell()}try{const r=await fetch(LIVE_DB+'/money/'+k+'.json');if(r.ok)m=+(await r.json())||0}catch(_){}
+  if(breadBusy||!acct.user||!meId)return;breadBusy=true;document.querySelectorAll('#farmActions button').forEach(b=>b.disabled=true);
+  const k=liveKey(meId),bf=await freshC('bread/'+k),b=bf??breadCount(meId);inv.bread[k]={c:b,t:Date.now()};
+  if(b<1){breadBusy=false;toast('Nemáš žádný chleba.');farmTalk('baker');return}
+  let m=+inv.money[k]||0;try{const r=await fetch(LIVE_DB+'/money/'+k+'.json');if(r.ok)m=+(await r.json())||0}catch(_){}
   const body={};body['bread/'+k]={c:b-1,t:{'.sv':'timestamp'}};body['money/'+k]=m+BREAD_PRICE;
   if(await farmPatch(body)){inv.bread[k]={c:b-1,t:Date.now()};inv.money[k]=m+BREAD_PRICE;toast(`🍞 Prodáno za ${BREAD_PRICE} stříbrných.`)}else toast('Prodej se nepovedl. Zkus to znovu.');
   breadBusy=false;farmTalk('baker');
