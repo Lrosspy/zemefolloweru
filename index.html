@@ -3070,7 +3070,7 @@ async function acctFetch(path,opt){
 }
 async function acctGet(path){const r=await acctFetch(path);if(!r.ok)throw new Error(r.status);return r.json()}
 function acctPut(path,val){return acctFetch(path,{method:'PUT',body:JSON.stringify(val)}).then(r=>r.ok)}
-function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true);setTimeout(()=>{try{xpDailyLogin()}catch(_){}try{launchGift()}catch(_){}try{hlLogin()}catch(_){}},1500)}
+function setMe(nick){meNick=nick;meId=nickId(nick);welcome.hidden=true;welcomeMsg.textContent='';applyMe(true);setTimeout(()=>{try{invLoad()}catch(_){}try{xpDailyLogin()}catch(_){}try{launchGift()}catch(_){}try{hlLogin()}catch(_){}},1500)}
 async function acctLogout(msg){
   try{questDrop()}catch(_){}
   clearTimeout(acct.timer);try{localStorage.removeItem(LOGIN_AT)}catch(_){}
@@ -3961,14 +3961,16 @@ function invRefreshFigs(id){
   scene.traverse(o=>{if(o.userData&&o.userData.memberId===id){const sw=o.getObjectByName('bossSword');if(sw)sw.visible=invWears(id,'boss_sword')}});
   if(play&&play.av&&play.av.fig){const sw=play.av.fig.getObjectByName('bossSword');if(sw&&meId===id)sw.visible=invWears(id,'boss_sword')}
 }
-async function invLoad(){
-  try{
-    const [it,eq,mo,hb,di,md,gf,gr,br]=await Promise.all(['items','equip','money','herbs','diamonds','meds','gifts','grain','bread'].map(k=>fetch(LIVE_DB+'/'+k+'.json').then(r=>r.ok?r.json():null).catch(()=>null)));
-    inv.items=it||{};inv.equip=eq||{};inv.money=mo||{};inv.herbs=hb||{};inv.dia=di||{};inv.meds=md||{};inv.gifts=gf||{};inv.grain=gr||{};inv.bread=br||{};inv.loaded=true;
-    if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);
-  }catch(_){}
+let invTry=0;
+async function invLoad(){ // a failed read (network hiccup) must never look like an empty inventory: keep old data and retry
+  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread'];
+  const res=await Promise.all(keys.map(k=>fetch(LIVE_DB+'/'+k+'.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json().then(v=>({ok:true,v})):{ok:false}).catch(()=>({ok:false}))));
+  let bad=0;res.forEach((r,i)=>{if(r.ok)inv[dst[i]]=r.v||{};else{bad++;inv[dst[i]]=inv[dst[i]]||{}}});
+  if(!bad){inv.loaded=true;invTry=0}else setTimeout(invLoad,Math.min(30000,2000*++invTry));
+  try{if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);if(meId){invRefreshFigs(meId);if(!document.getElementById('inv').hidden)invRender();lvlCard()}}catch(_){}
+  return !bad;
 }
-invLoad();
+setTimeout(invLoad,0);setInterval(()=>{if(meId&&document.visibilityState==='visible')invLoad()},120000); // setTimeout: LIVE_DB is declared further down, a direct call here threw and the inventory never loaded
 function invCell(key,label,icon,item,cls){
   const b=document.createElement('button');b.type='button';b.className='inv-slot'+(cls||'');b.dataset.slot=key;
   const it=item&&ITEMS[item];
@@ -4015,7 +4017,7 @@ async function invClick(key){
   det.replaceChildren();const b=document.createElement('b');b.textContent=it.name;const ry=RARITY[it.rarity||'common'],rb=document.createElement('b');rb.textContent=ry.name;rb.style.color=ry.color;det.append(b,' · ',rb,' · '+it.desc+(invWears(meId,item)?' Máš ho na sobě.':' Je v batohu.'));
   if(!await invSave(next)){if(saved)inv.equip[invKey(meId)]=saved;else delete inv.equip[invKey(meId)];invRender();invRefreshFigs(meId);det.textContent='Nepodařilo se uložit. Zkus to znovu.'}
 }
-function openInv(){if(!meId)return;keys.clear();inv.sel=null;document.getElementById('invDetail').textContent='Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.';invRender();document.getElementById('inv').hidden=false;document.getElementById('invClose').focus()}
+function openInv(){if(!meId)return;keys.clear();inv.sel=null;if(!inv.loaded)invLoad();document.getElementById('invDetail').textContent='Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.';invRender();document.getElementById('inv').hidden=false;document.getElementById('invClose').focus()}
 document.getElementById('invBtn').onclick=openInv;
 document.getElementById('playInv').onclick=openInv;
 document.getElementById('invClose').onclick=()=>{document.getElementById('inv').hidden=true};
