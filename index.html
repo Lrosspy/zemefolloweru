@@ -135,8 +135,10 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .jump-btn{position:fixed;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 52px);width:88px;height:88px;border-radius:50%;padding:0;background:rgba(255,204,102,.9);color:#2b1d0e;border:2px solid rgba(255,255,255,.5);font-size:15px;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
 .label.bubble{background:#fff;color:#1b1530;border:0;font-weight:700;font-size:12px;white-space:normal;max-width:190px;width:max-content;text-align:center;padding:6px 10px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,.35);transition:opacity .4s;margin-top:-8px}
 .label.bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff}
-.admin-key{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:6;width:44px;height:44px;padding:0;border-radius:50%;font-size:19px;line-height:1;display:grid;place-items:center;opacity:.75}
+.admin-key{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:8;cursor:pointer;touch-action:manipulation;width:44px;height:44px;padding:0;border-radius:50%;font-size:19px;line-height:1;display:grid;place-items:center;opacity:.75}
 .admin-key:hover{opacity:1}
+.admin-key>*{pointer-events:none}
+.gift-itemsel select{max-width:230px}
 .set-btn{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 66px);z-index:7;width:44px;height:44px;padding:0;border-radius:50%;display:grid;place-items:center;opacity:.75}
 .set-btn:hover,.set-btn[aria-expanded="true"]{opacity:1}
 body.playing .set-btn{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 64px);right:max(16px,env(safe-area-inset-right,0px));z-index:9}
@@ -497,6 +499,12 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
             <label for="giftXpKind" class="gift-kind"><span>Co</span><select id="giftXpKind"><option value="xp">XP</option><option value="lvl">levelů</option></select></label>
             <button class="primary" type="submit" value="add">Přidat</button>
             <button type="button" id="giftReset">Reset na L1</button>
+          </form>
+          <form class="gift-send" id="giftItem">
+            <label for="giftItemSel" class="gift-kind gift-itemsel"><span>🎁 Item</span><select id="giftItemSel"></select></label>
+            <label for="giftItemN" id="giftItemNL">Počet<input id="giftItemN" type="number" min="1" max="10000" step="1" inputmode="numeric" value="1"></label>
+            <button class="primary" type="submit" value="add">Dát</button>
+            <button type="submit" value="sub">Odebrat</button>
           </form>
           <form class="gift-send" id="giftHeal">
             <span id="giftHp" style="flex:1;align-self:center;font-weight:600">❤️ Zdraví</span>
@@ -4795,6 +4803,38 @@ $id('giftReset').onclick=async()=>{
   if(!await giftPut('xpbonus',b0-x))return;
   xp.bonus[gift.key]=b0-x;giftShow();msg.textContent=`@${gift.id} je zpátky na levelu 1 (0 XP). Další XP sbírá od teď.`;
 };
+// admin: give or take any item. Stackable items live in their own counters ({c,t}), the rest in /items/<nick>/<id> = true.
+const GIFT_STACK={herb:'herbs',meds:'meds',grain:'grain',bread:'bread'};
+(()=>{const sel=$id('giftItemSel');
+  sel.innerHTML=Object.entries(ITEMS).map(([k,it])=>`<option value="${k}">${it.icon} ${it.name} · ${(RARITY[it.rarity]||{}).name||''}</option>`).join('');
+  const upd=()=>{$id('giftItemNL').hidden=!GIFT_STACK[sel.value]};sel.onchange=upd;upd()})();
+$id('giftItem').addEventListener('submit',async e=>{
+  e.preventDefault();const msg=$id('giftMsg'),sub=e.submitter&&e.submitter.value==='sub',it=$id('giftItemSel').value,def=ITEMS[it];
+  if(!gift.id||!def)return;
+  const tok=await adminToken();if(!tok){msg.textContent='Přihlášení vypršelo, přihlas se znovu.';return}
+  const key=gift.key,au='?auth='+encodeURIComponent(tok),nm=def.icon+' '+def.name;
+  try{
+    if(GIFT_STACK[it]){
+      const n=Math.floor(+$id('giftItemN').value||0),path=GIFT_STACK[it];if(n<1){msg.textContent='Zadej počet kusů.';return}
+      const cur=Math.max(0,Math.floor(+((await fetch(LIVE_DB+'/'+path+'/'+key+'.json').then(x=>x.json()))||{}).c||0));
+      if(sub&&cur===0){msg.textContent=`@${gift.id} nemá žádné ${nm}, není co odebrat.`;return}
+      const next=sub?Math.max(0,cur-n):cur+n;
+      const r=await fetch(LIVE_DB+'/'+path+'/'+key+'.json'+au,{method:'PUT',body:JSON.stringify({c:next,t:{'.sv':'timestamp'}})});
+      if(!r.ok){msg.textContent='Nepovedlo se. Zkontroluj pravidla ve Firebase.';return}
+      inv[path]=inv[path]||{};inv[path][key]={c:next,t:Date.now()};
+      msg.textContent=(sub?`Odebráno ${cur-next}× ${nm}`:`Přidáno ${n}× ${nm}`)+` hráči @${gift.id} · teď má ${next}×.`;
+    }else{
+      const cur=await fetch(LIVE_DB+'/items/'+key+'/'+it+'.json').then(x=>x.json());
+      if(!sub&&(cur===true||invOwned(gift.id).includes(it))){msg.textContent=`@${gift.id} už ${nm} má.`;return}
+      if(sub&&cur!==true){msg.textContent=invOwned(gift.id).includes(it)?`${nm} má @${gift.id} ze hry (dárek nebo výhra), ten odebrat nejde.`:`@${gift.id} ${nm} nemá.`;return}
+      const r=await fetch(LIVE_DB+'/items/'+key+'/'+it+'.json'+au,{method:sub?'DELETE':'PUT',body:sub?undefined:'true'});
+      if(!r.ok){msg.textContent='Nepovedlo se. Zkontroluj pravidla ve Firebase.';return}
+      inv.items[key]=inv.items[key]||{};if(sub)delete inv.items[key][it];else inv.items[key][it]=true;
+      msg.textContent=sub?`Odebráno ${nm} hráči @${gift.id}.`:`Hráč @${gift.id} dostal ${nm}. Uvidí ho v inventáři po obnovení (do 2 min).`;
+    }
+    if(gift.id===meId&&!document.getElementById('inv').hidden)invRender();
+  }catch(_){msg.textContent='Nepodařilo se spojit se serverem.'}
+});
 $id('giftHeal').addEventListener('submit',async e=>{
   e.preventDefault();const msg=$id('giftMsg'),revive=e.submitter&&e.submitter.value==='revive';if(!gift.id)return;
   try{gift.hp=await fetch(LIVE_DB+'/health/'+gift.key+'.json').then(x=>x.json())}catch(_){}
