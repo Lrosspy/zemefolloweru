@@ -31,6 +31,8 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crossh
 .back{position:fixed;z-index:3;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;font:900 14px var(--body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:10px 16px;text-decoration:none}
 .note{bottom:calc(env(safe-area-inset-bottom,0px) + 14px);left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);text-align:center;font-size:13px;font-weight:700;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 14px;color:var(--dim)}
 .note b{color:var(--ink)}
+.prize{bottom:calc(env(safe-area-inset-bottom,0px) + 56px);left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);text-align:center;font-size:13px;font-weight:900;background:rgba(58,26,92,.88);border:1px solid #a24bff;border-radius:12px;padding:7px 14px;color:var(--ink)}
+.prize[hidden]{display:none}
 .title{top:30%;left:50%;transform:translate(-50%,-50%);text-align:center;font-family:var(--display);font-size:clamp(26px,6vw,46px);line-height:1.05;text-shadow:0 5px 0 rgba(0,0,0,.4);transition:opacity .8s}
 .title small{display:block;font:900 15px var(--body);margin-top:10px;color:var(--ink)}
 .gate{position:fixed;inset:0;z-index:5;display:grid;place-items:center;padding:16px;background:rgba(10,7,5,.72);backdrop-filter:blur(4px)}
@@ -48,6 +50,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crossh
 <div class="hud board"><h2>⛏ Nejhlouběji</h2><ol id="board"><li><span>Načítám…</span></li></ol></div>
 <a class="back" href="./">← Planeta</a>
 <div class="hud title" id="title">Cesta do<br>středu země<small>Klikej na kolečka s krumpáčem</small></div>
+<p class="hud prize" id="prize" hidden></p>
 <p class="hud note" id="note">Načítám…</p>
 <section class="gate" id="gate" hidden aria-labelledby="gateT"><div><h1 id="gateT">Nejdřív se přihlas</h1><p id="gateP">Cesta do středu země je jen pro přihlášené hráče. Přihlas se na planetě přes Google a vrať se sem.</p><a href="./">Přihlásit se na planetě</a></div></section>
 <script>
@@ -56,7 +59,10 @@ const LIVE_DB='https://planetafolloweru-default-rtdb.europe-west1.firebasedataba
 const FB_API_KEY='AIzaSyALYbgJBfpRJSw2UHdCbFxwz5hHkiIiS_E';
 const SESSION_MS=60*60*1000,LOGIN_AT='planeta-login-at',GUEST='planeta-dig-guest';
 const STEP=.5,SEND_MAX=200; // progress is counted in 50 cm units; at most 200 units per save
-const SWORD_OWNER='___1kelly1___';let perHit=1; // units per hit: 1 = 50 cm, the cap adds 2 (+1 m), the boss sword doubles it
+const SWORD_OWNER='___1kelly1___';let perHit=1;
+// contest: TOP 3 at DIG_END win Srdce země; /dig is frozen by the rules afterwards and digging goes on in /dig2 (starting from your /dig depth)
+const DIG_END=1795388399000,HEART_UNITS=[3,2.4,2],HEART_NAME=['+1,5 m','+1,2 m','+1 m'];let s2=false,final=[];
+const dpath=()=>(s2||Date.now()>DIG_END)?'dig2':'dig';const r1=x=>Math.round(x*10)/10; // units per hit: 1 = 50 cm, the cap adds 2 (+1 m), the boss sword doubles it
 const $=id=>document.getElementById(id);
 const liveKey=id=>id.replace(/\./g,'-');
 const q=new URLSearchParams(location.search);
@@ -196,13 +202,22 @@ async function flush(){
   saveT=null;if(st.sending||!st.pending||!st.user)return;
   st.sending=true;const n=Math.min(SEND_MAX,st.pending),k=liveKey(st.nick);
   try{const tok=await st.user.getIdToken();
-    const r=await fetch(`${LIVE_DB}/dig/${k}.json?auth=${encodeURIComponent(tok)}`,{method:'PUT',body:JSON.stringify({c:st.base+n,n:st.nick,t:{'.sv':'timestamp'}})});
-    if(r.ok){st.base+=n;st.pending-=n;if(st.fails){st.fails=0;$('note').textContent='Hraješ jako @'+st.nick+' · '+(perHit*STEP).toLocaleString('cs-CZ')+' m za kliknutí · postup se ukládá sám'}st.all[k]={c:st.base,n:st.nick};lastSend=Date.now();boardRender()}
-    else{const cur=await fetch(`${LIVE_DB}/dig/${k}.json`).then(x=>x.json()).catch(()=>null);if(cur&&+cur.c>st.base)st.base=+cur.c;lastSend=Date.now();st.fails=(st.fails||0)+1;if(st.fails>=3)$('note').textContent='⚠️ Nedaří se uložit postup. Obnov stránku nebo se přihlas znovu na planetě.'}
+    const P=dpath(),r=await fetch(`${LIVE_DB}/${P}/${k}.json?auth=${encodeURIComponent(tok)}`,{method:'PUT',body:JSON.stringify({c:r1(st.base+n),n:st.nick,t:{'.sv':'timestamp'}})});
+    if(r.ok){st.base=r1(st.base+n);st.pending=r1(st.pending-n);if(st.fails){st.fails=0;$('note').textContent='Hraješ jako @'+st.nick+' · '+(perHit*STEP).toLocaleString('cs-CZ')+' m za kliknutí · postup se ukládá sám'}st.all[k]={c:st.base,n:st.nick};lastSend=Date.now();boardRender()}
+    else{if(P==='dig'&&Date.now()>DIG_END-300000){s2=true;st.fails=0;st.sending=false;save();return}const cur=await fetch(`${LIVE_DB}/${P}/${k}.json`).then(x=>x.json()).catch(()=>null);if(cur&&+cur.c>st.base)st.base=+cur.c;lastSend=Date.now();st.fails=(st.fails||0)+1;if(st.fails>=3)$('note').textContent='⚠️ Nedaří se uložit postup. Obnov stránku nebo se přihlas znovu na planetě.'}
   }catch(_){lastSend=Date.now()}
   st.sending=false;if(st.pending)save();
 }
-async function boardLoad(){try{const r=await fetch(LIVE_DB+'/dig.json');if(r.ok){st.all=await r.json()||{};boardRender()}}catch(_){}}
+async function boardLoad(){try{const r=await fetch(LIVE_DB+'/dig.json');if(!r.ok)return;const d=await r.json()||{},all={...d};
+  if(Date.now()>DIG_END){final=Object.entries(d).filter(([,v])=>v&&+v.c>0).sort((a,b)=>(+b[1].c-+a[1].c)||((+a[1].t||0)-(+b[1].t||0))).slice(0,3).map(([k,v])=>({k,n:v.n||k}));
+    const r2=await fetch(LIVE_DB+'/dig2.json');const d2=r2.ok?await r2.json()||{}:{};for(const [k,v] of Object.entries(d2))if(v&&(!all[k]||+v.c>+all[k].c))all[k]=v}
+  st.all=all;boardRender();prizeRender()}catch(_){}}
+function prizeRender(){
+  const el=$('prize'),now=Date.now();el.hidden=false;
+  if(now<=DIG_END){const ms=DIG_END-now,h=Math.floor(ms/3600000),m=Math.floor(ms%3600000/60000);el.textContent=`🏆 TOP 3 vyhrají Srdce země · konec dnes ve 23:59 · zbývá ${h?h+' h ':''}${m} min`;return}
+  el.textContent=final.length?'🏆 Soutěž skončila · Srdce země: '+final.map((w,i)=>`${i+1}. @${w.n}`).join(' · '):'🏆 Soutěž skončila · vyhodnocuji…';
+}
+setInterval(()=>{if(Date.now()<=DIG_END+60000)prizeRender();if(Date.now()>DIG_END&&!final.length)boardLoad()},20000);
 function boardRender(){
   const rows=Object.entries(st.all).filter(([,v])=>v&&+v.c>0).map(([k,v])=>({k,n:v.n||k,c:+v.c}));
   const mk=st.nick&&liveKey(st.nick);
@@ -219,7 +234,7 @@ setInterval(boardLoad,10000);
 // ---------- who is playing: same Google login as the planet ----------
 const load=src=>new Promise((ok,bad)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.append(s)});
 function guest(msg,expired){ // no login, no digging; a returning player still sees how deep they are
-  st.user=null;st.nick=null;st.ready=false;boardLoad();
+  st.user=null;st.nick=null;st.ready=false;boardLoad();prizeRender();
   let last='';try{last=localStorage.getItem('planeta-dig-nick')||''}catch(_){}
   if(expired&&!msg)msg='Přihlášení po hodině vypršelo. Přihlas se znovu na planetě a kopej dál.';
   if(msg)$('gateP').textContent=msg;$('gate').hidden=false;$('note').textContent='Kopat můžou jen přihlášení hráči.';$('title').style.opacity=0;
@@ -239,11 +254,13 @@ async function start(){
     const tok=await u.getIdToken(),a=await fetch(`${LIVE_DB}/accounts/${u.uid}.json?auth=${encodeURIComponent(tok)}`).then(r=>r.ok?r.json():null);
     if(!a||!a.nick){guest('Na planetě si ještě vyber svou postavu (nick). Pak můžeš kopat.');return}
     st.user=u;st.nick=a.nick;try{localStorage.setItem('planeta-dig-nick',a.nick)}catch(_){}
-    const cur=await fetch(`${LIVE_DB}/dig/${liveKey(a.nick)}.json`).then(r=>r.ok?r.json():null).catch(()=>null);
-    st.base=+(cur&&cur.c)||0;st.clicks=st.base;st.shown=st.clicks*STEP;st.ready=true;spawn();boardLoad();if(st.base)$('title').style.opacity=0;
+    const get=P=>fetch(`${LIVE_DB}/${P}/${liveKey(a.nick)}.json`).then(r=>r.ok?r.json():null).catch(()=>null);
+    const cur=await get('dig'),cur2=Date.now()>DIG_END?await get('dig2'):null;
+    st.base=Math.max(+(cur&&cur.c)||0,+(cur2&&cur2.c)||0);st.clicks=st.base;st.shown=st.clicks*STEP;st.ready=true;spawn();boardLoad();if(st.base)$('title').style.opacity=0;
     let g={};try{g=await fetch(`${LIVE_DB}/gifts/${liveKey(a.nick)}.json`).then(r=>r.ok?r.json():{})||{}}catch(_){}
-    const hat=!!g.hat,sword=a.nick===SWORD_OWNER;perHit=(1+(hat?2:0))*(sword?2:1);
-    $('note').textContent='Hraješ jako @'+a.nick+' · '+(perHit*STEP).toLocaleString('cs-CZ')+' m za kliknutí'+(hat?' · 🧢 Klobouk opraváře +1 m':'')+(sword?' · 🗡️ Zubatý meč ×2':'')+' · postup se ukládá sám';
+    await boardLoad();const place=final.findIndex(w=>w.k===liveKey(a.nick)),heart=place>=0?HEART_UNITS[place]:0;
+    const hat=!!g.hat,sword=a.nick===SWORD_OWNER;perHit=r1((1+(hat?2:0)+heart)*(sword?2:1));
+    $('note').textContent='Hraješ jako @'+a.nick+' · '+(perHit*STEP).toLocaleString('cs-CZ')+' m za kliknutí'+(hat?' · 🧢 Klobouk opraváře +1 m':'')+(heart?' · 💚 Srdce země '+HEART_NAME[place]:'')+(sword?' · 🗡️ Zubatý meč ×2':'')+' · postup se ukládá sám';
   }catch(_){guest()}
 }
 start();

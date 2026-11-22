@@ -3891,6 +3891,30 @@ function capMesh(){ // low-poly repairman's cap: amber dome, navy straps, brown 
   const badge=new THREE.Mesh(new THREE.BoxGeometry(.016,.011,.003),brown);badge.position.set(0,.016,.026);badge.rotation.x=-.5;g.add(badge);
   g.position.y=.104;return g;
 }
+function heartMesh(item){ // Srdce země on a cord around the neck: low-poly heart of earth and moss with a glowing golden core
+  const g=new THREE.Group();g.name='earthHeart';const col={earth_heart_1:'#a24bff',earth_heart_2:'#3a8dff',earth_heart_3:'#3fbf5f'}[item]||'#3fbf5f';
+  const s=new THREE.Shape();s.moveTo(0,-.009);s.bezierCurveTo(-.012,-.001,-.011,.009,-.0055,.009);s.bezierCurveTo(-.002,.009,0,.006,0,.004);s.bezierCurveTo(0,.006,.002,.009,.0055,.009);s.bezierCurveTo(.011,.009,.012,-.001,0,-.009);
+  const geo=new THREE.ExtrudeGeometry(s,{depth:.004,bevelEnabled:true,bevelThickness:.0015,bevelSize:.0012,bevelSegments:1,curveSegments:4});geo.translate(0,0,-.002);
+  const heart=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:'#5b4030',flatShading:true}));g.add(heart);
+  const moss=new THREE.Mesh(new THREE.SphereGeometry(.0045,5,4),mat('#4f9a3a'));moss.position.set(-.004,.005,.003);g.add(moss);
+  const moss2=new THREE.Mesh(new THREE.SphereGeometry(.004,5,4),mat('#3f8a5a'));moss2.position.set(.0045,.005,.003);g.add(moss2);
+  const core=new THREE.Mesh(new THREE.OctahedronGeometry(.0035),new THREE.MeshBasicMaterial({color:'#ffc35a'}));core.position.set(0,-.001,.0035);g.add(core);
+  const glow=new THREE.Mesh(new THREE.SphereGeometry(.013,10,8),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false}));g.add(glow);
+  const cord=new THREE.Mesh(new THREE.TorusGeometry(.021,.0012,3,16),mat('#3b2a1e'));cord.rotation.x=Math.PI/2-.5;cord.position.set(0,.02,-.008);g.add(cord);
+  g.position.set(0,.058,.031);return g;
+}
+function heartRefresh(){ // hang Srdce země on every figure whose owner wears it in the talisman slot
+  const win=digWinners();if(!win.length)return;
+  const wearing=id=>{const h=heartOf(id);return h&&invWears(id,h)?h:null};
+  const put=(o,h)=>{let m=o.getObjectByName('earthHeart');if(m&&(!h||m.userData.item!==h)){m.parent.remove(m);m=null}if(h&&!m){m=heartMesh(h);m.userData.item=h;o.add(m)}};
+  scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.children.some(c=>c.isMesh))return;if(win.includes(liveKey(id))||o.getObjectByName('earthHeart'))put(o,wearing(id))});
+  if(play&&play.av&&play.av.fig&&meId)put(play.av.fig,wearing(meId));
+}
+function heartToast(){ // tell a winner once
+  const h=meId&&acct.user&&heartOf(meId);if(!h)return;let seen='';try{seen=localStorage.getItem('planeta-heart')||''}catch(_){}
+  if(seen===h)return;try{localStorage.setItem('planeta-heart',h)}catch(_){}
+  const place=h.slice(-1);toast(`🏆 Skončil jsi ${place}. v soutěži Cesta do středu země! Vyhrál jsi Srdce země (${RARITY[ITEMS[h].rarity].name}). Najdeš ho v inventáři, nasaď si ho jako talisman.`);
+}
 function hatRefresh(){ // put the cap on every figure whose owner wears it
   try{
     const wear=new Map();
@@ -3899,6 +3923,7 @@ function hatRefresh(){ // put the cap on every figure whose owner wears it
       let h=o.getObjectByName('repairHat');if(wear.get(id)&&!h&&o.children.some(c=>c.isMesh))o.add(capMesh());else if(!wear.get(id)&&h&&h.parent===o)o.remove(h)});
     if(play&&play.av&&play.av.fig&&meId){const f=play.av.fig,h=f.getObjectByName('repairHat'),w=invWears(meId,'repair_hat');if(w&&!h)f.add(capMesh());else if(!w&&h)h.parent.remove(h)}
   }catch(_){}
+  try{heartRefresh()}catch(_){}
 }
 async function launchGift(){
   if(!meId||!acct.user)return;const now=Date.now()+(typeof water!=='undefined'?water.skew:0);
@@ -3955,9 +3980,20 @@ const ITEMS={
   meds:{name:'Antibiotika',slot:'bag',icon:'💊',stack:true,rarity:'uncommon',use:'heal',desc:'Uvařená v lékárně ze 3 léčivých bylin. Vyléčí chybějící životy. Hodnota 1 zlatý.'},
   grain:{name:'Obilí',slot:'bag',icon:'🌾',stack:true,rarity:'common',desc:'Posekané na farmě. U pekařky z 5 kusů upečeš chleba.'},
   bread:{name:'Chleba',slot:'bag',icon:'🍞',stack:true,rarity:'common',use:'eat',desc:'Upečený z obilí. Doplní 20 HP. U pekařky na farmě ho prodáš za 5 stříbrných.'},
+  earth_heart_1:{name:'Srdce země',slot:'talisman',icon:'💚',img:'img/srdce-zeme-1.png',rarity:'epic',dmgAdd:1.5,dig:1.5,desc:'1. místo v soutěži Cesta do středu země (22. 11. 2026). V kopání +1,5 m za každé kliknutí, v boji +1,5 DMG za úder. Nosíš ho na krku.'},
+  earth_heart_2:{name:'Srdce země',slot:'talisman',icon:'💙',img:'img/srdce-zeme-2.png',rarity:'rare',dmgAdd:1.2,dig:1.2,desc:'2. místo v soutěži Cesta do středu země (22. 11. 2026). V kopání +1,2 m za každé kliknutí, v boji +1,2 DMG za úder. Nosíš ho na krku.'},
+  earth_heart_3:{name:'Srdce země',slot:'talisman',icon:'💚',img:'img/srdce-zeme-3.png',rarity:'uncommon',dmgAdd:1,dig:1,desc:'3. místo v soutěži Cesta do středu země (22. 11. 2026). V kopání +1 m za každé kliknutí, v boji +1 DMG za úder. Nosíš ho na krku.'},
   herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 25 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
+// Cesta do středu země contest: the 3 deepest diggers at DIG_END win Srdce země. /dig is frozen by the rules after DIG_END
+// (digging goes on in /dig2), so the top 3 of /dig are the final results.
+const DIG_END=1795388399000; // 22. 11. 2026 23:59:59 Prague
+function digWinners(){
+  if(Date.now()<DIG_END||!inv.dig)return [];
+  return Object.entries(inv.dig).filter(([,v])=>v&&+v.c>0).sort((a,b)=>(+b[1].c-+a[1].c)||((+a[1].t||0)-(+b[1].t||0))).slice(0,3).map(([k])=>k);
+}
+const heartOf=id=>{const i=digWinners().indexOf(liveKey(id||''));return i<0?null:'earth_heart_'+(i+1)};
 // money: /money/<nick> = silver coins in total (100 silver = 1 gold); /diamonds/<nick> = diamonds (bought for real money, set by the admin for now)
 const wallet=id=>{const k=liveKey(id||''),s=Math.max(0,Math.floor(+inv.money[k]||0));return {gold:Math.floor(s/100),silver:s%100,dia:Math.max(0,Math.floor(+((inv.dia||{})[k])||0))}};
 const medCount=id=>+((inv.meds||{})[liveKey(id||'')]||{}).c||0;
@@ -3973,6 +4009,7 @@ function invOwned(id){
   if(breadCount(id)>0&&!own.includes('bread'))own.push('bread');
   if(((inv.gifts||{})[liveKey(id)]||{}).launch&&!own.includes('basic_sword_g'))own.push('basic_sword_g');
   if(((inv.gifts||{})[liveKey(id)]||{}).hat&&!own.includes('repair_hat'))own.push('repair_hat');
+  {const h=heartOf(id);if(h&&!own.includes(h))own.push(h)}
   return own;
 }
 function invState(id){ // {slot: itemId} with every owned item either worn or in the bag
@@ -3982,7 +4019,7 @@ function invState(id){ // {slot: itemId} with every owned item either worn or in
     const free=!saved&&sl!=='bag'&&!st[sl]?sl:INV_BAG.slice(0,invBagN(id)).find(b=>!st[b]);if(free){st[free]=it;used.add(it)}}
   return st;
 }
-function weaponMult(id){try{const it=ITEMS[invState(id).weapon];return it&&it.dmg||1}catch(_){return 1}}
+function weaponMult(id){try{const st=invState(id),it=ITEMS[st.weapon],tl=ITEMS[st.talisman];return (it&&it.dmg||1)+(tl&&tl.dmgAdd||0)}catch(_){return 1}}
 function invWears(id,item){try{const st=invState(id);return Object.entries(st).some(([sl,it])=>it===item&&!INV_BAG.includes(sl))}catch(_){return true}} // figures built before the inventory code runs wear what they own
 function invRefreshFigs(id){
   scene.traverse(o=>{if(o.userData&&o.userData.memberId===id){const sw=o.getObjectByName('bossSword');if(sw)sw.visible=invWears(id,'boss_sword')}});
@@ -3990,11 +4027,11 @@ function invRefreshFigs(id){
 }
 let invTry=0;
 async function invLoad(){ // a failed read (network hiccup) must never look like an empty inventory: keep old data and retry
-  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread'];
+  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread','dig'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread','dig'];
   const res=await Promise.all(keys.map(k=>fetch(LIVE_DB+'/'+k+'.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json().then(v=>({ok:true,v})):{ok:false}).catch(()=>({ok:false}))));
   let bad=0;res.forEach((r,i)=>{if(r.ok)inv[dst[i]]=r.v||{};else{bad++;inv[dst[i]]=inv[dst[i]]||{}}});
   if(!bad){inv.loaded=true;invTry=0}else setTimeout(invLoad,Math.min(30000,2000*++invTry));
-  try{hatRefresh();if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);if(meId){invRefreshFigs(meId);if(!document.getElementById('inv').hidden)invRender();lvlCard()}}catch(_){}
+  try{hatRefresh();heartToast();if(SWORD_OWNER)invRefreshFigs(SWORD_OWNER);if(meId){invRefreshFigs(meId);if(!document.getElementById('inv').hidden)invRender();lvlCard()}}catch(_){}
   return !bad;
 }
 setTimeout(invLoad,0);setInterval(()=>{if(meId&&document.visibilityState==='visible')invLoad()},120000); // setTimeout: LIVE_DB is declared further down, a direct call here threw and the inventory never loaded
