@@ -3931,12 +3931,12 @@ const hpMaxOf=id=>100+(wearsCape(id)?ITEMS[CAPE].hp:0);
 function hpMaxSync(){if(!meId)return;const m=hpMaxOf(meId);if(hp.max===m&&hp.cur<=m)return;hp.max=m;if(hp.cur>m){hp.cur=m;if(hp.loaded)hlSave()}hpUi()}
 function capeMesh(){
   const g=new THREE.Group();g.name='founderCape';
-  const gold=new THREE.MeshLambertMaterial({color:'#e8b730',emissive:'#4a3200',flatShading:true,side:THREE.DoubleSide});
+  const gold=new THREE.MeshLambertMaterial({color:'#d9a21f',emissive:'#3a2400',flatShading:true,side:THREE.DoubleSide});
   const dark=new THREE.MeshLambertMaterial({color:'#b8861a',flatShading:true});
-  const cl=new THREE.Mesh(new THREE.CylinderGeometry(.024,.043,.072,14,1,true,Math.PI/2,Math.PI),gold);cl.position.set(0,.052,-.004);g.add(cl);
-  const col=new THREE.Mesh(new THREE.TorusGeometry(.021,.005,5,14,Math.PI),dark);col.rotation.x=Math.PI/2;col.rotation.z=Math.PI;col.position.set(0,.088,-.002);g.add(col);
-  const hem=new THREE.Mesh(new THREE.TorusGeometry(.043,.0025,4,16,Math.PI),dark);hem.rotation.x=Math.PI/2;hem.rotation.z=Math.PI;hem.position.set(0,.017,-.004);g.add(hem);
-  for(const x of [-.012,.012]){const t=new THREE.Mesh(new THREE.ConeGeometry(.004,.012,5),dark);t.position.set(x,.078,.018);t.rotation.x=Math.PI;g.add(t)}
+  const cl=new THREE.Mesh(new THREE.CylinderGeometry(.029,.044,.062,14,1,true,Math.PI/2,Math.PI),gold);cl.position.set(0,.056,0);g.add(cl);
+  const col=new THREE.Mesh(new THREE.TorusGeometry(.028,.005,5,14,Math.PI),dark);col.rotation.x=-Math.PI/2;col.position.set(0,.087,0);g.add(col);
+  const hem=new THREE.Mesh(new THREE.TorusGeometry(.044,.0025,4,16,Math.PI),dark);hem.rotation.x=-Math.PI/2;hem.position.set(0,.025,0);g.add(hem);
+  for(const x of [-.011,.011]){const t=new THREE.Mesh(new THREE.ConeGeometry(.004,.012,5),dark);t.position.set(x,.079,.025);t.rotation.x=Math.PI;g.add(t)}
   return g;
 }
 function capeRefresh(){
