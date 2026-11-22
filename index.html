@@ -3276,7 +3276,7 @@ function waterStart(k){
   if(water.job)return;
   const w=water.beds[k],now=Date.now()+water.skew;
   if(waterWait(k)>0){waterSay(`Tyhle kytky už zalil${w.n?' @'+w.n:'i'}. Znovu je půjde zalít za ${fmtWait(waterWait(k))}.`);return}
-  water.job={k,t0:performance.now()};waterAnim(k,false,WATER_TIME);
+  water.job={k,t0:performance.now(),d:WATER_TIME*workMul()};waterAnim(k,false,water.job.d);
 }
 function waterCancel(msg){
   const j=water.job;if(!j)return;water.job=null;
@@ -3329,9 +3329,9 @@ function updateWater(now){
   const b=document.getElementById('waterBtn');
   if(water.job){
     if(near!==water.job.k){waterCancel('Odešel jsi od kytek, zalévání se přerušilo.');}
-    else{const el=performance.now()-water.job.t0,left=Math.ceil((WATER_TIME-el)/1000);
-      b.hidden=false;b.disabled=true;b.textContent='💧 Zalévám… '+Math.max(0,left)+' s';b.style.setProperty('--p',Math.min(100,el/WATER_TIME*100)+'%');
-      if(el>=WATER_TIME){const k=water.job.k;water.job=null;water.near=undefined;waterBed(k)}
+    else{const el=performance.now()-water.job.t0,left=Math.ceil((water.job.d-el)/1000);
+      b.hidden=false;b.disabled=true;b.textContent='💧 Zalévám… '+Math.max(0,left)+' s';b.style.setProperty('--p',Math.min(100,el/water.job.d*100)+'%');
+      if(el>=water.job.d){const k=water.job.k;water.job=null;water.near=undefined;waterBed(k)}
       return}
   }
   const wt=near?waterWait(near):0,lbl=!near?'':wt>0?'🌸 Zalité · znovu za '+fmtWait(wt):'💧 Zalít kytky'+(touchUI()?'':' (F)');
@@ -3441,9 +3441,9 @@ function hlEff(st,now){
   if(st.sick){const tk=+st.tk||now,n=Math.max(0,Math.floor((now-tk)/H_MS)),h=(+st.hp||0)-10*n;
     if(h<=0){const dAt=tk+Math.ceil((+st.hp||0)/10)*H_MS;if(now-dAt>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:now,revived:true};return {hp:0,sick:false,dead:true,dAt,imm,tk:now}}
     return {hp:h,sick:true,dead:false,dAt:0,imm,tk:tk+n*H_MS}}
-  return {hp:Math.max(0,Math.min(100,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
+  return {hp:Math.max(0,Math.min(150,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
 }
-function hlSet(e){Object.assign(hp,{cur:e.hp,sick:e.sick,dead:e.dead,dAt:e.dAt,imm:e.imm,tk:e.tk});hpUi()}
+function hlSet(e){Object.assign(hp,{cur:e.hp,sick:e.sick,dead:e.dead,dAt:e.dAt,imm:e.imm,tk:e.tk});try{hp.max=hpMaxOf(meId);if(hp.cur>hp.max)hp.cur=hp.max}catch(_){}hpUi()}
 async function hlSave(){
   if(!meId||!acct.user)return false;
   const v={hp:hp.cur,sick:hp.sick,tk:hp.tk,dead:hp.dead,dAt:hp.dAt||0,imm:hp.imm||0,t:{'.sv':'timestamp'}};
@@ -3562,7 +3562,7 @@ function labOpen(){
 function labStart(){
   if(herbCount(meId)<MED_HERBS||lab.job)return;
   document.getElementById('labBox').hidden=true;
-  lab.job={t0:performance.now()};const g=labGroup();if(g)g.userData.lab.bubbles.visible=true;
+  lab.job={t0:performance.now(),d:MED_TIME*workMul()};const g=labGroup();if(g)g.userData.lab.bubbles.visible=true;
   toast('⚗️ Vaříš antibiotika. Zůstaň u stolu 1 minutu.');
 }
 function labStop(msg){lab.job=null;const g=labGroup();if(g)g.userData.lab.bubbles.visible=false;lab.near=undefined;if(msg)waterSay(msg)}
@@ -3592,9 +3592,9 @@ function updateLab(){
   const b=document.getElementById('labBtn'),pos=play&&acct.user?labPos():null,near=!!(pos&&pos.distanceTo(play.p)<.025);
   if(lab.job){
     if(!near){labStop('Odešel jsi od stolu, vaření se přerušilo. Byliny ti zůstaly.');b.hidden=true;return}
-    const el=performance.now()-lab.job.t0,left=Math.max(0,Math.ceil((MED_TIME-el)/1000));
-    b.hidden=false;b.disabled=true;b.textContent='⚗️ Vaří se… '+left+' s';b.style.setProperty('--p',Math.min(100,el/MED_TIME*100)+'%');
-    if(el>=MED_TIME){lab.job.done=true;const j=lab.job;lab.job={t0:-1e12,saving:true};if(!j.saving)labFinish()}
+    const el=performance.now()-lab.job.t0,left=Math.max(0,Math.ceil(((lab.job.d||MED_TIME)-el)/1000));
+    b.hidden=false;b.disabled=true;b.textContent='⚗️ Vaří se… '+left+' s';b.style.setProperty('--p',Math.min(100,el/(lab.job.d||MED_TIME)*100)+'%');
+    if(el>=(lab.job.d||MED_TIME)){lab.job.done=true;const j=lab.job;lab.job={t0:-1e12,saving:true};if(!j.saving)labFinish()}
     return;
   }
   if(near!==lab.near){lab.near=near;b.hidden=!near;b.disabled=false;b.style.setProperty('--p','0%');b.textContent='⚗️ Lékárnický stůl'+(touchUI()?'':' (F)')}
@@ -3708,7 +3708,7 @@ const fmtMin=ms=>{const m=Math.max(1,Math.ceil(ms/60000));return m+' min'};
 function farmVisual(now,t){
   const g=farmGroup();if(!g)return;
   g.userData.farm.fields.forEach((fd,i)=>{
-    const id='f'+(i+1),e=fieldEff(farm.st[id],now),a=farm.act&&farm.act.fid===id?farm.act:null,p=a?Math.min(1,(performance.now()-a.t0)/FARM_ACT):0;
+    const id='f'+(i+1),e=fieldEff(farm.st[id],now),a=farm.act&&farm.act.fid===id?farm.act:null,p=a?Math.min(1,(performance.now()-a.t0)/(a.d||FARM_ACT)):0;
     const wet=e.ph===1&&!e.thirsty,wetP=a&&a.kind==='water'?p:wet?1:0;
     fd.soil.material.color.set(wetP>0?'#6b4a2b':'#6b4a2b').lerp(new THREE.Color('#3e2a18'),wetP*.85);
     fd.drops.visible=!!(a&&a.kind==='water');
@@ -3764,7 +3764,7 @@ function farmClick(){
   const kind=e.ph===0?'sow':e.ph===2?'cut':e.thirsty?'water':null;
   if(!kind){waterSay('🌱 Pole je zalité. Znovu zalít půjde za '+fmtMin(e.left)+'.');return}
   const row=kind==='cut'?[0,1,2].find(r=>!(e.rows>>r&1)):null;
-  farm.act={kind,fid:n.fid,row,t0:performance.now()};farmTools();
+  farm.act={kind,fid:n.fid,row,t0:performance.now(),d:FARM_ACT*workMul()};farmTools();
   waterSay({sow:'🌱 Seješ. Zůstaň u pole 1 minutu.',water:'💧 Zaléváš. Zůstaň u pole 1 minutu.',cut:`🌾 Sečeš ${row+1}. řádek. Zůstaň u pole 1 minutu.`}[kind]);
 }
 function farmStop(msg){farm.act=null;farm.btn=undefined;farmTools();if(msg)waterSay(msg)}
@@ -3804,11 +3804,11 @@ function updateFarm(now,t){
   if(farm.act){
     const n=farmNear();
     if(!n||n.fid!==farm.act.fid){farmStop('Odešel jsi od pole, práce se přerušila.');b.hidden=true;return}
-    const el=performance.now()-farm.act.t0,left=Math.max(0,Math.ceil((FARM_ACT-el)/1000));
+    const el=performance.now()-farm.act.t0,left=Math.max(0,Math.ceil(((farm.act.d||FARM_ACT)-el)/1000));
     const sk=play&&play.av&&play.av.fig&&play.av.fig.getObjectByName('farmSickle');if(sk&&farm.act.kind==='cut')sk.rotation.z=Math.sin(el/120)*.9;
     const cn=play&&play.av&&play.av.fig&&play.av.fig.getObjectByName('farmCan');if(cn)cn.rotation.z=-.6+Math.sin(el/400)*.2;
-    b.hidden=false;b.disabled=true;b.textContent={sow:'🌱 Seješ… ',water:'💧 Zaléváš… ',cut:'🌾 Sečeš… '}[farm.act.kind]+left+' s';b.style.setProperty('--p',Math.min(100,el/FARM_ACT*100)+'%');
-    if(el>=FARM_ACT&&!farm.act.saving){farm.act.saving=true;farmFinish(farm.act)}
+    b.hidden=false;b.disabled=true;b.textContent={sow:'🌱 Seješ… ',water:'💧 Zaléváš… ',cut:'🌾 Sečeš… '}[farm.act.kind]+left+' s';b.style.setProperty('--p',Math.min(100,el/(farm.act.d||FARM_ACT)*100)+'%');
+    if(el>=(farm.act.d||FARM_ACT)&&!farm.act.saving){farm.act.saving=true;farmFinish(farm.act)}
     return;
   }
   const n=farmNear();farm.near=n;
@@ -3923,6 +3923,29 @@ function heartToast(){ // tell a winner once
   if(seen===h)return;try{localStorage.setItem('planeta-heart',h)}catch(_){}
   const place=h.slice(-1);toast(`🏆 Skončil jsi ${place}. v soutěži Cesta do středu země! Vyhrál jsi Srdce země (${RARITY[ITEMS[h].rarity].name}). Najdeš ho v inventáři, nasaď si ho jako talisman.`);
 }
+// Plášť zakladatele (banner slot): golden cape on the back, +50 max HP, work 10 % faster, only while worn
+const CAPE='founder_cape';
+const wearsCape=id=>{try{return !!id&&invWears(id,CAPE)}catch(_){return false}};
+const workMul=()=>wearsCape(meId)?ITEMS[CAPE].work:1;
+const hpMaxOf=id=>100+(wearsCape(id)?ITEMS[CAPE].hp:0);
+function hpMaxSync(){if(!meId)return;const m=hpMaxOf(meId);if(hp.max===m&&hp.cur<=m)return;hp.max=m;if(hp.cur>m){hp.cur=m;if(hp.loaded)hlSave()}hpUi()}
+function capeMesh(){
+  const g=new THREE.Group();g.name='founderCape';
+  const gold=new THREE.MeshLambertMaterial({color:'#e8b730',emissive:'#4a3200',flatShading:true,side:THREE.DoubleSide});
+  const dark=new THREE.MeshLambertMaterial({color:'#b8861a',flatShading:true});
+  const cl=new THREE.Mesh(new THREE.CylinderGeometry(.024,.043,.072,14,1,true,Math.PI/2,Math.PI),gold);cl.position.set(0,.052,-.004);g.add(cl);
+  const col=new THREE.Mesh(new THREE.TorusGeometry(.021,.005,5,14,Math.PI),dark);col.rotation.x=Math.PI/2;col.rotation.z=Math.PI;col.position.set(0,.088,-.002);g.add(col);
+  const hem=new THREE.Mesh(new THREE.TorusGeometry(.043,.0025,4,16,Math.PI),dark);hem.rotation.x=Math.PI/2;hem.rotation.z=Math.PI;hem.position.set(0,.017,-.004);g.add(hem);
+  for(const x of [-.012,.012]){const t=new THREE.Mesh(new THREE.ConeGeometry(.004,.012,5),dark);t.position.set(x,.078,.018);t.rotation.x=Math.PI;g.add(t)}
+  return g;
+}
+function capeRefresh(){
+  const put=(o,w)=>{const c=o.getObjectByName('founderCape');if(w&&!c)o.add(capeMesh());else if(!w&&c)c.parent.remove(c)};
+  const seen=new Map();
+  scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.children.some(c=>c.isMesh))return;
+    if(!seen.has(id))seen.set(id,wearsCape(id));if(seen.get(id)||o.getObjectByName('founderCape'))put(o,seen.get(id))});
+  if(play&&play.av&&play.av.fig&&meId)put(play.av.fig,wearsCape(meId));
+}
 function hatRefresh(){ // put the cap on every figure whose owner wears it
   try{
     const wear=new Map();
@@ -3932,6 +3955,8 @@ function hatRefresh(){ // put the cap on every figure whose owner wears it
     if(play&&play.av&&play.av.fig&&meId){const f=play.av.fig,h=f.getObjectByName('repairHat'),w=invWears(meId,'repair_hat');if(w&&!h)f.add(capMesh());else if(!w&&h)h.parent.remove(h)}
   }catch(_){}
   try{heartRefresh()}catch(_){}
+  try{capeRefresh()}catch(_){}
+  try{hpMaxSync()}catch(_){}
 }
 async function launchGift(){
   if(!meId||!acct.user)return;const now=Date.now()+(typeof water!=='undefined'?water.skew:0);
@@ -3991,6 +4016,7 @@ const ITEMS={
   earth_heart_1:{name:'Srdce země',slot:'talisman',icon:'💚',img:'img/srdce-zeme-1.png',rarity:'epic',dmgAdd:1.5,dig:1.5,desc:'1. místo v soutěži Cesta do středu země (22. 11. 2026). V kopání +1,5 m za každé kliknutí, v boji +1,5 DMG za úder. Nosíš ho na krku.'},
   earth_heart_2:{name:'Srdce země',slot:'talisman',icon:'💙',img:'img/srdce-zeme-2.png',rarity:'rare',dmgAdd:1.2,dig:1.2,desc:'2. místo v soutěži Cesta do středu země (22. 11. 2026). V kopání +1,2 m za každé kliknutí, v boji +1,2 DMG za úder. Nosíš ho na krku.'},
   earth_heart_3:{name:'Srdce země',slot:'talisman',icon:'💚',img:'img/srdce-zeme-3.png',rarity:'uncommon',dmgAdd:1,dig:1,desc:'3. místo v soutěži Cesta do středu země (22. 11. 2026). V kopání +1 m za každé kliknutí, v boji +1 DMG za úder. Nosíš ho na krku.'},
+  founder_cape:{name:'Plášť zakladatele',slot:'banner',icon:'🧥',img:'img/plast-zakladatele.png',rarity:'legend',hp:50,work:.9,desc:'Zlatý plášť s nápisem Zakladatel planety followerů. Když ho máš na sobě: +50 HP (max 150) a všechny práce (zalévání, farma, lékárna) o 10 % rychleji. Vidí ho všichni na tvých zádech.'},
   herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 25 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
@@ -4754,7 +4780,7 @@ function giftShow(){
   $id('giftHas').textContent='💎 '+gift.has+' diamantů';
   $id('giftCoins').textContent=`🪙 ${w.gold} zlatých · ${w.silver} stříbrných`;
   $id('giftLvl').textContent=`⭐ Level ${L} · ${x.toLocaleString('cs-CZ')} XP`;
-  const e=hlEff(gift.hp,hlNow()),t=e.dead?`🪦 mrtvý · sám se probudí za ${fmtLeft(e.dAt+REVIVE_MS-hlNow())}`:`❤️ ${e.hp}/100`+(e.sick?' · 🤒 nemocný':' · zdravý');
+  const e=hlEff(gift.hp,hlNow()),t=e.dead?`🪦 mrtvý · sám se probudí za ${fmtLeft(e.dAt+REVIVE_MS-hlNow())}`:`❤️ ${e.hp}/${hpMaxOf(gift.id)}`+(e.sick?' · 🤒 nemocný':' · zdravý');
   $id('giftHpInfo').textContent=t;
 }
 async function giftPut(path,val){
