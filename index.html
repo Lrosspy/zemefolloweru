@@ -559,6 +559,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <button id="playBtn" class="primary" type="button" hidden>Hrát za postavu 🎮</button>
   <button id="meBtn" type="button" hidden>Moje postava</button>
   <button id="invBtn" type="button" hidden>Inventář 🎒</button>
+  <button id="arenaBtn" type="button" hidden>Aréna ⚔️</button>
   <button id="games" type="button">Minihry</button>
   <button id="openList" type="button">Obyvatelé</button>
   <button id="whole" type="button">Celá planeta</button>
@@ -1287,6 +1288,38 @@ const boss=new THREE.Group();scene.add(boss);
     const dt=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(dc),transparent:true,depthWrite:false}));dt.scale.set(.95,.19,1);dt.position.y=.42;dt.renderOrder=5;boss.add(dt)}
   placeOn(boss,BASE.dir,0,0);faceToward(boss,BASE.dir,tangentOf(BASE.dir));boss.scale.setScalar(BASE.scale);
 })();
+// ---------- Aréna: a lava portal right next to the digging hole; click it (or press F next to it) to jump into the 2D fight ----------
+const ARENA_FROM=1795604400000; // Wed 25. 11. 2026 12:00 Prague; before that only the admin character sees it
+const arenaOpen=()=>Date.now()>=ARENA_FROM||meId==='lubikosuch';
+const PORTAL_DIR=BASE.dir.clone().add(tangentOf(BASE.dir).multiplyScalar(Math.tan(.22))).normalize();
+const portal=new THREE.Group();portal.visible=false;scene.add(portal);
+(function buildPortal(){
+  const stone=new THREE.MeshLambertMaterial({color:'#3b3236',flatShading:true}),dark=new THREE.MeshLambertMaterial({color:'#241d20',flatShading:true});
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(.26,.3,.05,8),dark);base.position.y=.025;portal.add(base);
+  for(const s of [-1,1]){const pl=new THREE.Mesh(new THREE.BoxGeometry(.07,.42,.07),stone);pl.position.set(s*.22,.23,0);portal.add(pl);
+    const fl=new THREE.Mesh(new THREE.ConeGeometry(.035,.09,5),new THREE.MeshBasicMaterial({color:'#ff7a1a'}));fl.position.set(s*.22,.49,0);portal.add(fl)}
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.19,.035,6,18),stone);ring.position.y=.25;portal.add(ring);
+  const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');
+  const g=x.createRadialGradient(128,128,10,128,128,128);g.addColorStop(0,'#fff0b0');g.addColorStop(.25,'#ff8a1f');g.addColorStop(.6,'#c4161c');g.addColorStop(1,'#3a0508');x.fillStyle=g;x.fillRect(0,0,256,256);
+  x.strokeStyle='rgba(255,220,120,.7)';x.lineWidth=7;for(let i=0;i<5;i++){x.beginPath();for(let a=0;a<9;a+=.1){const r=6+a*13;x.lineTo(128+Math.cos(a+i*1.26)*r,128+Math.sin(a+i*1.26)*r)}x.stroke()}
+  const disc=new THREE.Mesh(new THREE.CircleGeometry(.17,28),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv),side:THREE.DoubleSide}));disc.position.y=.25;portal.add(disc);
+  const glow=new THREE.Mesh(new THREE.SphereGeometry(.3,12,10),new THREE.MeshBasicMaterial({color:'#ff5a1a',transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false}));glow.position.y=.25;portal.add(glow);
+  const dc=document.createElement('canvas');dc.width=640;dc.height=150;const y=dc.getContext('2d');
+  y.fillStyle='rgba(30,8,6,.9)';y.beginPath();y.roundRect(6,6,628,138,69);y.fill();y.lineWidth=6;y.strokeStyle='#ff7a1a';y.stroke();
+  y.fillStyle='#fff1e0';y.font='900 62px system-ui,sans-serif';y.textAlign='center';y.textBaseline='middle';y.fillText('⚔️ Aréna',320,78);
+  const sign=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(dc),transparent:true,depthWrite:false}));sign.scale.set(.8,.19,1);sign.position.y=.68;sign.renderOrder=5;portal.add(sign);
+  placeOn(portal,PORTAL_DIR,0,0);faceToward(portal,PORTAL_DIR,BASE.dir.clone().sub(PORTAL_DIR));portal.scale.setScalar(BASE.scale);
+  const spin=()=>{if(portal.visible){disc.rotation.z-=.03;glow.material.opacity=.08+.04*Math.sin(performance.now()/300)}requestAnimationFrame(spin)};spin();
+})();
+const arena={near:false};
+function arenaGo(){
+  if(!meId){toast('⚔️ Do arény se dostaneš po přihlášení přes Google.');return}
+  if(!arenaOpen()){toast('⚔️ Aréna se otevírá ve středu 25. 11. ve 12:00.');return}
+  if(hp.dead){toast('🪦 Jsi mrtvý. Do arény můžeš, až tě někdo oživí.');return}
+  location.href='arena.html'+digLook();
+}
+function arenaVis(){const o=arenaOpen();portal.visible=o;const b=document.getElementById('arenaBtn');if(b)b.hidden=!(meId&&o)}
+setInterval(arenaVis,30000);
 function drawBossTag(u,dead,hp){
   const c=u.cv.getContext('2d'),W=u.cv.width,H=u.cv.height;
   const rr=(x,y,w,h,r)=>{c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()};
@@ -2773,6 +2806,7 @@ canvas.addEventListener('pointerup',e=>{
   ray.setFromCamera(mouse,camera);
   const hit=ray.intersectObjects([planet,townGroup],true)[0];
   const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){digOpen();return}
+  if(portal.visible){const ph=ray.intersectObject(portal,true)[0];if(ph&&(!hit||ph.distance<hit.distance+.01)){arenaGo();return}}
   const qh=questNpc&&ray.intersectObject(questNpc,true)[0];if(qh&&(!hit||qh.distance<hit.distance+.01)){questOpen();return}
   {const sg=siteGroup.children.find(c=>c.userData.site==='shop'),sh=sg&&ray.intersectObject(sg,true)[0];if(sh&&(!hit||sh.distance<hit.distance+.01)){if(play&&shop.near)shopOpen();else toast('🛒 Obchod planety: dojdi ke dveřím za svou postavou a otevři nabídku.');return}}
   {const gh=ray.intersectObject(deadGroup,true)[0];if(gh&&(!hit||gh.distance<hit.distance+.01)){const id=gh.object.userData.graveOf;toast(id===meId?'🪦 Tohle je tvůj hrobeček. Počkej, až tě někdo oživí.':`🪦 Tady leží @${id}. Dojdi sem za postavou a oživ ho!`);return}}
@@ -3013,7 +3047,7 @@ const ROLE_TEXT={
 function applyMe(flyThere){
   if(meFig){meFig.scale.setScalar(1);meFig.remove(meMarker);meFig=null}
   meTag.hidden=true;playBtn.hidden=true;
-  document.getElementById('invBtn').hidden=!meId;lvlCard();
+  document.getElementById('invBtn').hidden=!meId;arenaVis();lvlCard();
   if(!meId){meCard.hidden=true;meBtn.hidden=true;return}
   meCard.hidden=false;document.getElementById('meName').textContent='@'+meNick.replace(/^@+/,'');
   if(!dataLoaded){setMeInfo([noData?'Planetu se teď nepodařilo načíst.':'Hledám tvůj dům…']);meBtn.hidden=true;return}
@@ -4152,6 +4186,7 @@ async function invClick(key){
 }
 function openInv(){if(!meId)return;keys.clear();inv.sel=null;if(!inv.loaded)invLoad();document.getElementById('invDetail').textContent='Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.';invRender();document.getElementById('inv').hidden=false;document.getElementById('invClose').focus()}
 document.getElementById('invBtn').onclick=openInv;
+document.getElementById('arenaBtn').onclick=arenaGo;
 document.getElementById('playInv').onclick=openInv;
 document.getElementById('invClose').onclick=()=>{document.getElementById('inv').hidden=true};
 document.getElementById('inv').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('inv').hidden=true;e.stopPropagation()});
@@ -4314,6 +4349,9 @@ function updateAbduct(P,now,dt){ // near the black hole (where the boss used to 
   const near=P.p.angleTo(BASE.dir)<.13;
   if(!P.bossHint&&near){P.bossHint=true;sayPlay('⛏️ Cesta do středu země! Kopej co nejhlouběji.',5000)}
   if(near!==dig.near){dig.near=near;const b=document.getElementById('digBtn');b.hidden=!near;b.textContent='⛏️ Cesta do středu země'+(touchUI()?'':' (F)')}
+  const an=portal.visible&&P.p.angleTo(PORTAL_DIR)<.08;
+  if(an&&!arena.near)sayPlay('⚔️ Portál do arény! Klikni na něj'+(touchUI()?'':' nebo zmáčkni F')+'.',4000);
+  arena.near=an;
   return 0;
 }
 
@@ -4422,6 +4460,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyF'&&!e.repeat&&shop.near){shopOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&lab.near&&!lab.job){labOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&farm.near&&!farm.act){farmClick();return}
+  if(e.code==='KeyF'&&!e.repeat&&arena.near&&play){arenaGo();return}
   if(e.code==='KeyF'&&!e.repeat&&dig.near&&play){digOpen();return}
   keys.add(e.code);
   if(move||e.code==='Space')e.preventDefault();
