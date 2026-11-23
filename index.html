@@ -3927,7 +3927,13 @@ function heartToast(){ // tell a winner once
 const CAPE='founder_cape';
 const wearsCape=id=>{try{return !!id&&invWears(id,CAPE)}catch(_){return false}};
 const workMul=()=>wearsCape(meId)?ITEMS[CAPE].work:1;
-const hpMaxOf=id=>100+(wearsCape(id)?ITEMS[CAPE].hp:0);
+// Aréna: /fight/<key>.f = the floor the player stands on (starts at 1); beating floor 10 drops the shield, floor 50 the boots
+const arenaFloor=id=>{try{return +(((inv.fight||{})[liveKey(id||'')]||{}).f)||1}catch(_){return 1}};
+const arenaDrops=id=>{const f=arenaFloor(id),o=[];if(f>10)o.push('arena_shield');if(f>50)o.push('arena_boots');return o};
+const wearsBoots=id=>{try{return !!id&&invWears(id,'arena_boots')}catch(_){return false}};
+const wearsShield=id=>{try{return !!id&&invWears(id,'arena_shield')}catch(_){return false}};
+const dblRoll=()=>wearsBoots(meId)&&Math.random()<ITEMS.arena_boots.dbl; // boots: 10 % chance of a double reward
+const hpMaxOf=id=>100+(wearsCape(id)?ITEMS[CAPE].hp:0)+(wearsBoots(id)?ITEMS.arena_boots.hp:0);
 function hpMaxSync(){if(!meId)return;const m=hpMaxOf(meId);if(hp.max===m&&hp.cur<=m)return;hp.max=m;if(hp.cur>m){hp.cur=m;if(hp.loaded)hlSave()}hpUi()}
 function capeMesh(){
   const g=new THREE.Group();g.name='founderCape';
@@ -3938,6 +3944,30 @@ function capeMesh(){
   const hem=new THREE.Mesh(new THREE.TorusGeometry(.044,.0025,4,16,Math.PI),dark);hem.rotation.x=-Math.PI/2;hem.position.set(0,.025,0);g.add(hem);
   for(const x of [-.011,.011]){const t=new THREE.Mesh(new THREE.ConeGeometry(.004,.012,5),dark);t.position.set(x,.079,.025);t.rotation.x=Math.PI;g.add(t)}
   return g;
+}
+function shieldMesh(){ // stone kite shield with a gold rim and a glowing pickaxe emblem, held on the left arm
+  const g=new THREE.Group();g.name='arenaShield';
+  const sh=new THREE.Shape();sh.moveTo(0,-.02);sh.lineTo(-.014,-.006);sh.lineTo(-.014,.014);sh.lineTo(.014,.014);sh.lineTo(.014,-.006);sh.closePath();
+  const rim=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.003,bevelEnabled:false}),new THREE.MeshLambertMaterial({color:'#c99a2e',flatShading:true}));rim.scale.set(1.15,1.12,1);g.add(rim);
+  const body=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.004,bevelEnabled:false}),new THREE.MeshLambertMaterial({color:'#4a4048',flatShading:true}));body.position.z=.001;g.add(body);
+  const em=new THREE.Mesh(new THREE.OctahedronGeometry(.005),new THREE.MeshBasicMaterial({color:'#ffcf6a'}));em.position.set(0,0,.0065);g.add(em);
+  const glow=new THREE.Mesh(new THREE.SphereGeometry(.024,8,6),new THREE.MeshBasicMaterial({color:'#a24bff',transparent:true,opacity:.18,blending:THREE.AdditiveBlending,depthWrite:false}));g.add(glow);
+  g.rotation.y=-1.0;g.position.set(-.01,-.03,.01);return g;
+}
+function bootMesh(){ // chunky stone boot with a gold band, slipped over the shoe
+  const g=new THREE.Group();g.name='arenaBoot';
+  const b=new THREE.Mesh(new THREE.BoxGeometry(.017,.02,.026),new THREE.MeshLambertMaterial({color:'#3d3538',flatShading:true}));b.position.set(0,-.03,.004);g.add(b);
+  const band=new THREE.Mesh(new THREE.BoxGeometry(.018,.003,.027),new THREE.MeshBasicMaterial({color:'#f0b93a'}));band.position.set(0,-.038,.004);g.add(band);
+  const top=new THREE.Mesh(new THREE.BoxGeometry(.018,.004,.018),new THREE.MeshLambertMaterial({color:'#b8861a'}));top.position.set(0,-.019,0);g.add(top);
+  return g;
+}
+function arenaGearRefresh(){ // show the shield / boots on every figure whose owner wears them
+  const put=(o,s,b)=>{const al=o.getObjectByName('armL');if(al){const m=al.getObjectByName('arenaShield');if(s&&!m)al.add(shieldMesh());else if(!s&&m)al.remove(m)}
+    for(const n of ['legL','legR']){const lg=o.getObjectByName(n);if(!lg)continue;const m=lg.getObjectByName('arenaBoot');if(b&&!m)lg.add(bootMesh());else if(!b&&m)lg.remove(m)}};
+  const seen=new Map();
+  scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.getObjectByName('legL'))return;
+    if(!seen.has(id))seen.set(id,[wearsShield(id),wearsBoots(id)]);const [s,b]=seen.get(id);if(s||b||o.getObjectByName('arenaShield')||o.getObjectByName('arenaBoot'))put(o,s,b)});
+  if(play&&play.av&&play.av.fig&&meId)put(play.av.fig,wearsShield(meId),wearsBoots(meId));
 }
 function capeRefresh(){
   const put=(o,w)=>{const c=o.getObjectByName('founderCape');if(w&&!c)o.add(capeMesh());else if(!w&&c)c.parent.remove(c)};
@@ -3956,6 +3986,7 @@ function hatRefresh(){ // put the cap on every figure whose owner wears it
   }catch(_){}
   try{heartRefresh()}catch(_){}
   try{capeRefresh()}catch(_){}
+  try{arenaGearRefresh()}catch(_){}
   try{hpMaxSync()}catch(_){}
 }
 async function launchGift(){
@@ -4017,6 +4048,8 @@ const ITEMS={
   earth_heart_2:{name:'Srdce země',slot:'talisman',icon:'💙',img:'img/srdce-zeme-2.png',rarity:'rare',dmgAdd:1.2,dig:1.2,desc:'2. místo v soutěži Cesta do středu země (22. 11. 2026). V kopání +1,2 m za každé kliknutí, v boji +1,2 DMG za úder. Nosíš ho na krku.'},
   earth_heart_3:{name:'Srdce země',slot:'talisman',icon:'💚',img:'img/srdce-zeme-3.png',rarity:'uncommon',dmgAdd:1,dig:1,desc:'3. místo v soutěži Cesta do středu země (22. 11. 2026). V kopání +1 m za každé kliknutí, v boji +1 DMG za úder. Nosíš ho na krku.'},
   founder_cape:{name:'Plášť zakladatele',slot:'banner',icon:'🧥',img:'img/plast-zakladatele.png',rarity:'legend',hp:50,work:.9,desc:'Zlatý plášť s nápisem Zakladatel planety followerů. Když ho máš na sobě: +50 HP (max 150) a všechny práce (zalévání, farma, lékárna) o 10 % rychleji. Vidí ho všichni na tvých zádech.'},
+  arena_shield:{name:'Štít podsvětí',slot:'shield',icon:'🛡️',img:'img/stit-areny.png',rarity:'epic',block:.25,desc:'Padá z příšery na 10. patře arény. Když ho máš na sobě: 25 % šance, že zablokuješ úder příšery a nedostaneš žádné poškození.'},
+  arena_boots:{name:'Boty podsvětí',slot:'boots',icon:'🥾',img:'img/boty-areny.png',rarity:'legend',hp:30,dbl:.1,desc:'Padají z příšery na 50. patře arény. Když je máš na sobě: +30 HP a 10 % šance na dvojnásobnou odměnu u bylin, antibiotik, obilí a chleba.'},
   herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 25 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
@@ -4044,6 +4077,7 @@ function invOwned(id){
   if(((inv.gifts||{})[liveKey(id)]||{}).launch&&!own.includes('basic_sword_g'))own.push('basic_sword_g');
   if(((inv.gifts||{})[liveKey(id)]||{}).hat&&!own.includes('repair_hat'))own.push('repair_hat');
   {const h=heartOf(id);if(h&&!own.includes(h))own.push(h)}
+  for(const d of arenaDrops(id))if(!own.includes(d))own.push(d);
   return own;
 }
 function invState(id){ // {slot: itemId} with every owned item either worn or in the bag
@@ -4061,7 +4095,7 @@ function invRefreshFigs(id){
 }
 let invTry=0;
 async function invLoad(){ // a failed read (network hiccup) must never look like an empty inventory: keep old data and retry
-  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread','dig'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread','dig'];
+  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread','dig','fight'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread','dig','fight'];
   const res=await Promise.all(keys.map(k=>fetch(LIVE_DB+'/'+k+'.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json().then(v=>({ok:true,v})):{ok:false}).catch(()=>({ok:false}))));
   let bad=0;res.forEach((r,i)=>{if(r.ok)inv[dst[i]]=r.v||{};else{bad++;inv[dst[i]]=inv[dst[i]]||{}}});
   if(!bad){inv.loaded=true;invTry=0}else setTimeout(invLoad,Math.min(30000,2000*++invTry));
