@@ -3475,7 +3475,7 @@ function hlEff(st,now){
   if(st.sick){const tk=+st.tk||now,n=Math.max(0,Math.floor((now-tk)/H_MS)),h=(+st.hp||0)-10*n;
     if(h<=0){const dAt=tk+Math.ceil((+st.hp||0)/10)*H_MS;if(now-dAt>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:now,revived:true};return {hp:0,sick:false,dead:true,dAt,imm,tk:now}}
     return {hp:h,sick:true,dead:false,dAt:0,imm,tk:tk+n*H_MS}}
-  return {hp:Math.max(0,Math.min(150,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
+  return {hp:Math.max(0,Math.min(180,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
 }
 function hlSet(e){Object.assign(hp,{cur:e.hp,sick:e.sick,dead:e.dead,dAt:e.dAt,imm:e.imm,tk:e.tk});try{hp.max=hpMaxOf(meId);if(hp.cur>hp.max)hp.cur=hp.max}catch(_){}hpUi()}
 async function hlSave(){
