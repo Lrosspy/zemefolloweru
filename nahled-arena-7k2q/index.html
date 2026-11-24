@@ -1318,7 +1318,7 @@ function arenaGo(){
   if(!meId){toast('⚔️ Do arény se dostaneš po přihlášení přes Google.');return}
   if(!arenaOpen()){toast('⚔️ Aréna se otevírá ve středu 25. 11. ve 12:00.');return}
   if(hp.dead){toast('🪦 Jsi mrtvý. Do arény můžeš, až tě někdo oživí.');return}
-  location.href='arena.html'+digLook();
+  location.href='nahled-arena-7k2q/arena.html'+digLook();
 }
 function arenaVis(){const o=arenaOpen();portal.visible=o;const b=document.getElementById('arenaBtn');if(b)b.hidden=!(meId&&o)}
 setInterval(arenaVis,30000);
@@ -3477,7 +3477,7 @@ function hlEff(st,now){
   if(st.sick){const tk=+st.tk||now,n=Math.max(0,Math.floor((now-tk)/H_MS)),h=(+st.hp||0)-10*n;
     if(h<=0){const dAt=tk+Math.ceil((+st.hp||0)/10)*H_MS;if(now-dAt>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:now,revived:true};return {hp:0,sick:false,dead:true,dAt,imm,tk:now}}
     return {hp:h,sick:true,dead:false,dAt:0,imm,tk:tk+n*H_MS}}
-  return {hp:Math.max(0,Math.min(150,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
+  return {hp:Math.max(0,Math.min(180,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
 }
 function hlSet(e){Object.assign(hp,{cur:e.hp,sick:e.sick,dead:e.dead,dAt:e.dAt,imm:e.imm,tk:e.tk});try{hp.max=hpMaxOf(meId);if(hp.cur>hp.max)hp.cur=hp.max}catch(_){}hpUi()}
 async function hlSave(){
@@ -3611,8 +3611,9 @@ async function labFinish(){
   const [hs,ms]=await Promise.all([freshC('herbs/'+k),freshC('meds/'+k)]);
   const h=hs??herbCount(meId),m=ms??medCount(meId);
   if(h<MED_HERBS){inv.herbs[k]={c:h,t:Date.now()};labStop('Nemáš dost bylin (máš '+h+'×, potřebuješ '+MED_HERBS+'×).');return}
-  const body={};body['herbs/'+k]={c:h-MED_HERBS,t:{'.sv':'timestamp'}};body['meds/'+k]={c:m+1,t:{'.sv':'timestamp'}};
-  const done=()=>{inv.herbs[k]={c:h-MED_HERBS,t:Date.now()};inv.meds[k]={c:m+1,t:Date.now()};labStop();toast('💊 Antibiotika jsou hotová! Máš jich '+(m+1)+'× v batohu.');if(!document.getElementById('inv').hidden)invRender()};
+  const d=dblRoll()?2:1; // boots: sometimes two packs from one brew
+  const body={};body['herbs/'+k]={c:h-MED_HERBS,t:{'.sv':'timestamp'}};body['meds/'+k]={c:m+d,t:{'.sv':'timestamp'}};
+  const done=()=>{inv.herbs[k]={c:h-MED_HERBS,t:Date.now()};inv.meds[k]={c:m+d,t:Date.now()};labStop();toast('💊 Antibiotika jsou hotová! Máš jich '+(m+d)+'× v batohu.');if(d===2)dblToast();if(!document.getElementById('inv').hidden)invRender()};
   let denied=false;
   try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});
     if(r.ok){done();return}
@@ -3813,7 +3814,7 @@ async function farmFinish(a){
   let next,xpN,grain=0;
   if(a.kind==='sow'){next={ph:1,g:0,w:0,rows:0,n:meId,t:T};xpN=5}
   else if(a.kind==='water'){next={ph:1,g:Math.min(FIELD_GROW,e.g),w:T,rows:0,n:meId,t:T};xpN=3}
-  else{const rows=e.rows|1<<a.row;next=rows===7?{ph:0,n:meId,t:T}:{ph:1,g:+cur.g||0,w:+cur.w||0,rows,n:meId,t:T};xpN=2;grain=1+Math.floor(Math.random()*3)}
+  else{const rows=e.rows|1<<a.row;next=rows===7?{ph:0,n:meId,t:T}:{ph:1,g:+cur.g||0,w:+cur.w||0,rows,n:meId,t:T};xpN=2;grain=(1+Math.floor(Math.random()*3))*(dblRoll()?2:1)}
   const body={};body['fields/'+a.fid]=next;
   const g0=grain?((await freshC('grain/'+k))??grainCount(meId)):0;
   if(grain)body['grain/'+k]={c:g0+grain,t:T};
@@ -3828,7 +3829,7 @@ async function farmFinish(a){
       const loc={...next,t:now};if(next.w===T)loc.w=now;farm.st[a.fid]=loc;
       if(grain){inv.grain=inv.grain||{};inv.grain[k]={c:g0+grain,t:now}}
       farmStop();xpGain(xpN,'farma');
-      toast(a.kind==='sow'?'🌱 Zaseto! +5 XP. Teď pole hned zalij.':a.kind==='water'?'💧 Zalito! +3 XP. Za 30 minut bude potřeba zalít znovu.':`🌾 Posekáno! +2 XP a ${grain}× obilí do batohu.`+(next.ph===0?' Pole je zase zorané.':''));
+      toast(a.kind==='sow'?'🌱 Zaseto! +5 XP. Teď pole hned zalij.':a.kind==='water'?'💧 Zalito! +3 XP. Za 30 minut bude potřeba zalít znovu.':`🌾 Posekáno! +2 XP a ${grain}× obilí do batohu.`+(grain>3?' 👢 Boty zdvojnásobily úrodu!':'')+(next.ph===0?' Pole je zase zorané.':''));
       if(!document.getElementById('inv').hidden)invRender();return}
   }
   farmStop('Nepodařilo se uložit. Zkus to za chvíli znovu.');
@@ -3884,8 +3885,8 @@ async function breadBake(){
   document.querySelectorAll('#farmActions button').forEach(b=>b.disabled=true);const k=liveKey(meId);
   const [gs,bs]=await Promise.all([freshC('grain/'+k),freshC('bread/'+k)]);const g=gs??grainCount(meId),b=bs??breadCount(meId);
   if(g<GRAIN_PER_BREAD){inv.grain[k]={c:g,t:Date.now()};toast('Nemáš dost obilí ('+g+'×).');breadBusy=false;farmTalk('baker');return}
-  const T={'.sv':'timestamp'},body={};body['grain/'+k]={c:g-GRAIN_PER_BREAD,t:T};body['bread/'+k]={c:b+1,t:T};
-  if(await farmPatch(body)){inv.grain[k]={c:g-GRAIN_PER_BREAD,t:Date.now()};inv.bread[k]={c:b+1,t:Date.now()};toast('🍞 Upečeno! Chleba máš v inventáři.')}
+  const d=dblRoll()?2:1,T={'.sv':'timestamp'},body={};body['grain/'+k]={c:g-GRAIN_PER_BREAD,t:T};body['bread/'+k]={c:b+d,t:T};
+  if(await farmPatch(body)){inv.grain[k]={c:g-GRAIN_PER_BREAD,t:Date.now()};inv.bread[k]={c:b+d,t:Date.now()};toast(d===2?'🍞🍞 Upečeno! 👢 Boty ti daly 2 chleby.':'🍞 Upečeno! Chleba máš v inventáři.')}
   else{const nb=await freshC('bread/'+k),ng=await freshC('grain/'+k);if(nb!=null)inv.bread[k]={c:nb,t:Date.now()};if(ng!=null)inv.grain[k]={c:ng,t:Date.now()};
     toast(nb!=null&&nb>b?'🍞 Upečeno! Chleba máš v inventáři.':'Pečení se nepovedlo. Zkus to znovu.')}
   breadBusy=false;farmTalk('baker');
@@ -3968,7 +3969,9 @@ const arenaFloor=id=>{try{return +(((inv.fight||{})[liveKey(id||'')]||{}).f)||1}
 const arenaDrops=id=>{const f=arenaFloor(id),o=[];if(f>10)o.push('arena_shield');if(f>50)o.push('arena_boots');return o};
 const wearsBoots=id=>{try{return !!id&&invWears(id,'arena_boots')}catch(_){return false}};
 const wearsShield=id=>{try{return !!id&&invWears(id,'arena_shield')}catch(_){return false}};
-const dblRoll=()=>wearsBoots(meId)&&Math.random()<ITEMS.arena_boots.dbl; // boots: 10 % chance of a double reward
+// boots: 10 % chance of a double reward. Same check as the server: saved in /equip as boots AND floor > 50
+const dblRoll=()=>{try{return !!meId&&((inv.equip||{})[invKey(meId)]||{}).boots==='arena_boots'&&arenaFloor(meId)>50&&Math.random()<ITEMS.arena_boots.dbl}catch(_){return false}};
+const dblToast=()=>setTimeout(()=>toast('👢 Boty podsvětí: dvojnásobná odměna!'),1600);
 const hpMaxOf=id=>100+(wearsCape(id)?ITEMS[CAPE].hp:0)+(wearsBoots(id)?ITEMS.arena_boots.hp:0);
 function hpMaxSync(){if(!meId)return;const m=hpMaxOf(meId);if(hp.max===m&&hp.cur<=m)return;hp.max=m;if(hp.cur>m){hp.cur=m;if(hp.loaded)hlSave()}hpUi()}
 function capeMesh(){
@@ -4153,9 +4156,9 @@ function invCell(key,label,icon,item,cls){
 async function herbRoll(){
   if(Math.random()>=.25||!acct.user||!meId)return;
   const k=liveKey(meId);
-  const got=Math.random()<.5?1:2; // a find is always 1–2 herbs
+  const dbl=dblRoll(),got=(Math.random()<.5?1:2)*(dbl?2:1); // a find is always 1–2 herbs (boots can double it)
   try{const cur=await acctGet('/herbs/'+k),c=(+(cur&&cur.c)||0)+got;
-    if(await acctPut('/herbs/'+k,{c,t:{'.sv':'timestamp'}})){inv.herbs[k]={c,t:Date.now()};toast('🌿 Našel jsi '+(got===2?'2 léčivé byliny':'léčivou bylinu')+'! V inventáři máš '+c+'×.');if(!document.getElementById('inv').hidden)invRender()}
+    if(await acctPut('/herbs/'+k,{c,t:{'.sv':'timestamp'}})){inv.herbs[k]={c,t:Date.now()};toast('🌿 Našel jsi '+(got===1?'léčivou bylinu':got+' léčivé byliny')+'! V inventáři máš '+c+'×.');if(dbl)dblToast();if(!document.getElementById('inv').hidden)invRender()}
   }catch(_){}
 }
 function invRender(){
