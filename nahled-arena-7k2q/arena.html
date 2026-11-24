@@ -78,7 +78,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
   <div class="floor"><b id="floorT">PATRO 1</b><span id="floorS">Prolog</span></div>
   <section class="card m" aria-label="Životy příšery"><div class="nm"><span>Lávový golem</span><b id="mHpT">100 / 100</b></div><div class="bar"><i id="mHp"></i></div><div class="bar sta" title="Výdrž"><i id="mSta"></i></div><div class="sub" id="mSub">útok 15</div></section>
 </header>
-<a class="back" id="back" href="./">← Město</a>
+<a class="back" id="back" href="nahled-arena-7k2q/">← Město</a>
 <p class="turn me" id="turn" aria-live="polite">Tvůj tah</p>
 <p class="log" id="log" aria-live="polite">Příšera čeká na konci dráhy. Jdi k ní.</p>
 <div class="crowd" id="crowdW" aria-live="polite"><div class="cbar"><i id="crowd"></i></div><span id="crowdT">Diváci 0 %</span></div>
@@ -422,8 +422,8 @@ async function payDeath(){ // smrt: od 2. patra −5 stříbrných (nikdy pod 0)
 
 // ---------- konec boje ----------
 function modal(title,html,btns){$('mT').textContent=title;$('mP').innerHTML=html;const row=$('mRow');row.replaceChildren(...btns);$('modal').hidden=false;btns[0]&&btns[0].focus()}
-function btn(cls,text,fn){const b=document.createElement(fn?'button':'a');b.className=cls;b.textContent=text;if(fn)b.onclick=fn;else{b.href='./';b.onclick=leave}return b}
-async function leave(e){if(DEMO||!st.user||!S||S.over)return;e&&e.preventDefault();await saveHp();location.href='./'}
+function btn(cls,text,fn){const b=document.createElement(fn?'button':'a');b.className=cls;b.textContent=text;if(fn)b.onclick=fn;else{b.href='nahled-arena-7k2q/';b.onclick=leave}return b}
+async function leave(e){if(DEMO||!st.user||!S||S.over)return;e&&e.preventDefault();await saveHp();location.href='nahled-arena-7k2q/'}
 $('back').onclick=leave;
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveHp()});
 async function end(){
