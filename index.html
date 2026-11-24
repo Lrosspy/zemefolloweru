@@ -3504,7 +3504,7 @@ function hlEff(st,now){
   if(st.sick){const tk=+st.tk||now,n=Math.max(0,Math.floor((now-tk)/H_MS)),h=(+st.hp||0)-10*n;
     if(h<=0){const dAt=tk+Math.ceil((+st.hp||0)/10)*H_MS;if(now-dAt>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:now,revived:true};return {hp:0,sick:false,dead:true,dAt,imm,tk:now}}
     return {hp:h,sick:true,dead:false,dAt:0,imm,tk:tk+n*H_MS}}
-  return {hp:Math.max(0,Math.min(220,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
+  return {hp:Math.max(0,Math.min(250,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
 }
 function hlSet(e){Object.assign(hp,{cur:e.hp,sick:e.sick,dead:e.dead,dAt:e.dAt,imm:e.imm,tk:e.tk});try{hp.max=hpMaxOf(meId);if(hp.cur>hp.max)hp.cur=hp.max}catch(_){}hpUi()}
 async function hlSave(){
@@ -3999,7 +3999,7 @@ const wearsShield=id=>{try{return !!id&&invWears(id,'arena_shield')}catch(_){ret
 // boots: 10 % chance of a double reward. Same check as the server: saved in /equip as boots AND floor > 50
 const dblRoll=()=>{try{return !!meId&&((inv.equip||{})[invKey(meId)]||{}).boots==='arena_boots'&&arenaFloor(meId)>50&&Math.random()<ITEMS.arena_boots.dbl}catch(_){return false}};
 const dblToast=()=>setTimeout(()=>toast('👢 Boty podsvětí: dvojnásobná odměna!'),1600);
-const clothHp=id=>{try{const st=invState(id);return ((ITEMS[st.pants]||{}).hp||0)+((ITEMS[st.gloves]||{}).hp||0)}catch(_){return 0}};
+const clothHp=id=>{try{const st=invState(id);return ['pants','gloves','shield','backpack'].reduce((a,sl)=>a+((ITEMS[st[sl]]||{}).hp||0),0)}catch(_){return 0}};
 const hpMaxOf=id=>100+(wearsCape(id)?ITEMS[CAPE].hp:0)+(wearsBoots(id)?ITEMS.arena_boots.hp:0)+clothHp(id);
 function hpMaxSync(){if(!meId)return;const m=hpMaxOf(meId);if(hp.max===m&&hp.cur<=m)return;hp.max=m;if(hp.cur>m){hp.cur=m;if(hp.loaded)hlSave()}hpUi()}
 function capeMesh(){
@@ -4029,11 +4029,28 @@ function bootMesh(){ // chunky stone boot with a gold band, slipped over the sho
   return g;
 }
 const BURLAP=new THREE.MeshLambertMaterial({color:'#b59a6e',flatShading:true});
-function clothRefresh(o,pants,gloves){ // plátěné kalhoty (přes nohy) a rukavice (přes ruce)
+const WOODM=new THREE.MeshLambertMaterial({color:'#8a5a32',flatShading:true}),IRONM=new THREE.MeshLambertMaterial({color:'#9aa0a8',flatShading:true});
+function woodShieldMesh(){ // dřevěný štít s kovovým lemem a puklicí na levé ruce
+  const g=new THREE.Group();g.name='woodShield';
+  const sh=new THREE.Shape();sh.moveTo(0,-.02);sh.lineTo(-.014,-.006);sh.lineTo(-.014,.014);sh.lineTo(.014,.014);sh.lineTo(.014,-.006);sh.closePath();
+  const rim=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.003,bevelEnabled:false}),IRONM);rim.scale.set(1.12,1.1,1);g.add(rim);
+  const body=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.004,bevelEnabled:false}),WOODM);body.position.z=.001;g.add(body);
+  const boss=new THREE.Mesh(new THREE.SphereGeometry(.0045,8,6),IRONM);boss.position.set(0,0,.0055);g.add(boss);
+  g.rotation.y=-1.0;g.position.set(-.01,-.03,.01);return g;
+}
+function packMesh(){ // plátěný batoh na zádech
+  const g=new THREE.Group();g.name='clothPack';
+  const b=new THREE.Mesh(new THREE.BoxGeometry(.034,.036,.016),BURLAP);g.add(b);
+  const flap=new THREE.Mesh(new THREE.BoxGeometry(.035,.012,.017),new THREE.MeshLambertMaterial({color:'#8f7550',flatShading:true}));flap.position.y=.014;g.add(flap);
+  g.position.set(0,.065,-.032);return g;
+}
+function clothRefresh(o,pants,gloves,shield,pack){ // plátěné kalhoty (přes nohy), rukavice (přes ruce), dřevěný štít a batoh
   for(const n of ['legL','legR']){const lg=o.getObjectByName(n);if(!lg)continue;const m=lg.getObjectByName('clothPants');
     if(pants&&!m){const c=new THREE.Mesh(new THREE.BoxGeometry(.0145,.026,.0155),BURLAP);c.name='clothPants';c.position.y=-.013;lg.add(c)}else if(!pants&&m)lg.remove(m)}
   for(const n of ['armL','armR']){const a=o.getObjectByName(n);if(!a)continue;const m=a.getObjectByName('clothGlove');
     if(gloves&&!m){const c=new THREE.Mesh(new THREE.SphereGeometry(.0092,6,4),BURLAP);c.name='clothGlove';c.position.y=-.048;a.add(c)}else if(!gloves&&m)a.remove(m)}
+  {const al=o.getObjectByName('armL');if(al){const m=al.getObjectByName('woodShield');if(shield&&!m)al.add(woodShieldMesh());else if(!shield&&m)al.remove(m)}}
+  {const m=o.getObjectByName('clothPack');if(pack&&!m)o.add(packMesh());else if(!pack&&m)m.parent.remove(m)}
 }
 function arenaGearRefresh(){ // show the shield / boots on every figure whose owner wears them
   const put=(o,s,b)=>{const al=o.getObjectByName('armL');if(al){const m=al.getObjectByName('arenaShield');if(s&&!m)al.add(shieldMesh());else if(!s&&m)al.remove(m)}
@@ -4042,9 +4059,9 @@ function arenaGearRefresh(){ // show the shield / boots on every figure whose ow
   scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.getObjectByName('legL'))return;
     if(!seen.has(id))seen.set(id,[wearsShield(id),wearsBoots(id)]);const [s,b]=seen.get(id);if(s||b||o.getObjectByName('arenaShield')||o.getObjectByName('arenaBoot'))put(o,s,b)});
   if(play&&play.av&&play.av.fig&&meId)put(play.av.fig,wearsShield(meId),wearsBoots(meId));
-  const cl=new Map(),of=id=>{if(!cl.has(id)){let p=false,g=false;try{const st=invState(id);p=!!(ITEMS[st.pants]||{}).hp;g=!!(ITEMS[st.gloves]||{}).hp}catch(_){}cl.set(id,[p,g])}return cl.get(id)};
-  scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.getObjectByName('legL'))return;const [p,g]=of(id);if(p||g||o.getObjectByName('clothPants')||o.getObjectByName('clothGlove'))clothRefresh(o,p,g)});
-  if(play&&play.av&&play.av.fig&&meId){const [p,g]=of(meId);clothRefresh(play.av.fig,p,g)}
+  const cl=new Map(),of=id=>{if(!cl.has(id)){let p=false,g=false,w=false,k=false;try{const st=invState(id);p=!!(ITEMS[st.pants]||{}).hp;g=!!(ITEMS[st.gloves]||{}).hp;w=/^wood_shield/.test(st.shield||'');k=!!st.backpack}catch(_){}cl.set(id,[p,g,w,k])}return cl.get(id)};
+  scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.getObjectByName('legL'))return;const [p,g,w,k]=of(id);if(p||g||w||k||o.getObjectByName('clothPants')||o.getObjectByName('clothGlove')||o.getObjectByName('woodShield')||o.getObjectByName('clothPack'))clothRefresh(o,p,g,w,k)});
+  if(play&&play.av&&play.av.fig&&meId){const [p,g,w,k]=of(meId);clothRefresh(play.av.fig,p,g,w,k)}
 }
 function capeRefresh(){
   const put=(o,w)=>{const c=o.getObjectByName('founderCape');if(w&&!c)o.add(capeMesh());else if(!w&&c)c.parent.remove(c)};
@@ -4091,7 +4108,7 @@ function shopRender(){
   INV_BAG.forEach((k,n)=>{if(n>=invBagN(meId)&&!st[k])return;const c=invCell(k,'Slot '+(n+1),'＋',st[k]);c.onclick=()=>{const it=st[k]&&ITEMS[st[k]];document.getElementById('shopDetail').textContent=it?`${it.name}: výkup se spustí s prvním zbožím. Již brzy!`:'Prázdný slot.'};bag.append(c)});
 }
 // Obchod: základní výbava (dřevěné meče, plátěné kalhoty a rukavice) od středy 25. 11. 12:00. Nákup = jeden zápis: money −cena, /buys/<nick>/<item>=true, /buys/<nick>/last=<item> (hlídají pravidla Firebase)
-// Nabídka obchodu: 3 věci, z každé kategorie (meč, kalhoty, rukavice) jedna. Mění se ve 12:00 a o půlnoci pražského času, pro všechny hráče stejně.
+// Nabídka obchodu: 3 věci ze 3 různých kategorií (meč, kalhoty, rukavice, štít, batoh) jedna. Mění se ve 12:00 a o půlnoci pražského času, pro všechny hráče stejně.
 // Rarita se losuje podle RARITY.chance (šedá 50, zelená 30, modrá 15).
 let shopCache=null;
 function shopToday(){
@@ -4102,7 +4119,9 @@ function shopToday(){
   end=Math.floor(end/60000)*60000;
   let x=0;for(const ch of seed)x=Math.imul(x^ch.charCodeAt(0),2654435761)>>>0;const rnd=()=>{x=Math.imul(x^(x>>>15),2246822519)>>>0;x^=x>>>13;return (x>>>0)/4294967296};
   const tiers=[['','common'],['_u','uncommon'],['_r','rare']],sum=tiers.reduce((a,[,r])=>a+RARITY[r].chance,0);
-  const items=['wood_sword','cloth_pants','cloth_gloves'].map(c=>{const n=1+Math.floor(rnd()*3);let r=rnd()*sum,t='';for(const [suf,ry] of tiers){r-=RARITY[ry].chance;if(r<0){t=suf;break}}return `${c}_${n}${t}`});
+  const cats=[['wood_sword',3],['cloth_pants',3],['cloth_gloves',3],['wood_shield',4],['cloth_pack',3]];
+  for(let i=cats.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[cats[i],cats[j]]=[cats[j],cats[i]]} // 3 různé kategorie z 5
+  const items=cats.slice(0,3).map(([c,cnt])=>{const n=1+Math.floor(rnd()*cnt);let r=rnd()*sum,t='';for(const [suf,ry] of tiers){r-=RARITY[ry].chance;if(r<0){t=suf;break}}return `${c}_${n}${t}`});
   return shopCache={items,end,seed};
 }
 let shopSel=null,shopBusy=false;
@@ -4159,8 +4178,9 @@ const INV_SLOTS=[ // [key, label, empty icon, grid cell 1–12 (3 columns)]
   ['weapon','Zbraň','🗡️',4],['armor','Brnění / vesta','🦺',5],['shield','Štít','🛡️',6],
   ['gloves','Rukavice','🧤',7],['pants','Kalhoty','👖',8],['bracelet','Náramek','⌚',9],
   ['backpack','Batoh','🎒',10],['boots','Boty','🥾',11],['banner','Banner','🚩',12]];
-const INV_BAG=['bag1','bag2','bag3','bag4','bag5','bag6','bag7','bag8','bag9','bag10'];
-const invBagN=id=>INV_BAG.length; // 10 bag slots for everyone
+const INV_BAG=Array.from({length:20},(_,i)=>'bag'+(i+1)); // 10 políček pro každého + až 10 z batohu
+const packOf=id=>{const sv=inv.equip[invKey(id)];if(sv)return sv.backpack&&invOwned(id).includes(sv.backpack)?sv.backpack:null;return invOwned(id).find(k=>(ITEMS[k]||{}).slot==='backpack')||null}; // stejně jako invState (bez uloženého vybavení se nasadí první batoh)
+const invBagN=id=>{try{return 10+((ITEMS[packOf(id)]||{}).slots||0)}catch(_){return 10}}; // 10 políček + políčka z batohu
 const ITEMS={
   boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',rarity:'rare',dmg:2,desc:'Ukovaný z bossova zobáku. 2× DMG v každé klikačce na příšery a 2× rychlejší kopání v Cestě do středu země.'},
   repair_hat:{name:'Klobouk opraváře',slot:'helmet',icon:'🧢',img:'img/klobouk-opravare.png',rarity:'rare',desc:'Dárek pro každého, kdo se připojil 19. 11. V Cestě do středu země kopeš o 1 m rychleji (každé kliknutí +1 m navíc).'},
@@ -4190,8 +4210,19 @@ const ITEMS={
 const GEAR_TIERS={wood_sword_1:[{dmg:1.4},{dmg:1.6}],wood_sword_2:[{dmg:1.4,hit:.08},{dmg:1.6,hit:.12}],wood_sword_3:[{dmg:1.5,hit:-.03},{dmg:1.8,hit:0}],
   cloth_pants_1:[{hp:8},{hp:12}],cloth_pants_2:[{hp:10},{hp:15}],cloth_pants_3:[{hp:8,sta:15},{hp:12,sta:25}],
   cloth_gloves_1:[{hp:8},{hp:12}],cloth_gloves_2:[{hp:5,atk:2},{hp:8,atk:3}],cloth_gloves_3:[{hp:8,def:.08},{hp:12,def:.12}]};
-const gearStats=it=>it.slot==='weapon'?`Útok ${Math.round(it.dmg*10)}`+(it.hit?` · ${it.hit>0?'+':'−'}${Math.round(Math.abs(it.hit)*100)} % šance zásahu`:'')
-  :[`+${it.hp} HP`,it.sta?`+${it.sta} výdrže`:'',it.atk?`+${it.atk} útok`:'',it.def?`příšera trefí o ${Math.round(it.def*100)} % méně`:''].filter(Boolean).join(' · ');
+const gearStats=it=>[it.slot==='weapon'?`Útok ${Math.round(it.dmg*10)}`:'',it.hit?`${it.hit>0?'+':'−'}${Math.round(Math.abs(it.hit)*100)} % šance zásahu`:'',it.block?`${Math.round(it.block*100)} % blok`:'',
+  it.slots?`+${it.slots} ${it.slots<5?'políčka':'políček'} v batohu`:'',it.hp?`+${it.hp} HP`:'',it.sta?`${it.sta>0?'+':'−'}${Math.abs(it.sta)} výdrže`:'',it.atk?`+${it.atk} útok`:'',it.def?`příšera trefí o ${Math.round(it.def*100)} % méně`:''].filter(Boolean).join(' · ');
+// Štíty a batohy (šedá / zelená / modrá): id + '' / _u / _r. Štíty blokují úder příšery, batohy přidávají políčka v inventáři.
+const GEAR_NEW={
+  wood_shield_1:{name:'Štít s bílým křížem',slot:'shield',icon:'🛡️',img:'img/drevo-stit-1.png',t:[{block:.10},{block:.13},{block:.17}]},
+  wood_shield_2:{name:'Štít s bílým pruhem',slot:'shield',icon:'🛡️',img:'img/drevo-stit-2.png',t:[{block:.10,hp:3},{block:.13,hp:5},{block:.17,hp:8}]},
+  wood_shield_3:{name:'Světlý štít s kovanou puklicí',slot:'shield',icon:'🛡️',img:'img/drevo-stit-3.png',t:[{block:.12,sta:-5},{block:.16,sta:-5},{block:.21,sta:-5}]},
+  wood_shield_4:{name:'Runový štít',slot:'shield',icon:'🛡️',img:'img/drevo-stit-4.png',t:[{block:.10,def:.03},{block:.13,def:.05},{block:.17,def:.08}]},
+  cloth_pack_1:{name:'Pytel na provaze',slot:'backpack',icon:'🎒',img:'img/platno-batoh-1.png',t:[{slots:2},{slots:4},{slots:7}]},
+  cloth_pack_2:{name:'Kožený batoh s přezkami',slot:'backpack',icon:'🎒',img:'img/platno-batoh-2.png',t:[{slots:3},{slots:6},{slots:10}]},
+  cloth_pack_3:{name:'Pletený batoh',slot:'backpack',icon:'🎒',img:'img/platno-batoh-3.png',t:[{slots:2,hp:5},{slots:5,hp:8},{slots:8,hp:12}]}};
+for(const [k,g] of Object.entries(GEAR_NEW))g.t.forEach((u,n)=>{const w=k.startsWith('wood_'),it={name:g.name,slot:g.slot,icon:g.icon,img:g.img,...u,rarity:['common','uncommon','rare'][n],price:w?[20,40,100][n]:[15,30,75][n]};
+  it.stats=gearStats(it);it.desc=['Jednoduchá základní verze','Pečlivě zpracovaná verze','Vzácná začarovaná verze'][n]+`: ${it.stats}.`+(g.slot==='backpack'?' Batoh nejde sundat, dokud máš věci v políčkách navíc.':'');ITEMS[k+['','_u','_r'][n]]=it});
 for(const [k,ups] of Object.entries(GEAR_TIERS))ups.forEach((u,n)=>{const b=ITEMS[k],w=b.slot==='weapon',it={...b,hit:0,sta:0,atk:0,def:0,...u,rarity:n?'rare':'uncommon',price:w?(n?100:40):(n?75:30)};
   it.stats=gearStats(it);it.desc=(n?'Vzácná začarovaná verze':'Pečlivě zpracovaná verze')+` věci ${b.name}: ${it.stats}.`+(w?` V klikačkách na příšery ${String(it.dmg).replace('.',',')}× DMG.`:'');ITEMS[k+(n?'_r':'_u')]=it});
 
@@ -4297,7 +4328,7 @@ function invRender(){
     if(!cells[c]){const g=document.createElement('div');g.className='inv-slot gap';g.setAttribute('aria-hidden','true');doll.append(g);continue}
     const [k,l,i]=cells[c];doll.append(invCell(k,l,i,st[k]));
   }
-  INV_BAG.forEach((k,n)=>{if(n<invBagN(meId)||st[k])bag.append(invCell(k,'Slot '+(n+1),'＋',st[k]));else{const c=invCell(k,'Od levelu '+(n===3?10:20),'🔒',null);c.disabled=true;c.style.opacity=.45;bag.append(c)}});
+  INV_BAG.forEach((k,n)=>{if(n<invBagN(meId)||st[k])bag.append(invCell(k,'Slot '+(n+1),'＋',st[k]))});
   const m=wallet(meId);document.getElementById('invGold').textContent=m.gold.toLocaleString('cs-CZ');document.getElementById('invSilver').textContent=String(m.silver);document.getElementById('invDia').textContent=m.dia.toLocaleString('cs-CZ');
   document.getElementById('invWho').textContent='@'+meNick.replace(/^@+/,'')+(invOwned(meId).length?'':' · zatím nemáš žádné věci. Brzy je půjde získat ve hře.');
 }
@@ -4310,8 +4341,10 @@ async function invClick(key){
   if(!item){const lbl=(INV_SLOTS.find(x=>x[0]===key)||[0,'Slot v batohu'])[1];det.textContent=INV_BAG.includes(key)?'Volný slot v batohu.':`${lbl}: prázdné. Věc sem dáš klepnutím na ni v batohu.`;return}
   const it=ITEMS[item],next={...st};
   if(it.slot==='bag'){if(it.use==='heal'){medUse();return}if(it.use==='eat'){breadEat();return}det.replaceChildren();const bb=document.createElement('b');bb.textContent=it.name+(it.stack?' ×'+stackN(item):'');det.append(bb,' · '+it.desc);return}
+  const nAfter=pack=>10+((ITEMS[pack]||{}).slots||0);
   if(INV_BAG.includes(key)){const was=next[it.slot];next[it.slot]=item;if(was)next[key]=was;else delete next[key]}
-  else{const free=INV_BAG.slice(0,invBagN(meId)).find(b=>!next[b]);if(!free){det.textContent='Batoh je plný.';return}next[free]=item;delete next[key]}
+  else{const lim=it.slot==='backpack'?10:invBagN(meId),free=INV_BAG.slice(0,lim).find(b=>!next[b]);if(!free){det.textContent='Batoh je plný.';return}next[free]=item;delete next[key]}
+  if(INV_BAG.slice(nAfter(next.backpack)).some(b=>next[b])){det.textContent='🎒 Nejdřív vyndej věci z políček navíc, jinak by se do menšího batohu nevešly.';return}
   const saved=inv.equip[invKey(meId)];inv.equip[invKey(meId)]=next;invRender();invRefreshFigs(meId);hatRefresh();
   det.replaceChildren();const b=document.createElement('b');b.textContent=it.name;const ry=RARITY[it.rarity||'common'],rb=document.createElement('b');rb.textContent=ry.name;rb.style.color=ry.color;det.append(b,' · ',rb,' · '+it.desc+(invWears(meId,item)?' Máš ho na sobě.':' Je v batohu.'));
   if(!await invSave(next)){if(saved)inv.equip[invKey(meId)]=saved;else delete inv.equip[invKey(meId)];invRender();invRefreshFigs(meId);det.textContent='Nepodařilo se uložit. Zkus to znovu.'}
