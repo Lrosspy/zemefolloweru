@@ -99,13 +99,17 @@ const DEMO=q.has('demo'); // jen na zkoušku: hraje se bez přihlášení a nic 
 /*LOGIC*/
 // Boj ve stylu Sword and Sandals: 3 druhy útoku, výdrž, pohyb o víc polí, provokace a diváci
 const TRACK=10,REST=20,STA_REST=40,STA_REGEN=6,HAND=10,CROWD_MAX=100;
-const W8={boss_sword:2,basic_sword:1.2,basic_sword_g:1.3},TAL={earth_heart_1:1.5,earth_heart_2:1.2,earth_heart_3:1};
+const W8={boss_sword:2,basic_sword:1.2,basic_sword_g:1.3,wood_sword_1:1.1,wood_sword_2:1.1,wood_sword_3:1.2},TAL={earth_heart_1:1.5,earth_heart_2:1.2,earth_heart_3:1};
+// základní výbava z obchodu: šance zásahu u meče, výdrž u kalhot, útok a obrana u rukavic, HP u kalhot a rukavic
+const HIT={wood_sword_2:.05,wood_sword_3:-.05},STA={cloth_pants_3:10},ATKG={cloth_gloves_2:1},DEF={cloth_gloves_3:.05};
+const CLOTH_HP={cloth_pants_1:5,cloth_pants_2:7,cloth_pants_3:5,cloth_gloves_1:5,cloth_gloves_2:3,cloth_gloves_3:5};
+const hpMaxOf=g=>100+(g.banner==='founder_cape'?50:0)+(g.boots==='arena_boots'?30:0)+(CLOTH_HP[g.pants]||0)+(CLOTH_HP[g.gloves]||0);
 const ATK={quick:{mul:.6,hit:.85,sta:8},normal:{mul:1,hit:.7,sta:16},power:{mul:1.7,hit:.45,sta:30}};
 const MOVE={step:{d:1,sta:4},run:{d:3,sta:12},back:{d:-1,sta:4},jump:{d:-1,sta:10}};
 function monsterOf(f){const tier=Math.floor(f/10);return {hp:tier?105+5*tier:100,dmg:15+5*tier}} // 1–9: 100/15 · 10–19: 110/20 · každých dalších 10 pater +5/+5
-function playerDmg(gear){return Math.round(HAND*(W8[gear.weapon]||1)+(TAL[gear.talisman]||0))}
-const fighter=(pos,hp,max,dmg)=>({pos,hp,max,dmg,sta:100,smax:100,jump:false,rage:false});
-function newFight(f,hp,hpMax,gear){const m=monsterOf(f);return {f,p:fighter(0,hp,hpMax,playerDmg(gear)),m:fighter(TRACK,m.hp,m.hp,m.dmg),crowd:0,block:gear.shield==='arena_shield'?.25:0,over:null}}
+function playerDmg(gear){return Math.round(HAND*(W8[gear.weapon]||1)+(TAL[gear.talisman]||0)+(ATKG[gear.gloves]||0))}
+const fighter=(pos,hp,max,dmg,smax=100)=>({pos,hp,max,dmg,sta:smax,smax,jump:false,rage:false,hit:0});
+function newFight(f,hp,hpMax,gear){const m=monsterOf(f),p=fighter(0,hp,hpMax,playerDmg(gear),100+(STA[gear.pants]||0));p.hit=HIT[gear.weapon]||0;const mon=fighter(TRACK,m.hp,m.hp,m.dmg);mon.hit=-(DEF[gear.gloves]||0);return {f,p,m:mon,crowd:0,block:gear.shield==='arena_shield'?.25:0,over:null}}
 const dist=S=>S.m.pos-S.p.pos;
 const atkDmg=(A,a,boost)=>Math.round(A.dmg*ATK[a].mul*(boost?1.5:1));
 function canDo(S,who,a){
@@ -134,7 +138,7 @@ function doAct(S,who,a,rnd){
   else if(a==='roar'){ev.push({who,kind:'roar'})}
   else{
     const A=ATK[a];me.sta-=A.sta;const boost=who==='p'&&S.crowd>=CROWD_MAX;
-    const chance=A.hit-(me.rage?.2:0);me.rage=false;
+    const chance=A.hit+(me.hit||0)-(me.rage?.2:0);me.rage=false;
     ev.push({who,kind:'atk',type:a,boost});
     if(boost)S.crowd=0;
     if(foe.jump&&!boost){ev.push({who:o,kind:'evade'});if(who==='p')cr(-5)}
@@ -219,14 +223,14 @@ function drawPlayer(t){ // celá postava z boku (styl gladiátora), kouká dopra
     c.lineTo(-u*.15,-u*.35);c.closePath();const cg=c.createLinearGradient(0,shY,0,0);cg.addColorStop(0,'#ffe27a');cg.addColorStop(1,'#c98a06');c.fillStyle=cg;c.fill();line();c.stroke()}
   // noha: kyčel → koleno → chodidlo
   const leg=(a,back)=>{c.save();c.translate(0,hipY);c.rotate(a);
-    c.fillStyle=back?'#4a3526':'#5c4330';c.beginPath();c.roundRect(-u*.16,0,u*.32,u*1.0,u*.14);c.fill();line();c.stroke();
+    c.fillStyle=g.pants?(back?'#9c8460':'#b59a6e'):(back?'#4a3526':'#5c4330');c.beginPath();c.roundRect(-u*.16,0,u*.32,u*1.0,u*.14);c.fill();line();c.stroke();
     const boots=g.boots==='arena_boots';c.fillStyle=boots?'#6a2bb0':'#7a4a22';c.beginPath();c.roundRect(-u*.2,u*.82,u*.5,u*.28,u*.1);c.fill();line();c.stroke();
     if(boots){c.fillStyle='#ffc300';c.fillRect(-u*.2,u*.82,u*.4,u*.07)}
     c.restore()};
   // paže: rameno → ruka
   const arm=(a,back,len)=>{c.save();c.translate(u*.05,shY+u*.12);c.rotate(a);
     c.fillStyle=back?'#d4a988':skin;c.beginPath();c.roundRect(-u*.13,0,u*.26,len,u*.12);c.fill();line();c.stroke();
-    c.beginPath();c.arc(0,len,u*.16,0,7);c.fill();line();c.stroke();return len};
+    if(g.gloves)c.fillStyle=back?'#9c8460':'#b59a6e';c.beginPath();c.arc(0,len,u*.16,0,7);c.fill();line();c.stroke();return len};
   // zadní noha + zadní paže (se štítem)
   leg(-legA,true);
   arm(.25+armA*.6,true,u*.78);
@@ -256,8 +260,8 @@ function drawPlayer(t){ // celá postava z boku (styl gladiátora), kouká dopra
   const swing=-1.25+lunge*2.4-armA*.6;
   arm(swing+1.1*(g.weapon?0:0)+(g.weapon?0:.9),false,u*.8);
   if(g.weapon){c.translate(0,u*.8);c.rotate(-1.2+lunge*.4);
-    c.fillStyle='#d8dde6';line(2);c.beginPath();c.moveTo(-u*.08,-u*.1);c.lineTo(-u*.08,-u*1.45);c.lineTo(0,-u*1.65);c.lineTo(u*.08,-u*1.45);c.lineTo(u*.08,-u*.1);c.closePath();c.fill();c.stroke();
-    c.fillStyle=g.weapon==='boss_sword'?'#7a2a8a':'#8a5a2a';c.fillRect(-u*.26,-u*.14,u*.52,u*.11);c.fillRect(-u*.06,-u*.05,u*.12,u*.3)}
+    const wood=/^wood_/.test(g.weapon);c.fillStyle=wood?'#c49a62':'#d8dde6';line(2);c.beginPath();c.moveTo(-u*.08,-u*.1);c.lineTo(-u*.08,-u*1.45);c.lineTo(0,-u*1.65);c.lineTo(u*.08,-u*1.45);c.lineTo(u*.08,-u*.1);c.closePath();c.fill();c.stroke();
+    c.fillStyle=g.weapon==='boss_sword'?'#7a2a8a':wood?'#6b4428':'#8a5a2a';c.fillRect(-u*.26,-u*.14,u*.52,u*.11);c.fillRect(-u*.06,-u*.05,u*.12,u*.3)}
   c.restore();
   if(vis.pFlash>0){c.save();c.globalAlpha=vis.pFlash*.35;c.fillStyle='#ff2a14';c.fillRect(x-u*.9,y-u*3.3,u*1.8,u*3.3);c.restore()}
   c.restore();
@@ -309,7 +313,7 @@ for(const [row,list] of [['rowAtk',['quick','normal','power','taunt']],['rowMove
   for(const a of list){const b=document.createElement('button');b.id='a_'+a;b.className=ATK[a]?'atk':'';b.title='Klávesa '+KEYS[a];
     b.innerHTML=`<span class="ic" aria-hidden="true">${BTN[a][0]}</span><span class="t">${BTN[a][1]}</span><span class="d"></span>`;b.onclick=()=>act(a);$(row).append(b)}
 function detail(a){
-  if(ATK[a])return `−${atkDmg(S.p,a,false)} · ${Math.round((ATK[a].hit-(S.p.rage?.2:0))*100)} %`;
+  if(ATK[a])return `−${atkDmg(S.p,a,false)} · ${Math.round((ATK[a].hit+(S.p.hit||0)-(S.p.rage?.2:0))*100)} %`;
   if(MOVE[a])return a==='run'?'až 3 pole':a==='jump'?'uhneš':'1 pole';
   if(a==='rest')return S.p.hp>=S.p.max&&S.p.sta>=S.p.smax?'jen čekáš':'+20 HP';
   return 'diváci +30';
@@ -328,8 +332,8 @@ function hud(){
     b.classList.toggle('boost',!!ATK[a]&&S.crowd>=CROWD_MAX)}
 }
 function gearLine(){
-  const g=st.gear,w={boss_sword:'Zubatý meč',basic_sword:'Obyčejný meč',basic_sword_g:'Obyčejný meč'}[g.weapon]||'Pěsti',bits=[w+' · útok '+playerDmg(g)];
-  if(g.shield==='arena_shield')bits.push('🛡️ blok 25 %');if(g.banner==='founder_cape')bits.push('🧥 +50 HP');if(g.boots==='arena_boots')bits.push('🥾 +30 HP');
+  const g=st.gear,w={boss_sword:'Zubatý meč',basic_sword:'Obyčejný meč',basic_sword_g:'Obyčejný meč',wood_sword_1:'Dřevěný cvičák',wood_sword_2:'Dřevěný meč s provazem',wood_sword_3:'Dřevěná šavle'}[g.weapon]||'Pěsti',bits=[w+' · útok '+playerDmg(g)];
+  if(g.shield==='arena_shield')bits.push('🛡️ blok 25 %');if(g.banner==='founder_cape')bits.push('🧥 +50 HP');if(g.boots==='arena_boots')bits.push('🥾 +30 HP');{const c=(CLOTH_HP[g.pants]||0)+(CLOTH_HP[g.gloves]||0);if(c)bits.push('👖🧤 +'+c+' HP')}
   $('pSub').textContent=bits.join(' · ');
 }
 const say=html=>{$('log').innerHTML=html};
@@ -435,7 +439,7 @@ async function end(){
     modal('Vyhrál jsi! 🏆','Ukládám výhru…',[]);
     const [r]=await Promise.all([payWin(),saveHp()]);
     if(!r){modal('Výhru se nepodařilo uložit','Zkus to znovu. Když to nepůjde, vrať se do města a zkus to za chvíli.',[btn('go','Zkusit znovu',()=>end()),btn('city','Do města',null)]);return}
-    st.floor=r.floor;if(r.drop==='shield')st.gear.shield='arena_shield';if(r.drop==='boots'){st.gear.boots='arena_boots';st.hpMax+=30}
+    st.floor=r.floor;if(r.drop==='shield')st.gear.shield='arena_shield';if(r.drop==='boots'){st.gear.boots='arena_boots';st.hpMax=hpMaxOf(st.gear)}
     const money=r.gain?`Dostáváš <b>${r.gain} stříbrných</b>${r.left<DAY_CAP?` (dnes ještě můžeš získat ${r.left})`:''}.`:r.capped?'Dnešní limit 200 stříbrných z arény máš vyčerpaný, za výhru teď jen postupuješ. Zítra se limit obnoví.':'';
     const drop=r.drop==='shield'?'<br><br>🛡️ <b>Štít podsvětí je tvůj!</b> Epický, blokuje 25 % úderů. Najdeš ho v inventáři.':r.drop==='boots'?'<br><br>🥾 <b>Boty podsvětí jsou tvoje!</b> Legendární, +30 HP a 10 % šance na dvojnásobnou úrodu. Najdeš je v inventáři.':'';
     modal(r.drop?'Obrovská výhra! 🏆':'Vyhrál jsi! 🏆',`Patro <b>${S.f}</b> je čisté. ${money} Zbývá ti <b>${S.p.hp} HP</b>.${drop}<br><br>Pokračuj do patra ${r.floor}, nebo se vrať do města a vyléč se.`,
@@ -455,9 +459,9 @@ function begin(){
 // ---------- přihlášení a načtení postavy ----------
 const load=src=>new Promise((ok,bad)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.append(s)});
 function gate(title,text,link){modal(title,text,[link===false?null:btn('gold',link||'Zpět na planetu',null)].filter(Boolean));st.busy=true;hud()}
-function wearOf(items,equip,floor){ // stejně jako ve hře: uložené vybavení, jinak to, co máš
-  const own=Object.keys(items||{});if(floor>10)own.push('arena_shield');if(floor>50)own.push('arena_boots');
-  const SLOT={boss_sword:'weapon',basic_sword:'weapon',basic_sword_g:'weapon',earth_heart_1:'talisman',earth_heart_2:'talisman',earth_heart_3:'talisman',founder_cape:'banner',arena_shield:'shield',arena_boots:'boots'};
+function wearOf(items,equip,floor,extra){ // stejně jako ve hře: uložené vybavení, jinak to, co máš
+  const own=[...Object.keys(items||{}),...(extra||[])];if(floor>10)own.push('arena_shield');if(floor>50)own.push('arena_boots');
+  const SLOT={boss_sword:'weapon',basic_sword:'weapon',basic_sword_g:'weapon',earth_heart_1:'talisman',earth_heart_2:'talisman',earth_heart_3:'talisman',founder_cape:'banner',arena_shield:'shield',wood_sword_1:'weapon',wood_sword_2:'weapon',wood_sword_3:'weapon',cloth_pants_1:'pants',cloth_pants_2:'pants',cloth_pants_3:'pants',cloth_gloves_1:'gloves',cloth_gloves_2:'gloves',cloth_gloves_3:'gloves',arena_boots:'boots'};
   const g={};if(equip&&typeof equip==='object'){for(const [s,it] of Object.entries(equip))if(SLOT[it]===s&&own.includes(it))g[s]=it}
   else for(const it of own){const s=SLOT[it];if(s&&!g[s])g[s]=it}
   return g;
@@ -465,7 +469,7 @@ function wearOf(items,equip,floor){ // stejně jako ve hře: uložené vybavení
 async function start(){
   if(DEMO){st.nick='zkouška';$('pName').textContent='Zkušební boj';st.floor=Math.max(1,+q.get('f')||1);
     st.gear=wearOf(Object.fromEntries((q.get('g')||'').split(',').filter(Boolean).map(k=>[k,true])),null,st.floor);
-    st.hpMax=100+(st.gear.banner==='founder_cape'?50:0)+(st.gear.boots==='arena_boots'?30:0);st.hp=st.hpMax;begin();return}
+    st.hpMax=hpMaxOf(st.gear);st.hp=st.hpMax;begin();return}
   begin();st.busy=true;hud();say('Načítám tvou postavu…');
   try{
     let at=0;try{at=+localStorage.getItem(LOGIN_AT)||0}catch(_){}
@@ -481,9 +485,12 @@ async function start(){
     if(now()<ARENA_FROM&&a.nick!==ADMIN){st.user=null;gate('Aréna je zavřená','Brána do podsvětí se otevře <b>ve středu 25. 11. ve 12:00</b>.');return}
     st.nick=a.nick;$('pName').textContent='@'+a.nick;
     const k=liveKey(a.nick);
-    const [items,equip,fight,health]=await Promise.all(['items','equip','fight','health'].map(P=>api('GET',P+'/'+k)));
-    st.floor=Math.max(1,+(fight&&fight.f)||1);st.gear=wearOf(items,equip,st.floor);
-    st.hpMax=100+(st.gear.banner==='founder_cape'?50:0)+(st.gear.boots==='arena_boots'?30:0);
+    const [items,equip,fight,health,buys,gifts,dig]=await Promise.all(['items/'+k,'equip/'+k,'fight/'+k,'health/'+k,'buys/'+k,'gifts/'+k,'dig'].map(P=>api('GET',P)));
+    const extra=Object.keys(buys||{}).filter(x=>x!=='last'); // koupené v obchodě
+    if(gifts&&gifts.launch)extra.push('basic_sword_g');if(a.nick==='___1kelly1___')extra.push('boss_sword');
+    if(dig&&now()>1795388399000){const top=Object.entries(dig).filter(([,v])=>v&&+v.c>0).sort((x,y)=>(+y[1].c-+x[1].c)||((+x[1].t||0)-(+y[1].t||0))).slice(0,3).map(([n])=>n),i=top.indexOf(k);if(i>=0)extra.push('earth_heart_'+(i+1))}
+    st.floor=Math.max(1,+(fight&&fight.f)||1);st.gear=wearOf(items,equip,st.floor,extra);
+    st.hpMax=hpMaxOf(st.gear);
     st.health=hlEff(health,now());
     if(st.health.dead){const left=Math.max(1,Math.ceil((st.health.dAt+REVIVE_MS-now())/60000));
       gate('Jsi mrtvý 💀',`Tvoje postava leží u hrobu. Oživí tě jiný hráč, nebo se sám probudíš asi za <b>${left>=60?Math.floor(left/60)+' h '+left%60+' min':left+' min'}</b>. Pak můžeš zpátky do arény.`);return}

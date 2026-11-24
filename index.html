@@ -196,6 +196,16 @@ body.playing .admin-key{display:none}
 .shop-offers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .shop-offer{aspect-ratio:1;border-radius:14px;border:1.5px dashed rgba(255,255,255,.25);background:#1d1838;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink-dim);font-size:13px}
 .shop-offer .ic{font-size:26px;opacity:.6}
+button.shop-offer{font:inherit;cursor:pointer;border:2px solid #9aa1ad;padding:6px;gap:3px;color:var(--ink);text-align:center}
+button.shop-offer img{width:100%;flex:1 1 0;min-height:0;object-fit:cover;border-radius:9px}
+button.shop-offer b{font-size:11px;line-height:1.15}
+button.shop-offer .pr{font-size:11px;font-weight:900;color:#e8e8f0}
+button.shop-offer.own{opacity:.55}
+button.shop-offer.sel{outline:3px solid #ffc300;outline-offset:1px}
+.shop-buy{margin-top:10px;padding:10px 12px;border-radius:14px;background:#1d1838;border:1px solid rgba(255,255,255,.15);font-size:13px;line-height:1.4}
+.shop-buy b{display:block;font-size:14px}
+.shop-buy button{margin-top:8px;font:900 14px var(--body,system-ui);border:0;border-radius:999px;padding:9px 16px;background:#ffc300;color:#2b1d0e;cursor:pointer}
+.shop-buy button:disabled{opacity:.5;cursor:not-allowed}
 .shop-special{position:relative;margin-top:12px;border-radius:18px;overflow:hidden;border:2px solid #ffc300;background:#3a2a08;min-height:150px;display:grid;place-items:center}
 .shop-rays{position:absolute;inset:-60%;background:repeating-conic-gradient(from 0deg,rgba(255,214,90,.38) 0deg 10deg,rgba(255,214,90,0) 10deg 22deg);animation:shopSpin 14s linear infinite}
 @keyframes shopSpin{to{transform:rotate(360deg)}}
@@ -384,11 +394,12 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     <div class="shop-main">
       <div class="shop-col">
         <h3 class="inv-sub">Dnešní nabídka</h3>
-        <div class="shop-offers">
+        <div class="shop-offers" id="shopOffers">
           <div class="shop-offer"><span class="ic" aria-hidden="true">🔒</span><b>Již brzy</b></div>
           <div class="shop-offer"><span class="ic" aria-hidden="true">🔒</span><b>Již brzy</b></div>
           <div class="shop-offer"><span class="ic" aria-hidden="true">🔒</span><b>Již brzy</b></div>
         </div>
+        <div class="shop-buy" id="shopBuy" hidden></div>
         <div class="shop-special">
           <div class="shop-rays" aria-hidden="true"></div>
           <div class="shop-special-in">
@@ -398,7 +409,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
             <em>Již brzy</em>
           </div>
         </div>
-        <p class="inv-who">Nabídka se mění každý den.</p>
+        <p class="inv-who" id="shopWho">Nabídka se mění každý den.</p>
       </div>
       <div class="shop-col">
         <h3 class="inv-sub">Tvůj inventář</h3>
@@ -3970,7 +3981,8 @@ const wearsShield=id=>{try{return !!id&&invWears(id,'arena_shield')}catch(_){ret
 // boots: 10 % chance of a double reward. Same check as the server: saved in /equip as boots AND floor > 50
 const dblRoll=()=>{try{return !!meId&&((inv.equip||{})[invKey(meId)]||{}).boots==='arena_boots'&&arenaFloor(meId)>50&&Math.random()<ITEMS.arena_boots.dbl}catch(_){return false}};
 const dblToast=()=>setTimeout(()=>toast('👢 Boty podsvětí: dvojnásobná odměna!'),1600);
-const hpMaxOf=id=>100+(wearsCape(id)?ITEMS[CAPE].hp:0)+(wearsBoots(id)?ITEMS.arena_boots.hp:0);
+const clothHp=id=>{try{const st=invState(id);return ((ITEMS[st.pants]||{}).hp||0)+((ITEMS[st.gloves]||{}).hp||0)}catch(_){return 0}};
+const hpMaxOf=id=>100+(wearsCape(id)?ITEMS[CAPE].hp:0)+(wearsBoots(id)?ITEMS.arena_boots.hp:0)+clothHp(id);
 function hpMaxSync(){if(!meId)return;const m=hpMaxOf(meId);if(hp.max===m&&hp.cur<=m)return;hp.max=m;if(hp.cur>m){hp.cur=m;if(hp.loaded)hlSave()}hpUi()}
 function capeMesh(){
   const g=new THREE.Group();g.name='founderCape';
@@ -3998,6 +4010,13 @@ function bootMesh(){ // chunky stone boot with a gold band, slipped over the sho
   const top=new THREE.Mesh(new THREE.BoxGeometry(.018,.004,.018),new THREE.MeshLambertMaterial({color:'#b8861a'}));top.position.set(0,-.019,0);g.add(top);
   return g;
 }
+const BURLAP=new THREE.MeshLambertMaterial({color:'#b59a6e',flatShading:true});
+function clothRefresh(o,pants,gloves){ // plátěné kalhoty (přes nohy) a rukavice (přes ruce)
+  for(const n of ['legL','legR']){const lg=o.getObjectByName(n);if(!lg)continue;const m=lg.getObjectByName('clothPants');
+    if(pants&&!m){const c=new THREE.Mesh(new THREE.BoxGeometry(.0145,.026,.0155),BURLAP);c.name='clothPants';c.position.y=-.013;lg.add(c)}else if(!pants&&m)lg.remove(m)}
+  for(const n of ['armL','armR']){const a=o.getObjectByName(n);if(!a)continue;const m=a.getObjectByName('clothGlove');
+    if(gloves&&!m){const c=new THREE.Mesh(new THREE.SphereGeometry(.0092,6,4),BURLAP);c.name='clothGlove';c.position.y=-.048;a.add(c)}else if(!gloves&&m)a.remove(m)}
+}
 function arenaGearRefresh(){ // show the shield / boots on every figure whose owner wears them
   const put=(o,s,b)=>{const al=o.getObjectByName('armL');if(al){const m=al.getObjectByName('arenaShield');if(s&&!m)al.add(shieldMesh());else if(!s&&m)al.remove(m)}
     for(const n of ['legL','legR']){const lg=o.getObjectByName(n);if(!lg)continue;const m=lg.getObjectByName('arenaBoot');if(b&&!m)lg.add(bootMesh());else if(!b&&m)lg.remove(m)}};
@@ -4005,6 +4024,9 @@ function arenaGearRefresh(){ // show the shield / boots on every figure whose ow
   scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.getObjectByName('legL'))return;
     if(!seen.has(id))seen.set(id,[wearsShield(id),wearsBoots(id)]);const [s,b]=seen.get(id);if(s||b||o.getObjectByName('arenaShield')||o.getObjectByName('arenaBoot'))put(o,s,b)});
   if(play&&play.av&&play.av.fig&&meId)put(play.av.fig,wearsShield(meId),wearsBoots(meId));
+  const cl=new Map(),of=id=>{if(!cl.has(id)){let p=false,g=false;try{const st=invState(id);p=!!(ITEMS[st.pants]||{}).hp;g=!!(ITEMS[st.gloves]||{}).hp}catch(_){}cl.set(id,[p,g])}return cl.get(id)};
+  scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.getObjectByName('legL'))return;const [p,g]=of(id);if(p||g||o.getObjectByName('clothPants')||o.getObjectByName('clothGlove'))clothRefresh(o,p,g)});
+  if(play&&play.av&&play.av.fig&&meId){const [p,g]=of(meId);clothRefresh(play.av.fig,p,g)}
 }
 function capeRefresh(){
   const put=(o,w)=>{const c=o.getObjectByName('founderCape');if(w&&!c)o.add(capeMesh());else if(!w&&c)c.parent.remove(c)};
@@ -4047,7 +4069,33 @@ function shopRender(){
   for(const [cls,v,l] of [['coin g',m.gold.toLocaleString('cs-CZ'),pl(m.gold,'zlatý','zlaté','zlatých')],['coin s',m.silver,pl(m.silver,'stříbrný','stříbrné','stříbrných')],['dia',m.dia.toLocaleString('cs-CZ'),pl(m.dia,'diamant','diamanty','diamantů')]]){
     const sp=document.createElement('span');const ic=document.createElement('span');ic.className=cls;ic.setAttribute('aria-hidden','true');if(cls==='dia')ic.textContent='💎';sp.append(ic,v+' '+l);purse.append(sp)}
   const st=invState(meId),bag=document.getElementById('shopBag');bag.replaceChildren();
+  try{shopOffersRender()}catch(_){}
   INV_BAG.forEach((k,n)=>{if(n>=invBagN(meId)&&!st[k])return;const c=invCell(k,'Slot '+(n+1),'＋',st[k]);c.onclick=()=>{const it=st[k]&&ITEMS[st[k]];document.getElementById('shopDetail').textContent=it?`${it.name}: výkup se spustí s prvním zbožím. Již brzy!`:'Prázdný slot.'};bag.append(c)});
+}
+// Obchod: základní výbava (dřevěné meče, plátěné kalhoty a rukavice) od středy 25. 11. 12:00. Nákup = jeden zápis: money −cena, /buys/<nick>/<item>=true, /buys/<nick>/last=<item> (hlídají pravidla Firebase)
+const SHOP_ITEMS=['wood_sword_1','wood_sword_2','wood_sword_3','cloth_pants_1','cloth_pants_2','cloth_pants_3','cloth_gloves_1','cloth_gloves_2','cloth_gloves_3'];
+let shopSel=null,shopBusy=false;
+const shopOn=()=>Date.now()>=ARENA_FROM||meId==='lubikosuch';
+function shopOffersRender(){
+  if(!shopOn())return;const box=document.getElementById('shopOffers'),own=invOwned(meId);box.replaceChildren();
+  document.getElementById('shopWho').textContent='Základní výbava pro začátek. Ceny ve stříbrných.';
+  for(const k of SHOP_ITEMS){const it=ITEMS[k],b=document.createElement('button');b.type='button';b.className='shop-offer'+(own.includes(k)?' own':'')+(shopSel===k?' sel':'');
+    b.innerHTML=`<img src="${it.img}" alt=""><b></b><span class="pr"></span>`;b.querySelector('b').textContent=it.name;b.querySelector('.pr').textContent=own.includes(k)?'✓ máš':it.price+' stříbrných';
+    b.setAttribute('aria-label',it.name+', '+(own.includes(k)?'už máš':it.price+' stříbrných'));b.onclick=()=>{shopSel=k;shopOffersRender()};box.append(b)}
+  const buy=document.getElementById('shopBuy');if(!shopSel){buy.hidden=true;return}
+  const it=ITEMS[shopSel],has=own.includes(shopSel),money=Math.floor(+inv.money[liveKey(meId)]||0);buy.hidden=false;buy.replaceChildren();
+  const t=document.createElement('b');t.textContent=it.name+' · '+it.stats;const d=document.createElement('span');d.textContent=it.desc;
+  const btn=document.createElement('button');btn.type='button';btn.textContent=has?'Už ho máš v inventáři':money<it.price?`Nemáš dost stříbrných (${it.price})`:`Koupit za ${it.price} stříbrných`;btn.disabled=has||money<it.price||shopBusy;btn.onclick=()=>shopBuy(shopSel);
+  buy.append(t,d,btn);
+}
+async function shopBuy(k){
+  if(shopBusy||!acct.user||!meId||!shopOn())return;const it=ITEMS[k];shopBusy=true;shopOffersRender();
+  const key=liveKey(meId);let m=null;try{const r=await fetch(LIVE_DB+'/money/'+key+'.json',{cache:'no-store'});if(r.ok)m=+(await r.json())||0}catch(_){}
+  let ok=false;if(m!=null&&m>=it.price){const body={};body['money/'+key]=m-it.price;body['buys/'+key+'/'+k]=true;body['buys/'+key+'/last']=k;ok=await farmPatch(body);
+    if(ok){inv.money[key]=m-it.price;inv.buys=inv.buys||{};inv.buys[key]={...(inv.buys[key]||{}),[k]:true,last:k}}}
+  shopBusy=false;shopRender();
+  toast(ok?`🛒 Koupil jsi ${it.name}! Najdeš ho v inventáři, nasaď si ho.`:m!=null&&m<it.price?'🛒 Nemáš dost stříbrných.':'🛒 Nákup se nepovedl, zkus to znovu.');
+  if(ok){try{hatRefresh()}catch(_){}try{invRender()}catch(_){}}
 }
 document.getElementById('shopBtn').onclick=shopOpen;
 document.getElementById('shopClose').onclick=()=>{document.getElementById('shopBox').hidden=true};
@@ -4087,6 +4135,15 @@ const ITEMS={
   founder_cape:{name:'Plášť zakladatele',slot:'banner',icon:'🧥',img:'img/plast-zakladatele.png',rarity:'legend',hp:50,work:.9,desc:'Zlatý plášť s nápisem Zakladatel planety followerů. Když ho máš na sobě: +50 HP (max 150) a všechny práce (zalévání, farma, lékárna) o 10 % rychleji. Vidí ho všichni na tvých zádech.'},
   arena_shield:{name:'Štít podsvětí',slot:'shield',icon:'🛡️',img:'img/stit-areny.png',rarity:'epic',block:.25,desc:'Padá z příšery na 10. patře arény. Když ho máš na sobě: 25 % šance, že zablokuješ úder příšery a nedostaneš žádné poškození.'},
   arena_boots:{name:'Boty podsvětí',slot:'boots',icon:'🥾',img:'img/boty-areny.png',rarity:'legend',hp:30,dbl:.1,desc:'Padají z příšery na 50. patře arény. Když je máš na sobě: +30 HP a 10 % šance na dvojnásobnou odměnu u bylin, antibiotik, obilí a chleba.'},
+  wood_sword_1:{name:'Dřevěný cvičák',slot:'weapon',icon:'🗡️',img:'img/drevo-mec-1.png',rarity:'common',dmg:1.1,price:20,stats:'Útok 11 (pěsti 10)',desc:'Hrubě otesaný dřevěný meč na trénink. Slabý, ale pořád lepší než pěsti: útok 11 v aréně a 1,1× DMG v klikačkách na příšery.'},
+  wood_sword_2:{name:'Dřevěný meč s provazem',slot:'weapon',icon:'🗡️',img:'img/drevo-mec-2.png',rarity:'common',dmg:1.1,hit:.05,price:20,stats:'Útok 11 · +5 % šance zásahu',desc:'Rukojeť omotaná provazem, meč pevně drží v ruce. Útok 11 a v aréně +5 % šance, že trefíš. 1,1× DMG v klikačkách.'},
+  wood_sword_3:{name:'Zubatá dřevěná šavle',slot:'weapon',icon:'🗡️',img:'img/drevo-mec-3.png',rarity:'common',dmg:1.2,hit:-.05,price:20,stats:'Útok 12 · −5 % šance zásahu',desc:'Těžká šavle s koženou rukojetí. Bije víc (útok 12), ale je nevyvážená: v aréně −5 % šance zásahu. 1,2× DMG v klikačkách.'},
+  cloth_pants_1:{name:'Roztřepené kraťasy',slot:'pants',icon:'👖',img:'img/platno-kalhoty-1.png',rarity:'common',hp:5,price:15,stats:'+5 HP',desc:'Plátěné kraťasy s roztřepenými konci. +5 HP.'},
+  cloth_pants_2:{name:'Záplatované kalhoty',slot:'pants',icon:'👖',img:'img/platno-kalhoty-2.png',rarity:'common',hp:7,price:15,stats:'+7 HP',desc:'Pevné plátěné kalhoty se záplatou na koleni. Vydrží víc: +7 HP.'},
+  cloth_pants_3:{name:'Vybledlé kalhoty s kapsou',slot:'pants',icon:'👖',img:'img/platno-kalhoty-3.png',rarity:'common',hp:5,sta:10,price:15,stats:'+5 HP · +10 výdrže',desc:'Pohodlné vybledlé kalhoty s kapsou. +5 HP a v aréně +10 maximální výdrže.'},
+  cloth_gloves_1:{name:'Bezprsté rukavice',slot:'gloves',icon:'🧤',img:'img/platno-rukavice-1.png',rarity:'common',hp:5,price:15,stats:'+5 HP',desc:'Plátěné rukavice bez prstů. +5 HP.'},
+  cloth_gloves_2:{name:'Rukavice s koženou dlaní',slot:'gloves',icon:'🧤',img:'img/platno-rukavice-2.png',rarity:'common',hp:3,atk:1,price:15,stats:'+3 HP · +1 útok',desc:'Kožená dlaň líp drží zbraň. +3 HP a v aréně +1 útok za každý úder.'},
+  cloth_gloves_3:{name:'Pletené rukavice s přezkou',slot:'gloves',icon:'🧤',img:'img/platno-rukavice-3.png',rarity:'common',hp:5,def:.05,price:15,stats:'+5 HP · příšera trefí o 5 % méně',desc:'Hřejivé pletené rukavice s koženou přezkou. +5 HP a v aréně tě příšera trefí o 5 % méně.'},
   herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 25 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
@@ -4115,6 +4172,7 @@ function invOwned(id){
   if(((inv.gifts||{})[liveKey(id)]||{}).hat&&!own.includes('repair_hat'))own.push('repair_hat');
   {const h=heartOf(id);if(h&&!own.includes(h))own.push(h)}
   for(const d of arenaDrops(id))if(!own.includes(d))own.push(d);
+  for(const b of Object.keys((inv.buys||{})[liveKey(id)]||{}))if(ITEMS[b]&&!own.includes(b))own.push(b); // koupené v obchodě (/buys)
   return own;
 }
 function invState(id){ // {slot: itemId} with every owned item either worn or in the bag
@@ -4132,7 +4190,7 @@ function invRefreshFigs(id){
 }
 let invTry=0;
 async function invLoad(){ // a failed read (network hiccup) must never look like an empty inventory: keep old data and retry
-  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread','dig','fight'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread','dig','fight'];
+  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread','dig','fight','buys'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread','dig','fight','buys'];
   const res=await Promise.all(keys.map(k=>fetch(LIVE_DB+'/'+k+'.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json().then(v=>({ok:true,v})):{ok:false}).catch(()=>({ok:false}))));
   let bad=0;res.forEach((r,i)=>{if(r.ok)inv[dst[i]]=r.v||{};else{bad++;inv[dst[i]]=inv[dst[i]]||{}}});
   if(!bad){inv.loaded=true;invTry=0}else setTimeout(invLoad,Math.min(30000,2000*++invTry));
