@@ -201,6 +201,9 @@ button.shop-offer{font:inherit;cursor:pointer;border:2px solid #9aa1ad;padding:6
 .item-tip{position:fixed;z-index:9999;max-width:240px;pointer-events:none;background:#14112a;border:2px solid #9aa1ad;border-radius:12px;padding:8px 11px;box-shadow:0 10px 30px rgba(0,0,0,.55);font-size:13px;line-height:1.35;color:#fff4e2;display:flex;flex-direction:column;gap:2px}
 .item-tip[hidden]{display:none}
 .item-tip b{font-size:14px}.item-tip .rr{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}.item-tip .st{color:#ffe27a;font-weight:800}
+.shop-timer{margin:0 0 8px;text-align:left;font-size:13px;font-weight:800;color:#e8d9b8}
+.shop-timer b{font-variant-numeric:tabular-nums;color:#ffc300;font-weight:900}
+.shop-timer[hidden]{display:none}
 button.shop-offer img{width:100%;flex:1 1 0;min-height:0;object-fit:cover;border-radius:9px}
 button.shop-offer b{font-size:11px;line-height:1.15}
 button.shop-offer .pr{font-size:11px;font-weight:900;color:#e8e8f0}
@@ -398,6 +401,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     <div class="shop-main">
       <div class="shop-col">
         <h3 class="inv-sub">Dnešní nabídka</h3>
+        <p class="shop-timer" id="shopTimer" hidden aria-live="off">Nové zboží za: <b>--:--:--</b></p>
         <div class="shop-offers" id="shopOffers">
           <div class="shop-offer"><span class="ic" aria-hidden="true">🔒</span><b>Již brzy</b></div>
           <div class="shop-offer"><span class="ic" aria-hidden="true">🔒</span><b>Již brzy</b></div>
@@ -4092,12 +4096,19 @@ function shopToday(){
   return shopCache={items,end,seed};
 }
 let shopSel=null,shopBusy=false;
+function shopTick(){ // odpočet „Nové zboží za: hh:mm:ss“ v levém rohu nabídky; po změně se nabídka sama přepíše
+  const el=document.getElementById('shopTimer');if(!shopOn()){el.hidden=true;return}el.hidden=false;
+  if(shopCache&&Date.now()>=shopCache.end){shopCache=null;shopSel=null;shopOffersRender();return}
+  const left=Math.max(0,Math.ceil((shopToday().end-Date.now())/1000)),z=n=>String(n).padStart(2,'0');
+  el.querySelector('b').textContent=`${z(Math.floor(left/3600))}:${z(Math.floor(left%3600/60))}:${z(left%60)}`;
+}
+setInterval(()=>{if(!document.getElementById('shopBox').hidden)shopTick()},1000);
 const shopOn=()=>Date.now()>=ARENA_FROM||meId==='lubikosuch';
 function shopOffersRender(){
   if(!shopOn())return;const box=document.getElementById('shopOffers'),own=invOwned(meId);box.replaceChildren();
   const SHOP_ITEMS=shopToday().items;
   if(shopSel&&!SHOP_ITEMS.includes(shopSel))shopSel=null;
-  {const left=shopToday().end-Date.now(),h=Math.floor(left/3600000),m=Math.ceil(left%3600000/60000);document.getElementById('shopWho').textContent=`Nabídka se mění ve 12:00 a o půlnoci. Nová za ${h?h+' h ':''}${m} min. Zásoby jsou neomezené.`}
+  document.getElementById('shopWho').textContent='Nabídka se mění ve 12:00 a o půlnoci. Zásoby jsou neomezené.';shopTick();
   for(const k of SHOP_ITEMS){const it=ITEMS[k],b=document.createElement('button');b.type='button';b.className='shop-offer'+(own.includes(k)?' own':'')+(shopSel===k?' sel':'');b.style.borderColor=RARITY[it.rarity].color;
     b.innerHTML=`<img src="${it.img}" alt=""><b></b><span class="pr"></span>`;b.querySelector('b').textContent=it.name;b.querySelector('.pr').textContent=own.includes(k)?'✓ máš':it.price+' stříbrných';
     b.setAttribute('aria-label',it.name+', '+(own.includes(k)?'už máš':it.price+' stříbrných'));tipBind(b,k);b.onclick=()=>{shopSel=k;shopOffersRender()};box.append(b)}
