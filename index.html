@@ -198,6 +198,12 @@ body.playing .admin-key{display:none}
 .shop-offer .ic{font-size:26px;opacity:.6}
 button.shop-offer{font:inherit;cursor:pointer;border:2px solid #9aa1ad;padding:6px;gap:3px;color:var(--ink);text-align:center}
 
+.shoplog-box{margin-top:14px}
+.shoplog{max-height:260px;overflow:auto;border-radius:12px;border:1px solid rgba(255,255,255,.12);font-size:13px}
+.shoplog p{margin:10px}
+.shoplog table{width:100%;border-collapse:collapse}
+.shoplog th,.shoplog td{padding:6px 8px;text-align:left;border-bottom:1px solid rgba(255,255,255,.08);white-space:nowrap}
+.shoplog th{position:sticky;top:0;background:#1d1838;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
 .item-tip{position:fixed;z-index:9999;max-width:240px;pointer-events:none;background:#14112a;border:2px solid #9aa1ad;border-radius:12px;padding:8px 11px;box-shadow:0 10px 30px rgba(0,0,0,.55);font-size:13px;line-height:1.35;color:#fff4e2;display:flex;flex-direction:column;gap:2px}
 .item-tip[hidden]{display:none}
 .item-tip b{font-size:14px}.item-tip .rr{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}.item-tip .st{color:#ffe27a;font-weight:800}
@@ -532,6 +538,10 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
           </form>
         </div>
         <p class="admin-msg" id="giftMsg" role="status"></p>
+      </div>
+      <div class="shoplog-box">
+        <h3 class="inv-sub">🛒 Nákupy v obchodě <span id="shopLogN"></span></h3>
+        <div class="shoplog" id="shopLog"><p>Načítám…</p></div>
       </div>
       <div class="admin-foot"><span id="stUpdated"></span><span style="display:flex;gap:8px"><button type="button" id="adminRefresh">Obnovit</button><button type="button" id="adminOut">Odhlásit</button></span></div>
     </div>
@@ -4121,7 +4131,7 @@ function shopOffersRender(){
 async function shopBuy(k){
   if(shopBusy||!acct.user||!meId||!shopOn()||!shopToday().items.includes(k)){shopOffersRender();return}const it=ITEMS[k];shopBusy=true;shopOffersRender();
   const key=liveKey(meId);let m=null;try{const r=await fetch(LIVE_DB+'/money/'+key+'.json',{cache:'no-store'});if(r.ok)m=+(await r.json())||0}catch(_){}
-  let ok=false;if(m!=null&&m>=it.price){const body={};body['money/'+key]=m-it.price;body['buys/'+key+'/'+k]=true;body['buys/'+key+'/last']=k;ok=await farmPatch(body);
+  let ok=false;if(m!=null&&m>=it.price){const body={};body['money/'+key]=m-it.price;body['buys/'+key+'/'+k]=true;body['buys/'+key+'/last']=k;body['shoplog/'+key+'~'+k]={n:key,i:k,p:it.price,t:{'.sv':'timestamp'}};ok=await farmPatch(body);
     if(ok){inv.money[key]=m-it.price;inv.buys=inv.buys||{};inv.buys[key]={...(inv.buys[key]||{}),[k]:true,last:k}}}
   shopBusy=false;shopRender();
   toast(ok?`🛒 Koupil jsi ${it.name}! Najdeš ho v inventáři, nasaď si ho.`:m!=null&&m<it.price?'🛒 Nemáš dost stříbrných.':'🛒 Nákup se nepovedl, zkus to znovu.');
@@ -5109,9 +5119,23 @@ async function adminToken(){
   try{const r=await fetch('https://securetoken.googleapis.com/v1/token?key='+FB_API_KEY,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(adm.refresh)});
     const j=await r.json();if(!j.id_token)return null;adm.token=j.id_token;adm.refresh=j.refresh_token;adm.exp=Date.now()+(+j.expires_in||3600)*1000-60000;adminSave();return adm.token}catch(_){return null}
 }
+async function shopLogLoad(tok){ // /shoplog/<nick>~<item> = {n, i, p (cena), t (čas)}: kdo co koupil a kdy, číst smí jen admin
+  const box=$id('shopLog');
+  try{const r=await fetch(LIVE_DB+'/shoplog.json?auth='+encodeURIComponent(tok));if(!r.ok){box.textContent='Nákupy se nepodařilo načíst.';return}
+    const rows=Object.values((await r.json())||{}).filter(x=>x&&x.i).sort((a,b)=>(+b.t||0)-(+a.t||0));
+    $id('shopLogN').textContent=rows.length?`(${rows.length}, ${rows.reduce((a,x)=>a+(+x.p||0),0)} stříbrných)`:'';
+    if(!rows.length){box.textContent='Zatím nikdo nic nekoupil.';return}
+    const f=new Intl.DateTimeFormat('cs-CZ',{timeZone:'Europe/Prague',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const t=document.createElement('table');t.innerHTML='<thead><tr><th>Kdy</th><th>Hráč</th><th>Věc</th><th>Cena</th></tr></thead>';const tb=document.createElement('tbody');
+    for(const x of rows){const tr=document.createElement('tr'),it=ITEMS[x.i]||{},ry=RARITY[it.rarity]||RARITY.common;
+      for(const [v,c] of [[f.format(+x.t||0)],['@'+String(x.n).replace(/-/g,'.')],[it.name||x.i,ry.color],[(+x.p||0)+' st.']]){const td=document.createElement('td');td.textContent=v;if(c)td.style.color=c;tr.append(td)}tb.append(tr)}
+    t.append(tb);box.replaceChildren(t);
+  }catch(_){box.textContent='Nákupy se nepodařilo načíst.'}
+}
 async function adminLoad(){
   const tok=await adminToken();
   if(!tok){adm.token=null;adminShow();adm.msg.textContent='Přihlášení vypršelo, přihlas se znovu.';return}
+  shopLogLoad(tok);
   $id('stUpdated').textContent='Načítám…';
   try{
     const r=await fetch(LIVE_DB+'/stats/days.json?auth='+encodeURIComponent(tok));
