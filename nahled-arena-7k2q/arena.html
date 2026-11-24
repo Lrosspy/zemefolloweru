@@ -159,7 +159,7 @@ function monsterAI(S,rnd){ // jednoduchá AI, aby se dalo vyhrát: jde k tobě, 
 /*END*/
 
 // ---------- stav ----------
-const st={nick:null,user:null,floor:1,hp:100,hpMax:100,gear:{},busy:false};
+const st={nick:null,user:null,floor:1,hp:100,hpMax:100,gear:{},busy:false,health:{}};
 let S=null;
 
 // ---------- plátno ----------
@@ -370,25 +370,86 @@ async function act(a){
   await play(doAct(S,'m',monsterAI(S,rnd),rnd));
   st.busy=false;
   if(S.over){end();return}
-  turnLabel(true);hud();
+  saveHp();turnLabel(true);hud();
 }
 addEventListener('keydown',e=>{if(!$('modal').hidden)return;const k=e.key.toUpperCase(),a=Object.keys(KEYS).find(x=>KEYS[x]===k);if(a)act(a)});
 
-// ---------- konec boje (ukládání přijde v dalším kroku) ----------
+// ---------- ukládání: životy, patro, stříbrné, smrt (pravidla Firebase hlídají každý zápis) ----------
+const H_MS=3600000,REVIVE_MS=2*H_MS,DAY_MS=86400000,DAY_CAP=200,DEATH_FEE=5;
+let skew=0; // posun hodin proti serveru (z hlavičky Date)
+const now=()=>Date.now()+skew;
+function hlEff(h,t){ // stejný výpočet jako ve hře: nemoc ubírá 10 HP za hodinu, po smrti se za 2 h probudíš sám
+  if(!h)return {hp:st.hpMax,sick:false,dead:false,dAt:0,imm:0,tk:t};
+  const imm=+h.imm||0;
+  if(h.dead){if(t-(+h.dAt||0)>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:t};return {hp:0,sick:false,dead:true,dAt:+h.dAt||t,imm,tk:t}}
+  if(h.sick){const tk=+h.tk||t,n=Math.max(0,Math.floor((t-tk)/H_MS)),v=(+h.hp||0)-10*n;
+    if(v<=0){const dAt=tk+Math.ceil((+h.hp||0)/10)*H_MS;if(t-dAt>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:t};return {hp:0,sick:false,dead:true,dAt,imm,tk:t}}
+    return {hp:v,sick:true,dead:false,dAt:0,imm,tk:tk+n*H_MS}}
+  return {hp:Math.max(0,Math.min(180,+h.hp||100)),sick:false,dead:false,dAt:0,imm,tk:t};
+}
+async function api(method,path,body){
+  if(!st.user)return null;
+  try{const tok=await st.user.getIdToken();
+    const r=await fetch(`${LIVE_DB}/${path}.json?auth=${encodeURIComponent(tok)}`,{method,cache:'no-store',body:body===undefined?undefined:JSON.stringify(body)});
+    const d=r.headers.get('Date');if(d){const s=Date.parse(d)-Date.now();if(Math.abs(s)>5000)skew=s}
+    return r.ok?(method==='GET'?await r.json():true):null}catch(_){return null}
+}
+let hpSaved=null,hpSaving=Promise.resolve();
+function saveHp(dead){ // skutečné HP ve hře: zapisuje se po každém kole a při odchodu
+  if(DEMO||!st.user||!S)return Promise.resolve();
+  const v=dead?0:S.p.hp;if(v===hpSaved&&!dead)return hpSaving;hpSaved=v;
+  const h=st.health,body={hp:v,sick:dead?false:!!h.sick,tk:dead?{'.sv':'timestamp'}:(h.tk||now()),dead:!!dead,dAt:dead?{'.sv':'timestamp'}:0,imm:+h.imm||0,t:{'.sv':'timestamp'}};
+  return hpSaving=hpSaving.then(()=>api('PUT','health/'+liveKey(st.nick),body));
+}
+async function payWin(){ // výhra: patro +1, stříbrné (1. patro 5, jinak 1–5) do denního limitu 200 – vše jedním zápisem
+  const k=liveKey(st.nick);
+  const [m,f,fd]=await Promise.all([api('GET','money/'+k),api('GET','fight/'+k),api('GET','fightday/'+k)]);
+  const f0=Math.max(1,+(f&&f.f)||1);
+  if(f0>S.f)return {floor:f0,gain:0,capped:false,left:DAY_CAP,drop:null}; // výhra už je uložená (opakovaný pokus)
+  const day=Math.floor(now()/DAY_MS),sOld=fd&&fd.d===day?+fd.s||0:0,room=Math.max(0,DAY_CAP-sOld);
+  let gain=f0===1?(room>=5?5:0):Math.min(1+Math.floor(Math.random()*5),room);
+  const body={};body['fight/'+k]={f:f0+1,t:{'.sv':'timestamp'}};
+  if(gain>0){body['money/'+k]=(+m||0)+gain;body['fightday/'+k]={d:day,s:sOld+gain}}
+  let ok=await api('PATCH','',body);
+  if(!ok&&f&&f.t&&now()-f.t<16000){await wait(16000-(now()-f.t));ok=await api('PATCH','',body)} // mezi výhrami musí být aspoň 15 s
+  if(!ok&&gain>0){delete body['money/'+k];delete body['fightday/'+k];gain=0;ok=await api('PATCH','',body)} // když neprojdou stříbrné, ať aspoň postoupíš
+  return ok?{floor:f0+1,gain,capped:room<=0||(f0===1&&room<5),left:Math.max(0,room-gain),drop:f0===10?'shield':f0===50?'boots':null}:null;
+}
+async function payDeath(){ // smrt: od 2. patra −5 stříbrných (nikdy pod 0)
+  if(S.f<2)return 0;const k=liveKey(st.nick),m=+(await api('GET','money/'+k))||0,fee=Math.min(DEATH_FEE,m);
+  if(fee>0&&!await api('PUT','money/'+k,m-fee))return 0;return fee;
+}
+
+// ---------- konec boje ----------
 function modal(title,html,btns){$('mT').textContent=title;$('mP').innerHTML=html;const row=$('mRow');row.replaceChildren(...btns);$('modal').hidden=false;btns[0]&&btns[0].focus()}
-function btn(cls,text,fn){const b=document.createElement(fn?'button':'a');b.className=cls;b.textContent=text;if(fn)b.onclick=fn;else b.href='./';return b}
-function end(){
-  hud();
+function btn(cls,text,fn){const b=document.createElement(fn?'button':'a');b.className=cls;b.textContent=text;if(fn)b.onclick=fn;else{b.href='./';b.onclick=leave}return b}
+async function leave(e){if(DEMO||!st.user||!S||S.over)return;e&&e.preventDefault();await saveHp();location.href='./'}
+$('back').onclick=leave;
+addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveHp()});
+async function end(){
+  hud();st.busy=true;
   if(S.over==='win'){
-    st.hp=S.p.hp;st.floor++;
-    modal('Vyhrál jsi! 🏆',`Patro <b>${S.f}</b> je čisté. Zbývá ti <b>${S.p.hp} HP</b>. Pokračuj do patra ${st.floor}, nebo se vrať do města a vyléč se.`,
+    st.hp=S.p.hp;
+    if(DEMO){st.floor++;
+      modal('Vyhrál jsi! 🏆',`Patro <b>${S.f}</b> je čisté. Zbývá ti <b>${S.p.hp} HP</b>. (Zkušební boj, nic se neukládá.)`,
+        [btn('go','Další patro ⚔️',()=>{$('modal').hidden=true;begin()}),btn('city','Do města',null)]);return}
+    modal('Vyhrál jsi! 🏆','Ukládám výhru…',[]);
+    const [r]=await Promise.all([payWin(),saveHp()]);
+    if(!r){modal('Výhru se nepodařilo uložit','Zkus to znovu. Když to nepůjde, vrať se do města a zkus to za chvíli.',[btn('go','Zkusit znovu',()=>end()),btn('city','Do města',null)]);return}
+    st.floor=r.floor;if(r.drop==='shield')st.gear.shield='arena_shield';if(r.drop==='boots'){st.gear.boots='arena_boots';st.hpMax+=30}
+    const money=r.gain?`Dostáváš <b>${r.gain} stříbrných</b>${r.left<DAY_CAP?` (dnes ještě můžeš získat ${r.left})`:''}.`:r.capped?'Dnešní limit 200 stříbrných z arény máš vyčerpaný, za výhru teď jen postupuješ. Zítra se limit obnoví.':'';
+    const drop=r.drop==='shield'?'<br><br>🛡️ <b>Štít podsvětí je tvůj!</b> Epický, blokuje 25 % úderů. Najdeš ho v inventáři.':r.drop==='boots'?'<br><br>🥾 <b>Boty podsvětí jsou tvoje!</b> Legendární, +30 HP a 10 % šance na dvojnásobnou úrodu. Najdeš je v inventáři.':'';
+    modal(r.drop?'Obrovská výhra! 🏆':'Vyhrál jsi! 🏆',`Patro <b>${S.f}</b> je čisté. ${money} Zbývá ti <b>${S.p.hp} HP</b>.${drop}<br><br>Pokračuj do patra ${r.floor}, nebo se vrať do města a vyléč se.`,
       [btn('go','Další patro ⚔️',()=>{$('modal').hidden=true;begin()}),btn('city','Do města',null)]);
   }else{
-    modal('Padl jsi 💀',`Příšera na patře <b>${S.f}</b> tě porazila. Příště pokračuješ tady.`,[btn('city','Do města',null)]);
+    if(DEMO){modal('Padl jsi 💀',`Příšera na patře <b>${S.f}</b> tě porazila. (Zkušební boj, nic se neukládá.)`,[btn('city','Do města',null)]);return}
+    modal('Padl jsi 💀','Ukládám…',[]);
+    const [fee]=await Promise.all([payDeath(),saveHp(true)]);
+    modal('Padl jsi 💀',`Příšera na patře <b>${S.f}</b> tě porazila. U tvého domu teď stojí hrob. Oživí tě jiný hráč, nebo se za 2 hodiny probudíš sám.<br><br>${S.f<2?'Na 1. patře tě smrt nic nestojí.':fee?`Smrt tě stála <b>${fee} stříbrných</b>.`:'Neměl jsi žádné stříbrné, takže tě smrt nic nestála.'} Příště pokračuješ na patře ${S.f}.`,[btn('city','Do města',null)]);
   }
 }
 function begin(){
-  S=newFight(st.floor,Math.max(1,st.hp),st.hpMax,st.gear);vis.p=0;vis.m=TRACK;
+  S=newFight(st.floor,Math.max(1,st.hp),st.hpMax,st.gear);vis.p=0;vis.m=TRACK;hpSaved=S.p.hp;st.busy=false;
   turnLabel(true);gearLine();hud();say(st.floor===1?'Prolog: porazíš-li golema, dostaneš <b>5 stříbrných</b>. Jdi k němu.':'Příšera čeká na konci dráhy. Jdi k ní.');
 }
 
@@ -409,23 +470,27 @@ async function start(){
   begin();st.busy=true;hud();say('Načítám tvou postavu…');
   try{
     let at=0;try{at=+localStorage.getItem(LOGIN_AT)||0}catch(_){}
-    if(!at||Date.now()-at>SESSION_MS){gate('Nejdřív se přihlas','Do arény můžou jen přihlášení hráči. Přihlas se na planetě přes Google a vrať se sem.','Přihlásit se na planetě');return}
+    const need=()=>gate('Nejdřív se přihlas','Do arény můžou jen přihlášení hráči. Přihlas se na planetě přes Google a vrať se sem.','Přihlásit se na planetě');
+    if(!at||Date.now()-at>SESSION_MS){need();return}
     const B='https://www.gstatic.com/firebasejs/10.12.2/';
     await load(B+'firebase-app-compat.js');await load(B+'firebase-auth-compat.js');
     if(!firebase.apps.length)firebase.initializeApp({apiKey:FB_API_KEY,authDomain:'planetafolloweru.firebaseapp.com',databaseURL:LIVE_DB,projectId:'planetafolloweru'});
     const u=await new Promise(ok=>{const off=firebase.auth().onAuthStateChanged(x=>{off();ok(x)})});
-    if(!u){gate('Nejdřív se přihlas','Do arény můžou jen přihlášení hráči. Přihlas se na planetě přes Google a vrať se sem.','Přihlásit se na planetě');return}
-    const tok=await u.getIdToken(),a=await fetch(`${LIVE_DB}/accounts/${u.uid}.json?auth=${encodeURIComponent(tok)}`).then(r=>r.ok?r.json():null);
-    if(!a||!a.nick){gate('Vyber si postavu','Na planetě si nejdřív vyber svou postavu (nick). Pak můžeš do arény.');return}
-    if(Date.now()<ARENA_FROM&&a.nick!==ADMIN){gate('Aréna je zavřená','Brána do podsvětí se otevře <b>ve středu 25. 11. ve 12:00</b>.');return}
-    st.user=u;st.nick=a.nick;$('pName').textContent='@'+a.nick;
-    const k=liveKey(a.nick),get=P=>fetch(`${LIVE_DB}/${P}/${k}.json`).then(r=>r.ok?r.json():null).catch(()=>null);
-    const [items,equip,fight,health]=await Promise.all([get('items'),get('equip'),get('fight'),get('health')]);
+    if(!u){need();return}
+    st.user=u;const a=await api('GET','accounts/'+u.uid);
+    if(!a||!a.nick){st.user=null;gate('Vyber si postavu','Na planetě si nejdřív vyber svou postavu (nick). Pak můžeš do arény.');return}
+    if(now()<ARENA_FROM&&a.nick!==ADMIN){st.user=null;gate('Aréna je zavřená','Brána do podsvětí se otevře <b>ve středu 25. 11. ve 12:00</b>.');return}
+    st.nick=a.nick;$('pName').textContent='@'+a.nick;
+    const k=liveKey(a.nick);
+    const [items,equip,fight,health]=await Promise.all(['items','equip','fight','health'].map(P=>api('GET',P+'/'+k)));
     st.floor=Math.max(1,+(fight&&fight.f)||1);st.gear=wearOf(items,equip,st.floor);
     st.hpMax=100+(st.gear.banner==='founder_cape'?50:0)+(st.gear.boots==='arena_boots'?30:0);
-    if(health&&health.dead){gate('Jsi mrtvý 💀','Tvoje postava leží u hrobu. Až tě někdo oživí (nebo uplyne čas), můžeš zpátky do arény.');return}
-    st.hp=Math.min(st.hpMax,Math.max(1,health&&health.hp!=null?+health.hp:st.hpMax));
-    st.busy=false;begin();
+    st.health=hlEff(health,now());
+    if(st.health.dead){const left=Math.max(1,Math.ceil((st.health.dAt+REVIVE_MS-now())/60000));
+      gate('Jsi mrtvý 💀',`Tvoje postava leží u hrobu. Oživí tě jiný hráč, nebo se sám probudíš asi za <b>${left>=60?Math.floor(left/60)+' h '+left%60+' min':left+' min'}</b>. Pak můžeš zpátky do arény.`);return}
+    st.hp=Math.min(st.hpMax,Math.max(1,st.health.hp));
+    begin();
+    if(st.health.sick)say('🤒 Jsi nemocný, nemoc ti dál ubírá HP. Příšera čeká na konci dráhy.');
   }catch(e){console.warn(e);gate('Něco se pokazilo','Nepodařilo se načíst tvou postavu. Zkus to znovu z planety.')}
 }
 start();
