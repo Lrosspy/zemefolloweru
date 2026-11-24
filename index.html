@@ -198,6 +198,9 @@ body.playing .admin-key{display:none}
 .shop-offer .ic{font-size:26px;opacity:.6}
 button.shop-offer{font:inherit;cursor:pointer;border:2px solid #9aa1ad;padding:6px;gap:3px;color:var(--ink);text-align:center}
 
+.shop-tiers{display:flex;gap:6px;margin:0 0 8px}
+.shop-tiers button{flex:1;font:900 12px var(--body,system-ui);padding:7px 4px;border-radius:999px;border:2px solid var(--c);background:transparent;color:var(--c);cursor:pointer}
+.shop-tiers button[aria-selected="true"]{background:var(--c);color:#14112a}
 .item-tip{position:fixed;z-index:9999;max-width:240px;pointer-events:none;background:#14112a;border:2px solid #9aa1ad;border-radius:12px;padding:8px 11px;box-shadow:0 10px 30px rgba(0,0,0,.55);font-size:13px;line-height:1.35;color:#fff4e2;display:flex;flex-direction:column;gap:2px}
 .item-tip[hidden]{display:none}
 .item-tip b{font-size:14px}.item-tip .rr{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}.item-tip .st{color:#ffe27a;font-weight:800}
@@ -3490,7 +3493,7 @@ function hlEff(st,now){
   if(st.sick){const tk=+st.tk||now,n=Math.max(0,Math.floor((now-tk)/H_MS)),h=(+st.hp||0)-10*n;
     if(h<=0){const dAt=tk+Math.ceil((+st.hp||0)/10)*H_MS;if(now-dAt>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:now,revived:true};return {hp:0,sick:false,dead:true,dAt,imm,tk:now}}
     return {hp:h,sick:true,dead:false,dAt:0,imm,tk:tk+n*H_MS}}
-  return {hp:Math.max(0,Math.min(180,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
+  return {hp:Math.max(0,Math.min(220,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
 }
 function hlSet(e){Object.assign(hp,{cur:e.hp,sick:e.sick,dead:e.dead,dAt:e.dAt,imm:e.imm,tk:e.tk});try{hp.max=hpMaxOf(meId);if(hp.cur>hp.max)hp.cur=hp.max}catch(_){}hpUi()}
 async function hlSave(){
@@ -4077,13 +4080,18 @@ function shopRender(){
   INV_BAG.forEach((k,n)=>{if(n>=invBagN(meId)&&!st[k])return;const c=invCell(k,'Slot '+(n+1),'＋',st[k]);c.onclick=()=>{const it=st[k]&&ITEMS[st[k]];document.getElementById('shopDetail').textContent=it?`${it.name}: výkup se spustí s prvním zbožím. Již brzy!`:'Prázdný slot.'};bag.append(c)});
 }
 // Obchod: základní výbava (dřevěné meče, plátěné kalhoty a rukavice) od středy 25. 11. 12:00. Nákup = jeden zápis: money −cena, /buys/<nick>/<item>=true, /buys/<nick>/last=<item> (hlídají pravidla Firebase)
-const SHOP_ITEMS=['wood_sword_1','wood_sword_2','wood_sword_3','cloth_pants_1','cloth_pants_2','cloth_pants_3','cloth_gloves_1','cloth_gloves_2','cloth_gloves_3'];
-let shopSel=null,shopBusy=false;
+const SHOP_BASE=['wood_sword_1','wood_sword_2','wood_sword_3','cloth_pants_1','cloth_pants_2','cloth_pants_3','cloth_gloves_1','cloth_gloves_2','cloth_gloves_3'];
+const SHOP_TIERS=[['','Šedá'],['_u','Zelená'],['_r','Modrá']];
+let shopSel=null,shopBusy=false,shopTier='';
 const shopOn=()=>Date.now()>=ARENA_FROM||meId==='lubikosuch';
 function shopOffersRender(){
   if(!shopOn())return;const box=document.getElementById('shopOffers'),own=invOwned(meId);box.replaceChildren();
+  let tabs=document.getElementById('shopTiers');if(!tabs){tabs=document.createElement('div');tabs.id='shopTiers';tabs.className='shop-tiers';tabs.setAttribute('role','tablist');box.before(tabs)}
+  tabs.replaceChildren(...SHOP_TIERS.map(([t,l])=>{const b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-selected',String(t===shopTier));b.textContent=l;
+    b.style.setProperty('--c',RARITY[t==='_r'?'rare':t==='_u'?'uncommon':'common'].color);b.onclick=()=>{shopTier=t;shopSel=null;shopOffersRender()};return b}));
+  const SHOP_ITEMS=SHOP_BASE.map(k=>k+shopTier);
   document.getElementById('shopWho').textContent='Základní výbava pro začátek. Ceny ve stříbrných.';
-  for(const k of SHOP_ITEMS){const it=ITEMS[k],b=document.createElement('button');b.type='button';b.className='shop-offer'+(own.includes(k)?' own':'')+(shopSel===k?' sel':'');
+  for(const k of SHOP_ITEMS){const it=ITEMS[k],b=document.createElement('button');b.type='button';b.className='shop-offer'+(own.includes(k)?' own':'')+(shopSel===k?' sel':'');b.style.borderColor=RARITY[it.rarity].color;
     b.innerHTML=`<img src="${it.img}" alt=""><b></b><span class="pr"></span>`;b.querySelector('b').textContent=it.name;b.querySelector('.pr').textContent=own.includes(k)?'✓ máš':it.price+' stříbrných';
     b.setAttribute('aria-label',it.name+', '+(own.includes(k)?'už máš':it.price+' stříbrných'));tipBind(b,k);b.onclick=()=>{shopSel=k;shopOffersRender()};box.append(b)}
   const buy=document.getElementById('shopBuy');if(!shopSel){buy.hidden=true;return}
@@ -4150,6 +4158,15 @@ const ITEMS={
   cloth_gloves_3:{name:'Pletené rukavice s přezkou',slot:'gloves',icon:'🧤',img:'img/platno-rukavice-3.png',rarity:'common',hp:5,def:.05,price:15,stats:'+5 HP · příšera trefí o 5 % méně',desc:'Hřejivé pletené rukavice s koženou přezkou. +5 HP a v aréně tě příšera trefí o 5 % méně.'},
   herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 25 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
+// Zelená (Obyčejný) a modrá (Vzácný) verze základní výbavy: stejné věci, silnější statistiky, vyšší cena. Id = šedé id + _u / _r.
+const GEAR_TIERS={wood_sword_1:[{dmg:1.4},{dmg:1.6}],wood_sword_2:[{dmg:1.4,hit:.08},{dmg:1.6,hit:.12}],wood_sword_3:[{dmg:1.5,hit:-.03},{dmg:1.8,hit:0}],
+  cloth_pants_1:[{hp:8},{hp:12}],cloth_pants_2:[{hp:10},{hp:15}],cloth_pants_3:[{hp:8,sta:15},{hp:12,sta:25}],
+  cloth_gloves_1:[{hp:8},{hp:12}],cloth_gloves_2:[{hp:5,atk:2},{hp:8,atk:3}],cloth_gloves_3:[{hp:8,def:.08},{hp:12,def:.12}]};
+const gearStats=it=>it.slot==='weapon'?`Útok ${Math.round(it.dmg*10)}`+(it.hit?` · ${it.hit>0?'+':'−'}${Math.round(Math.abs(it.hit)*100)} % šance zásahu`:'')
+  :[`+${it.hp} HP`,it.sta?`+${it.sta} výdrže`:'',it.atk?`+${it.atk} útok`:'',it.def?`příšera trefí o ${Math.round(it.def*100)} % méně`:''].filter(Boolean).join(' · ');
+for(const [k,ups] of Object.entries(GEAR_TIERS))ups.forEach((u,n)=>{const b=ITEMS[k],w=b.slot==='weapon',it={...b,hit:0,sta:0,atk:0,def:0,...u,rarity:n?'rare':'uncommon',price:w?(n?100:40):(n?75:30)};
+  it.stats=gearStats(it);it.desc=(n?'Vzácná začarovaná verze':'Pečlivě zpracovaná verze')+` věci ${b.name}: ${it.stats}.`+(w?` V klikačkách na příšery ${String(it.dmg).replace('.',',')}× DMG.`:'');ITEMS[k+(n?'_r':'_u')]=it});
+
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
 // Cesta do středu země contest: the 3 deepest diggers at DIG_END win Srdce země. /dig is frozen by the rules after DIG_END
 // (digging goes on in /dig2), so the top 3 of /dig are the final results.
