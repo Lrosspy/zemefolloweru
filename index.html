@@ -559,6 +559,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <button id="playBtn" class="primary" type="button" hidden>Hrát za postavu 🎮</button>
   <button id="meBtn" type="button" hidden>Moje postava</button>
   <button id="invBtn" type="button" hidden>Inventář 🎒</button>
+  <button id="arenaBtn" type="button" hidden>Aréna ⚔️</button>
   <button id="games" type="button">Minihry</button>
   <button id="openList" type="button">Obyvatelé</button>
   <button id="whole" type="button">Celá planeta</button>
@@ -1287,6 +1288,38 @@ const boss=new THREE.Group();scene.add(boss);
     const dt=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(dc),transparent:true,depthWrite:false}));dt.scale.set(.95,.19,1);dt.position.y=.42;dt.renderOrder=5;boss.add(dt)}
   placeOn(boss,BASE.dir,0,0);faceToward(boss,BASE.dir,tangentOf(BASE.dir));boss.scale.setScalar(BASE.scale);
 })();
+// ---------- Aréna: a lava portal right next to the digging hole; click it (or press F next to it) to jump into the 2D fight ----------
+const ARENA_FROM=1795604400000; // Wed 25. 11. 2026 12:00 Prague; before that only the admin character sees it
+const arenaOpen=()=>Date.now()>=ARENA_FROM||meId==='lubikosuch';
+const PORTAL_DIR=BASE.dir.clone().add(tangentOf(BASE.dir).multiplyScalar(Math.tan(.22))).normalize();
+const portal=new THREE.Group();portal.visible=false;scene.add(portal);
+(function buildPortal(){
+  const stone=new THREE.MeshLambertMaterial({color:'#3b3236',flatShading:true}),dark=new THREE.MeshLambertMaterial({color:'#241d20',flatShading:true});
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(.26,.3,.05,8),dark);base.position.y=.025;portal.add(base);
+  for(const s of [-1,1]){const pl=new THREE.Mesh(new THREE.BoxGeometry(.07,.42,.07),stone);pl.position.set(s*.22,.23,0);portal.add(pl);
+    const fl=new THREE.Mesh(new THREE.ConeGeometry(.035,.09,5),new THREE.MeshBasicMaterial({color:'#ff7a1a'}));fl.position.set(s*.22,.49,0);portal.add(fl)}
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.19,.035,6,18),stone);ring.position.y=.25;portal.add(ring);
+  const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');
+  const g=x.createRadialGradient(128,128,10,128,128,128);g.addColorStop(0,'#fff0b0');g.addColorStop(.25,'#ff8a1f');g.addColorStop(.6,'#c4161c');g.addColorStop(1,'#3a0508');x.fillStyle=g;x.fillRect(0,0,256,256);
+  x.strokeStyle='rgba(255,220,120,.7)';x.lineWidth=7;for(let i=0;i<5;i++){x.beginPath();for(let a=0;a<9;a+=.1){const r=6+a*13;x.lineTo(128+Math.cos(a+i*1.26)*r,128+Math.sin(a+i*1.26)*r)}x.stroke()}
+  const disc=new THREE.Mesh(new THREE.CircleGeometry(.17,28),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv),side:THREE.DoubleSide}));disc.position.y=.25;portal.add(disc);
+  const glow=new THREE.Mesh(new THREE.SphereGeometry(.3,12,10),new THREE.MeshBasicMaterial({color:'#ff5a1a',transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false}));glow.position.y=.25;portal.add(glow);
+  const dc=document.createElement('canvas');dc.width=640;dc.height=150;const y=dc.getContext('2d');
+  y.fillStyle='rgba(30,8,6,.9)';y.beginPath();y.roundRect(6,6,628,138,69);y.fill();y.lineWidth=6;y.strokeStyle='#ff7a1a';y.stroke();
+  y.fillStyle='#fff1e0';y.font='900 62px system-ui,sans-serif';y.textAlign='center';y.textBaseline='middle';y.fillText('⚔️ Aréna',320,78);
+  const sign=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(dc),transparent:true,depthWrite:false}));sign.scale.set(.8,.19,1);sign.position.y=.68;sign.renderOrder=5;portal.add(sign);
+  placeOn(portal,PORTAL_DIR,0,0);faceToward(portal,PORTAL_DIR,BASE.dir.clone().sub(PORTAL_DIR));portal.scale.setScalar(BASE.scale);
+  const spin=()=>{if(portal.visible){disc.rotation.z-=.03;glow.material.opacity=.08+.04*Math.sin(performance.now()/300)}requestAnimationFrame(spin)};spin();
+})();
+const arena={near:false};
+function arenaGo(){
+  if(!meId){toast('⚔️ Do arény se dostaneš po přihlášení přes Google.');return}
+  if(!arenaOpen()){toast('⚔️ Aréna se otevírá ve středu 25. 11. ve 12:00.');return}
+  if(hp.dead){toast('🪦 Jsi mrtvý. Do arény můžeš, až tě někdo oživí.');return}
+  location.href='arena.html'+digLook();
+}
+function arenaVis(){const o=arenaOpen();portal.visible=o;const b=document.getElementById('arenaBtn');if(b)b.hidden=!(meId&&o)}
+setInterval(arenaVis,30000);
 function drawBossTag(u,dead,hp){
   const c=u.cv.getContext('2d'),W=u.cv.width,H=u.cv.height;
   const rr=(x,y,w,h,r)=>{c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()};
@@ -2773,6 +2806,7 @@ canvas.addEventListener('pointerup',e=>{
   ray.setFromCamera(mouse,camera);
   const hit=ray.intersectObjects([planet,townGroup],true)[0];
   const bh=ray.intersectObject(boss,true)[0];if(bh&&(!hit||bh.distance<hit.distance+.01)){digOpen();return}
+  if(portal.visible){const ph=ray.intersectObject(portal,true)[0];if(ph&&(!hit||ph.distance<hit.distance+.01)){arenaGo();return}}
   const qh=questNpc&&ray.intersectObject(questNpc,true)[0];if(qh&&(!hit||qh.distance<hit.distance+.01)){questOpen();return}
   {const sg=siteGroup.children.find(c=>c.userData.site==='shop'),sh=sg&&ray.intersectObject(sg,true)[0];if(sh&&(!hit||sh.distance<hit.distance+.01)){if(play&&shop.near)shopOpen();else toast('🛒 Obchod planety: dojdi ke dveřím za svou postavou a otevři nabídku.');return}}
   {const gh=ray.intersectObject(deadGroup,true)[0];if(gh&&(!hit||gh.distance<hit.distance+.01)){const id=gh.object.userData.graveOf;toast(id===meId?'🪦 Tohle je tvůj hrobeček. Počkej, až tě někdo oživí.':`🪦 Tady leží @${id}. Dojdi sem za postavou a oživ ho!`);return}}
@@ -3013,7 +3047,7 @@ const ROLE_TEXT={
 function applyMe(flyThere){
   if(meFig){meFig.scale.setScalar(1);meFig.remove(meMarker);meFig=null}
   meTag.hidden=true;playBtn.hidden=true;
-  document.getElementById('invBtn').hidden=!meId;lvlCard();
+  document.getElementById('invBtn').hidden=!meId;arenaVis();lvlCard();
   if(!meId){meCard.hidden=true;meBtn.hidden=true;return}
   meCard.hidden=false;document.getElementById('meName').textContent='@'+meNick.replace(/^@+/,'');
   if(!dataLoaded){setMeInfo([noData?'Planetu se teď nepodařilo načíst.':'Hledám tvůj dům…']);meBtn.hidden=true;return}
@@ -3441,7 +3475,7 @@ function hlEff(st,now){
   if(st.sick){const tk=+st.tk||now,n=Math.max(0,Math.floor((now-tk)/H_MS)),h=(+st.hp||0)-10*n;
     if(h<=0){const dAt=tk+Math.ceil((+st.hp||0)/10)*H_MS;if(now-dAt>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:now,revived:true};return {hp:0,sick:false,dead:true,dAt,imm,tk:now}}
     return {hp:h,sick:true,dead:false,dAt:0,imm,tk:tk+n*H_MS}}
-  return {hp:Math.max(0,Math.min(150,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
+  return {hp:Math.max(0,Math.min(180,+st.hp||100)),sick:false,dead:false,dAt:0,imm,tk:now};
 }
 function hlSet(e){Object.assign(hp,{cur:e.hp,sick:e.sick,dead:e.dead,dAt:e.dAt,imm:e.imm,tk:e.tk});try{hp.max=hpMaxOf(meId);if(hp.cur>hp.max)hp.cur=hp.max}catch(_){}hpUi()}
 async function hlSave(){
@@ -3575,8 +3609,9 @@ async function labFinish(){
   const [hs,ms]=await Promise.all([freshC('herbs/'+k),freshC('meds/'+k)]);
   const h=hs??herbCount(meId),m=ms??medCount(meId);
   if(h<MED_HERBS){inv.herbs[k]={c:h,t:Date.now()};labStop('Nemáš dost bylin (máš '+h+'×, potřebuješ '+MED_HERBS+'×).');return}
-  const body={};body['herbs/'+k]={c:h-MED_HERBS,t:{'.sv':'timestamp'}};body['meds/'+k]={c:m+1,t:{'.sv':'timestamp'}};
-  const done=()=>{inv.herbs[k]={c:h-MED_HERBS,t:Date.now()};inv.meds[k]={c:m+1,t:Date.now()};labStop();toast('💊 Antibiotika jsou hotová! Máš jich '+(m+1)+'× v batohu.');if(!document.getElementById('inv').hidden)invRender()};
+  const d=dblRoll()?2:1; // boots: sometimes two packs from one brew
+  const body={};body['herbs/'+k]={c:h-MED_HERBS,t:{'.sv':'timestamp'}};body['meds/'+k]={c:m+d,t:{'.sv':'timestamp'}};
+  const done=()=>{inv.herbs[k]={c:h-MED_HERBS,t:Date.now()};inv.meds[k]={c:m+d,t:Date.now()};labStop();toast('💊 Antibiotika jsou hotová! Máš jich '+(m+d)+'× v batohu.');if(d===2)dblToast();if(!document.getElementById('inv').hidden)invRender()};
   let denied=false;
   try{const r=await fetch(LIVE_DB+'/.json?auth='+encodeURIComponent(tok),{method:'PATCH',body:JSON.stringify(body)});
     if(r.ok){done();return}
@@ -3777,7 +3812,7 @@ async function farmFinish(a){
   let next,xpN,grain=0;
   if(a.kind==='sow'){next={ph:1,g:0,w:0,rows:0,n:meId,t:T};xpN=5}
   else if(a.kind==='water'){next={ph:1,g:Math.min(FIELD_GROW,e.g),w:T,rows:0,n:meId,t:T};xpN=3}
-  else{const rows=e.rows|1<<a.row;next=rows===7?{ph:0,n:meId,t:T}:{ph:1,g:+cur.g||0,w:+cur.w||0,rows,n:meId,t:T};xpN=2;grain=1+Math.floor(Math.random()*3)}
+  else{const rows=e.rows|1<<a.row;next=rows===7?{ph:0,n:meId,t:T}:{ph:1,g:+cur.g||0,w:+cur.w||0,rows,n:meId,t:T};xpN=2;grain=(1+Math.floor(Math.random()*3))*(dblRoll()?2:1)}
   const body={};body['fields/'+a.fid]=next;
   const g0=grain?((await freshC('grain/'+k))??grainCount(meId)):0;
   if(grain)body['grain/'+k]={c:g0+grain,t:T};
@@ -3792,7 +3827,7 @@ async function farmFinish(a){
       const loc={...next,t:now};if(next.w===T)loc.w=now;farm.st[a.fid]=loc;
       if(grain){inv.grain=inv.grain||{};inv.grain[k]={c:g0+grain,t:now}}
       farmStop();xpGain(xpN,'farma');
-      toast(a.kind==='sow'?'🌱 Zaseto! +5 XP. Teď pole hned zalij.':a.kind==='water'?'💧 Zalito! +3 XP. Za 30 minut bude potřeba zalít znovu.':`🌾 Posekáno! +2 XP a ${grain}× obilí do batohu.`+(next.ph===0?' Pole je zase zorané.':''));
+      toast(a.kind==='sow'?'🌱 Zaseto! +5 XP. Teď pole hned zalij.':a.kind==='water'?'💧 Zalito! +3 XP. Za 30 minut bude potřeba zalít znovu.':`🌾 Posekáno! +2 XP a ${grain}× obilí do batohu.`+(grain>3?' 👢 Boty zdvojnásobily úrodu!':'')+(next.ph===0?' Pole je zase zorané.':''));
       if(!document.getElementById('inv').hidden)invRender();return}
   }
   farmStop('Nepodařilo se uložit. Zkus to za chvíli znovu.');
@@ -3848,8 +3883,8 @@ async function breadBake(){
   document.querySelectorAll('#farmActions button').forEach(b=>b.disabled=true);const k=liveKey(meId);
   const [gs,bs]=await Promise.all([freshC('grain/'+k),freshC('bread/'+k)]);const g=gs??grainCount(meId),b=bs??breadCount(meId);
   if(g<GRAIN_PER_BREAD){inv.grain[k]={c:g,t:Date.now()};toast('Nemáš dost obilí ('+g+'×).');breadBusy=false;farmTalk('baker');return}
-  const T={'.sv':'timestamp'},body={};body['grain/'+k]={c:g-GRAIN_PER_BREAD,t:T};body['bread/'+k]={c:b+1,t:T};
-  if(await farmPatch(body)){inv.grain[k]={c:g-GRAIN_PER_BREAD,t:Date.now()};inv.bread[k]={c:b+1,t:Date.now()};toast('🍞 Upečeno! Chleba máš v inventáři.')}
+  const d=dblRoll()?2:1,T={'.sv':'timestamp'},body={};body['grain/'+k]={c:g-GRAIN_PER_BREAD,t:T};body['bread/'+k]={c:b+d,t:T};
+  if(await farmPatch(body)){inv.grain[k]={c:g-GRAIN_PER_BREAD,t:Date.now()};inv.bread[k]={c:b+d,t:Date.now()};toast(d===2?'🍞🍞 Upečeno! 👢 Boty ti daly 2 chleby.':'🍞 Upečeno! Chleba máš v inventáři.')}
   else{const nb=await freshC('bread/'+k),ng=await freshC('grain/'+k);if(nb!=null)inv.bread[k]={c:nb,t:Date.now()};if(ng!=null)inv.grain[k]={c:ng,t:Date.now()};
     toast(nb!=null&&nb>b?'🍞 Upečeno! Chleba máš v inventáři.':'Pečení se nepovedlo. Zkus to znovu.')}
   breadBusy=false;farmTalk('baker');
@@ -3927,7 +3962,15 @@ function heartToast(){ // tell a winner once
 const CAPE='founder_cape';
 const wearsCape=id=>{try{return !!id&&invWears(id,CAPE)}catch(_){return false}};
 const workMul=()=>wearsCape(meId)?ITEMS[CAPE].work:1;
-const hpMaxOf=id=>100+(wearsCape(id)?ITEMS[CAPE].hp:0);
+// Aréna: /fight/<key>.f = the floor the player stands on (starts at 1); beating floor 10 drops the shield, floor 50 the boots
+const arenaFloor=id=>{try{return +(((inv.fight||{})[liveKey(id||'')]||{}).f)||1}catch(_){return 1}};
+const arenaDrops=id=>{const f=arenaFloor(id),o=[];if(f>10)o.push('arena_shield');if(f>50)o.push('arena_boots');return o};
+const wearsBoots=id=>{try{return !!id&&invWears(id,'arena_boots')}catch(_){return false}};
+const wearsShield=id=>{try{return !!id&&invWears(id,'arena_shield')}catch(_){return false}};
+// boots: 10 % chance of a double reward. Same check as the server: saved in /equip as boots AND floor > 50
+const dblRoll=()=>{try{return !!meId&&((inv.equip||{})[invKey(meId)]||{}).boots==='arena_boots'&&arenaFloor(meId)>50&&Math.random()<ITEMS.arena_boots.dbl}catch(_){return false}};
+const dblToast=()=>setTimeout(()=>toast('👢 Boty podsvětí: dvojnásobná odměna!'),1600);
+const hpMaxOf=id=>100+(wearsCape(id)?ITEMS[CAPE].hp:0)+(wearsBoots(id)?ITEMS.arena_boots.hp:0);
 function hpMaxSync(){if(!meId)return;const m=hpMaxOf(meId);if(hp.max===m&&hp.cur<=m)return;hp.max=m;if(hp.cur>m){hp.cur=m;if(hp.loaded)hlSave()}hpUi()}
 function capeMesh(){
   const g=new THREE.Group();g.name='founderCape';
@@ -3938,6 +3981,30 @@ function capeMesh(){
   const hem=new THREE.Mesh(new THREE.TorusGeometry(.044,.0025,4,16,Math.PI),dark);hem.rotation.x=-Math.PI/2;hem.position.set(0,.025,0);g.add(hem);
   for(const x of [-.011,.011]){const t=new THREE.Mesh(new THREE.ConeGeometry(.004,.012,5),dark);t.position.set(x,.079,.025);t.rotation.x=Math.PI;g.add(t)}
   return g;
+}
+function shieldMesh(){ // stone kite shield with a gold rim and a glowing pickaxe emblem, held on the left arm
+  const g=new THREE.Group();g.name='arenaShield';
+  const sh=new THREE.Shape();sh.moveTo(0,-.02);sh.lineTo(-.014,-.006);sh.lineTo(-.014,.014);sh.lineTo(.014,.014);sh.lineTo(.014,-.006);sh.closePath();
+  const rim=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.003,bevelEnabled:false}),new THREE.MeshLambertMaterial({color:'#c99a2e',flatShading:true}));rim.scale.set(1.15,1.12,1);g.add(rim);
+  const body=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.004,bevelEnabled:false}),new THREE.MeshLambertMaterial({color:'#4a4048',flatShading:true}));body.position.z=.001;g.add(body);
+  const em=new THREE.Mesh(new THREE.OctahedronGeometry(.005),new THREE.MeshBasicMaterial({color:'#ffcf6a'}));em.position.set(0,0,.0065);g.add(em);
+  const glow=new THREE.Mesh(new THREE.SphereGeometry(.024,8,6),new THREE.MeshBasicMaterial({color:'#a24bff',transparent:true,opacity:.18,blending:THREE.AdditiveBlending,depthWrite:false}));g.add(glow);
+  g.rotation.y=-1.0;g.position.set(-.01,-.03,.01);return g;
+}
+function bootMesh(){ // chunky stone boot with a gold band, slipped over the shoe
+  const g=new THREE.Group();g.name='arenaBoot';
+  const b=new THREE.Mesh(new THREE.BoxGeometry(.017,.02,.026),new THREE.MeshLambertMaterial({color:'#3d3538',flatShading:true}));b.position.set(0,-.03,.004);g.add(b);
+  const band=new THREE.Mesh(new THREE.BoxGeometry(.018,.003,.027),new THREE.MeshBasicMaterial({color:'#f0b93a'}));band.position.set(0,-.038,.004);g.add(band);
+  const top=new THREE.Mesh(new THREE.BoxGeometry(.018,.004,.018),new THREE.MeshLambertMaterial({color:'#b8861a'}));top.position.set(0,-.019,0);g.add(top);
+  return g;
+}
+function arenaGearRefresh(){ // show the shield / boots on every figure whose owner wears them
+  const put=(o,s,b)=>{const al=o.getObjectByName('armL');if(al){const m=al.getObjectByName('arenaShield');if(s&&!m)al.add(shieldMesh());else if(!s&&m)al.remove(m)}
+    for(const n of ['legL','legR']){const lg=o.getObjectByName(n);if(!lg)continue;const m=lg.getObjectByName('arenaBoot');if(b&&!m)lg.add(bootMesh());else if(!b&&m)lg.remove(m)}};
+  const seen=new Map();
+  scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.getObjectByName('legL'))return;
+    if(!seen.has(id))seen.set(id,[wearsShield(id),wearsBoots(id)]);const [s,b]=seen.get(id);if(s||b||o.getObjectByName('arenaShield')||o.getObjectByName('arenaBoot'))put(o,s,b)});
+  if(play&&play.av&&play.av.fig&&meId)put(play.av.fig,wearsShield(meId),wearsBoots(meId));
 }
 function capeRefresh(){
   const put=(o,w)=>{const c=o.getObjectByName('founderCape');if(w&&!c)o.add(capeMesh());else if(!w&&c)c.parent.remove(c)};
@@ -3956,6 +4023,7 @@ function hatRefresh(){ // put the cap on every figure whose owner wears it
   }catch(_){}
   try{heartRefresh()}catch(_){}
   try{capeRefresh()}catch(_){}
+  try{arenaGearRefresh()}catch(_){}
   try{hpMaxSync()}catch(_){}
 }
 async function launchGift(){
@@ -4017,6 +4085,8 @@ const ITEMS={
   earth_heart_2:{name:'Srdce země',slot:'talisman',icon:'💙',img:'img/srdce-zeme-2.png',rarity:'rare',dmgAdd:1.2,dig:1.2,desc:'2. místo v soutěži Cesta do středu země (22. 11. 2026). V kopání +1,2 m za každé kliknutí, v boji +1,2 DMG za úder. Nosíš ho na krku.'},
   earth_heart_3:{name:'Srdce země',slot:'talisman',icon:'💚',img:'img/srdce-zeme-3.png',rarity:'uncommon',dmgAdd:1,dig:1,desc:'3. místo v soutěži Cesta do středu země (22. 11. 2026). V kopání +1 m za každé kliknutí, v boji +1 DMG za úder. Nosíš ho na krku.'},
   founder_cape:{name:'Plášť zakladatele',slot:'banner',icon:'🧥',img:'img/plast-zakladatele.png',rarity:'legend',hp:50,work:.9,desc:'Zlatý plášť s nápisem Zakladatel planety followerů. Když ho máš na sobě: +50 HP (max 150) a všechny práce (zalévání, farma, lékárna) o 10 % rychleji. Vidí ho všichni na tvých zádech.'},
+  arena_shield:{name:'Štít podsvětí',slot:'shield',icon:'🛡️',img:'img/stit-areny.png',rarity:'epic',block:.25,desc:'Padá z příšery na 10. patře arény. Když ho máš na sobě: 25 % šance, že zablokuješ úder příšery a nedostaneš žádné poškození.'},
+  arena_boots:{name:'Boty podsvětí',slot:'boots',icon:'🥾',img:'img/boty-areny.png',rarity:'legend',hp:30,dbl:.1,desc:'Padají z příšery na 50. patře arény. Když je máš na sobě: +30 HP a 10 % šance na dvojnásobnou odměnu u bylin, antibiotik, obilí a chleba.'},
   herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:true,rarity:'common',desc:'Roste u zalitých kytek: šance 25 %, pokaždé 1–2 kusy. V lékárně z ní budou léky.'}
 };
 const inv={items:{},equip:{},money:{},herbs:{},loaded:false,sel:null};
@@ -4044,6 +4114,7 @@ function invOwned(id){
   if(((inv.gifts||{})[liveKey(id)]||{}).launch&&!own.includes('basic_sword_g'))own.push('basic_sword_g');
   if(((inv.gifts||{})[liveKey(id)]||{}).hat&&!own.includes('repair_hat'))own.push('repair_hat');
   {const h=heartOf(id);if(h&&!own.includes(h))own.push(h)}
+  for(const d of arenaDrops(id))if(!own.includes(d))own.push(d);
   return own;
 }
 function invState(id){ // {slot: itemId} with every owned item either worn or in the bag
@@ -4061,7 +4132,7 @@ function invRefreshFigs(id){
 }
 let invTry=0;
 async function invLoad(){ // a failed read (network hiccup) must never look like an empty inventory: keep old data and retry
-  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread','dig'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread','dig'];
+  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread','dig','fight'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread','dig','fight'];
   const res=await Promise.all(keys.map(k=>fetch(LIVE_DB+'/'+k+'.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json().then(v=>({ok:true,v})):{ok:false}).catch(()=>({ok:false}))));
   let bad=0;res.forEach((r,i)=>{if(r.ok)inv[dst[i]]=r.v||{};else{bad++;inv[dst[i]]=inv[dst[i]]||{}}});
   if(!bad){inv.loaded=true;invTry=0}else setTimeout(invLoad,Math.min(30000,2000*++invTry));
@@ -4083,9 +4154,9 @@ function invCell(key,label,icon,item,cls){
 async function herbRoll(){
   if(Math.random()>=.25||!acct.user||!meId)return;
   const k=liveKey(meId);
-  const got=Math.random()<.5?1:2; // a find is always 1–2 herbs
+  const dbl=dblRoll(),got=(Math.random()<.5?1:2)*(dbl?2:1); // a find is always 1–2 herbs (boots can double it)
   try{const cur=await acctGet('/herbs/'+k),c=(+(cur&&cur.c)||0)+got;
-    if(await acctPut('/herbs/'+k,{c,t:{'.sv':'timestamp'}})){inv.herbs[k]={c,t:Date.now()};toast('🌿 Našel jsi '+(got===2?'2 léčivé byliny':'léčivou bylinu')+'! V inventáři máš '+c+'×.');if(!document.getElementById('inv').hidden)invRender()}
+    if(await acctPut('/herbs/'+k,{c,t:{'.sv':'timestamp'}})){inv.herbs[k]={c,t:Date.now()};toast('🌿 Našel jsi '+(got===1?'léčivou bylinu':got+' léčivé byliny')+'! V inventáři máš '+c+'×.');if(dbl)dblToast();if(!document.getElementById('inv').hidden)invRender()}
   }catch(_){}
 }
 function invRender(){
@@ -4118,6 +4189,7 @@ async function invClick(key){
 }
 function openInv(){if(!meId)return;keys.clear();inv.sel=null;if(!inv.loaded)invLoad();document.getElementById('invDetail').textContent='Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.';invRender();document.getElementById('inv').hidden=false;document.getElementById('invClose').focus()}
 document.getElementById('invBtn').onclick=openInv;
+document.getElementById('arenaBtn').onclick=arenaGo;
 document.getElementById('playInv').onclick=openInv;
 document.getElementById('invClose').onclick=()=>{document.getElementById('inv').hidden=true};
 document.getElementById('inv').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('inv').hidden=true;e.stopPropagation()});
@@ -4280,6 +4352,9 @@ function updateAbduct(P,now,dt){ // near the black hole (where the boss used to 
   const near=P.p.angleTo(BASE.dir)<.13;
   if(!P.bossHint&&near){P.bossHint=true;sayPlay('⛏️ Cesta do středu země! Kopej co nejhlouběji.',5000)}
   if(near!==dig.near){dig.near=near;const b=document.getElementById('digBtn');b.hidden=!near;b.textContent='⛏️ Cesta do středu země'+(touchUI()?'':' (F)')}
+  const an=portal.visible&&P.p.angleTo(PORTAL_DIR)<.08;
+  if(an&&!arena.near)sayPlay('⚔️ Portál do arény! Klikni na něj'+(touchUI()?'':' nebo zmáčkni F')+'.',4000);
+  arena.near=an;
   return 0;
 }
 
@@ -4388,6 +4463,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyF'&&!e.repeat&&shop.near){shopOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&lab.near&&!lab.job){labOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&farm.near&&!farm.act){farmClick();return}
+  if(e.code==='KeyF'&&!e.repeat&&arena.near&&play){arenaGo();return}
   if(e.code==='KeyF'&&!e.repeat&&dig.near&&play){digOpen();return}
   keys.add(e.code);
   if(move||e.code==='Space')e.preventDefault();
