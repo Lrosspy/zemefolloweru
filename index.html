@@ -4203,7 +4203,7 @@ async function invLoad(){ // a failed read (network hiccup) must never look like
 }
 setTimeout(invLoad,0);setInterval(()=>{if(meId&&document.visibilityState==='visible')invLoad()},120000); // setTimeout: LIVE_DB is declared further down, a direct call here threw and the inventory never loaded
 // Co věc přidává: krátký řádek pro bublinu při najetí myší (inventář i obchod)
-const ITEM_STATS={boss_sword:'Útok 20 v aréně · 2× DMG v klikačkách · 2× rychlejší kopání',repair_hat:'Kopání +1 m za každé kliknutí',
+const ITEM_STATS={boss_sword:'Útok 25 v aréně · 2× DMG v klikačkách · 2× rychlejší kopání',repair_hat:'Kopání +1 m za každé kliknutí',
   basic_sword:'Útok 12 v aréně · 1,2× DMG v klikačkách',basic_sword_g:'Útok 13 v aréně · 1,3× DMG v klikačkách',
   meds:'Vyléčí chybějící HP i nemoc · hodinu neonemocníš',grain:'Z 5 kusů upečeš u pekařky chleba',bread:'+20 HP · prodáš za 5 stříbrných',herb:'Ze 3 bylin uvaříš v lékárně antibiotika',
   earth_heart_1:'+1,5 útok za úder · +1,5 m kopání za kliknutí',earth_heart_2:'+1,2 útok za úder · +1,2 m kopání za kliknutí',earth_heart_3:'+1 útok za úder · +1 m kopání za kliknutí',
