@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<base href="/">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#120605">
+<title>Aréna · Planeta followerů</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%23361008'/%3E%3Cpath d='M18 46 46 18M18 18l28 28' stroke='%23ffb040' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito+Sans:opsz,wght@6..12,700;6..12,900&display=swap">
+<style>
+:root{--ink:#fff1e0;--dim:#d8bfa8;--fire:#ff7a1a;--sun:#ffc300;--hp:#53d16b;--mhp:#ff4a2a;--panel:rgba(20,8,6,.8);--line:rgba(255,170,110,.25);
+  --display:"Bungee",ui-rounded,system-ui,sans-serif;--body:"Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark}
+html,body{height:100%;margin:0}
+body{background:#120605;color:var(--ink);font-family:var(--body);overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.top{position:fixed;z-index:2;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 10px);padding:0 12px;display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:start;pointer-events:none}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 10px;backdrop-filter:blur(6px);min-width:0}
+.card .nm{display:flex;justify-content:space-between;gap:6px;font-size:13px;font-weight:900;white-space:nowrap}
+.card .nm span{overflow:hidden;text-overflow:ellipsis}
+.card .nm b{font-variant-numeric:tabular-nums;flex:none}
+.bar{height:12px;border-radius:99px;background:rgba(0,0,0,.55);margin-top:6px;overflow:hidden;border:1px solid rgba(255,255,255,.12)}
+.bar i{display:block;height:100%;width:100%;background:var(--hp);border-radius:99px;transition:width .45s ease,background .3s}
+.card.m .bar i{background:var(--mhp)}
+.card .sub{margin-top:5px;font-size:11px;font-weight:700;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.floor{text-align:center;padding-top:2px}
+.floor b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(24px,5.6vw,40px);line-height:1;background:linear-gradient(180deg,#fff3c4,#ffcf4a 35%,#ff7a1a 70%,#d2260c);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 3px 0 #3a0700)}
+.floor span{display:block;margin-top:4px;font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+.back{position:fixed;z-index:3;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 168px);font:900 13px var(--body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 14px;text-decoration:none}
+.turn{position:fixed;z-index:2;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 170px);font:900 13px var(--body);letter-spacing:1px;text-transform:uppercase;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;white-space:nowrap;transition:color .2s,border-color .2s}
+.turn.me{color:var(--sun);border-color:rgba(255,195,0,.6)}
+.turn.mon{color:#ff8a6a}
+.log{position:fixed;z-index:2;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 132px);text-align:center;font-size:13px;font-weight:700;color:var(--dim);min-height:18px;text-shadow:0 1px 3px #000}
+.log b{color:var(--ink)}
+.acts{position:fixed;z-index:3;left:0;right:0;bottom:0;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 12px);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;background:linear-gradient(rgba(18,6,5,0),rgba(18,6,5,.85) 30%)}
+.acts button{font:inherit;color:var(--ink);background:linear-gradient(180deg,#4a1d10,#2a0d07);border:2px solid rgba(255,140,60,.45);border-radius:16px;padding:10px 4px 9px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:84px;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.45);transition:transform .08s,opacity .2s,border-color .2s}
+.acts button .ic{font-size:26px;line-height:1}
+.acts button .tx{display:flex;flex-direction:column;align-items:center;gap:2px}
+.acts button .t{font-family:var(--display);font-size:14px;line-height:1.1}
+.acts button .d{font-size:11px;font-weight:900;color:var(--dim);white-space:nowrap}
+.acts button:not(:disabled):hover{border-color:var(--sun)}
+.acts button:not(:disabled):active{transform:scale(.96)}
+.acts button.atk{background:linear-gradient(180deg,#b3260c,#6a1105);border-color:#ffb36b}
+.acts button:disabled{opacity:.38;cursor:not-allowed}
+.acts button:focus-visible,.back:focus-visible,.modal button:focus-visible,.modal a:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.modal{position:fixed;inset:0;z-index:6;display:grid;place-items:center;padding:16px;background:rgba(10,3,2,.72);backdrop-filter:blur(4px)}
+.modal[hidden]{display:none}
+.modal>div{width:min(360px,100%);background:#1f0c08;border:1px solid var(--line);border-radius:20px;padding:22px 20px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal h1{margin:0 0 8px;font-family:var(--display);font-weight:400;font-size:26px;line-height:1.1}
+.modal p{margin:0 0 16px;color:var(--dim);line-height:1.45}
+.modal p b{color:var(--ink)}
+.modal .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.modal button,.modal a{font:900 15px var(--body);border-radius:999px;padding:12px 20px;border:0;cursor:pointer;text-decoration:none;display:inline-block}
+.modal .go{background:linear-gradient(180deg,#ff8a3a,#d2260c);color:#fff}
+.modal .city{background:#3a2a22;color:var(--ink)}
+.modal .gold{background:var(--sun);color:#2b1d0e}
+@media (max-width:560px){
+  .top{grid-template-columns:1fr 1fr;grid-template-areas:"f f" "p m"}
+  .top .floor{grid-area:f}.top .card.p{grid-area:p}.top .card.m{grid-area:m}
+  .acts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .acts button{min-height:62px;flex-direction:row;gap:8px;padding:8px}
+  .acts button .ic{font-size:22px}
+  .acts button span.tx{display:flex;flex-direction:column;align-items:flex-start}
+  .back{bottom:calc(env(safe-area-inset-bottom,0px) + 214px)}
+  .turn{bottom:calc(env(safe-area-inset-bottom,0px) + 216px);left:auto;right:12px;transform:none}
+  .log{bottom:calc(env(safe-area-inset-bottom,0px) + 178px)}
+}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="cv" aria-label="Aréna: tvoje postava vlevo, příšera vpravo, mezi vámi dráha o deseti krocích"></canvas>
+<header class="top">
+  <section class="card p" aria-label="Tvoje životy"><div class="nm"><span id="pName">Ty</span><b id="pHpT">100 / 100</b></div><div class="bar"><i id="pHp"></i></div><div class="sub" id="pSub">Pěsti · útok 10</div></section>
+  <div class="floor"><b id="floorT">PATRO 1</b><span id="floorS">Prolog</span></div>
+  <section class="card m" aria-label="Životy příšery"><div class="nm"><span>Lávový golem</span><b id="mHpT">100 / 100</b></div><div class="bar"><i id="mHp"></i></div><div class="sub" id="mSub">útok 15</div></section>
+</header>
+<a class="back" id="back" href="./">← Město</a>
+<p class="turn me" id="turn" aria-live="polite">Tvůj tah</p>
+<p class="log" id="log" aria-live="polite">Příšera čeká na konci dráhy. Jdi k ní.</p>
+<nav class="acts" aria-label="Tvůj tah">
+  <button id="aAtk" class="atk"><span class="ic" aria-hidden="true">⚔️</span><span class="tx"><span class="t">Útok</span><span class="d" id="atkD">−10 HP</span></span></button>
+  <button id="aStep"><span class="ic" aria-hidden="true">👣</span><span class="tx"><span class="t">Krok</span><span class="d">k příšeře</span></span></button>
+  <button id="aJump"><span class="ic" aria-hidden="true">↩️</span><span class="tx"><span class="t">Odskok</span><span class="d">uhneš úderu</span></span></button>
+  <button id="aRest"><span class="ic" aria-hidden="true">💤</span><span class="tx"><span class="t">Odpočinek</span><span class="d">+20 HP</span></span></button>
+</nav>
+<section class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mT"><div><h1 id="mT"></h1><p id="mP"></p><div class="row" id="mRow"></div></div></section>
+<script>
+(()=>{
+const LIVE_DB='https://planetafolloweru-default-rtdb.europe-west1.firebasedatabase.app';
+const FB_API_KEY='AIzaSyALYbgJBfpRJSw2UHdCbFxwz5hHkiIiS_E';
+const SESSION_MS=60*60*1000,LOGIN_AT='planeta-login-at';
+const ARENA_FROM=1795604400000,ADMIN='lubikosuch'; // středa 25. 11. 2026 12:00; do té doby jen admin
+const $=id=>document.getElementById(id);
+const liveKey=id=>id.replace(/\./g,'-');
+const q=new URLSearchParams(location.search);
+const look={shirt:q.get('s')||'#c4523a',skin:q.get('k')||'#f1c9a5',hat:q.get('h')||''};
+const DEMO=q.has('demo'); // jen na zkoušku: hraje se bez přihlášení a nic se neukládá
+
+// ---------- pravidla boje (čistá logika, bez kreslení) ----------
+/*LOGIC*/
+const TRACK=10,DODGE=.2,REST=20,HAND=10;
+const W8={boss_sword:2,basic_sword:1.2,basic_sword_g:1.3},TAL={earth_heart_1:1.5,earth_heart_2:1.2,earth_heart_3:1};
+function monsterOf(f){const tier=Math.floor(f/10);return {hp:tier?105+5*tier:100,dmg:15+5*tier}} // 1–9: 100/15 · 10–19: 110/20 · každých dalších 10 pater +5/+5
+function playerDmg(gear){return Math.round(HAND*(W8[gear.weapon]||1)+(TAL[gear.talisman]||0))}
+function newFight(f,hp,hpMax,gear){const m=monsterOf(f);return {f,p:{pos:0,hp,max:hpMax,jump:false},m:{pos:TRACK,hp:m.hp,max:m.hp,dmg:m.dmg,jump:false},dmg:playerDmg(gear),block:gear.shield==='arena_shield'?.25:0,over:null}}
+const dist=S=>S.m.pos-S.p.pos;
+// každá akce vrací seznam událostí pro animaci: {who,kind,n?}
+function playerDo(S,act,rnd){
+  const ev=[];S.p.jump=false;
+  if(act==='step'&&dist(S)>1){S.p.pos++;ev.push({who:'p',kind:'step'})}
+  else if(act==='jump'){if(S.p.pos>0)S.p.pos--;S.p.jump=true;ev.push({who:'p',kind:'jump'})}
+  else if(act==='rest'){const n=Math.min(REST,S.p.max-S.p.hp);S.p.hp+=n;ev.push({who:'p',kind:'rest',n})}
+  else if(act==='atk'&&dist(S)<=1){
+    if(S.m.jump)ev.push({who:'p',kind:'atk'},{who:'m',kind:'evade'});
+    else if(rnd()<DODGE)ev.push({who:'p',kind:'atk'},{who:'m',kind:'dodge'});
+    else{const n=Math.min(S.dmg,S.m.hp);S.m.hp-=n;ev.push({who:'p',kind:'atk'},{who:'m',kind:'hit',n});if(S.m.hp<=0)S.over='win'}}
+  S.m.jump=false;return ev;
+}
+function monsterAI(S,rnd){ // jednoduchá AI: přijde k tobě, většinou bije, občas oddechuje, uskočí nebo jen zařve
+  if(dist(S)>1)return 'step';
+  const r=rnd(),hurt=S.m.hp<S.m.max*.45;
+  if(hurt&&r<.22)return 'rest';
+  if(r<.34)return 'roar';
+  if(r<.44)return 'jump';
+  return 'atk';
+}
+function monsterDo(S,rnd){
+  const act=monsterAI(S,rnd),ev=[];S.m.jump=false;
+  if(act==='step'){S.m.pos--;ev.push({who:'m',kind:'step'})}
+  else if(act==='jump'){if(S.m.pos<TRACK)S.m.pos++;S.m.jump=true;ev.push({who:'m',kind:'jump'})}
+  else if(act==='rest'){const n=Math.min(REST,S.m.max-S.m.hp);S.m.hp+=n;ev.push({who:'m',kind:'rest',n})}
+  else if(act==='roar')ev.push({who:'m',kind:'roar'});
+  else{
+    if(S.p.jump)ev.push({who:'m',kind:'atk'},{who:'p',kind:'evade'});
+    else if(rnd()<DODGE)ev.push({who:'m',kind:'atk'},{who:'p',kind:'dodge'});
+    else if(S.block&&rnd()<S.block)ev.push({who:'m',kind:'atk'},{who:'p',kind:'block'});
+    else{const n=Math.min(S.m.dmg,S.p.hp);S.p.hp-=n;ev.push({who:'m',kind:'atk'},{who:'p',kind:'hit',n});if(S.p.hp<=0)S.over='lose'}}
+  S.p.jump=false;return ev;
+}
+/*END*/
+
+// ---------- stav ----------
+const st={nick:null,user:null,floor:1,hp:100,hpMax:100,gear:{},busy:false};
+let S=null;
+
+// ---------- plátno ----------
+const cv=$('cv'),c=cv.getContext('2d');let W=0,H=0,DPR=1;
+function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;c.setTransform(DPR,0,0,DPR,0,0)}
+addEventListener('resize',resize);resize();
+const bg=new Image();bg.src='img/arena-pozadi.jpg';
+const narrow=()=>W<560;
+const groundY=()=>narrow()?H*.58:H*.64;
+const tx0=()=>Math.max(28,W*.1),tx1=()=>W-Math.max(28,W*.1);
+const posX=p=>tx0()+(tx1()-tx0())*p/TRACK;
+const R=()=>narrow()?Math.max(24,W*.068):Math.max(26,Math.min(42,W*.032));
+// co je právě vidět (plynule se blíží ke skutečnému stavu)
+const vis={p:0,m:TRACK,pHop:0,mHop:0,pLunge:0,mLunge:0,pFlash:0,mFlash:0,shake:0,mRoar:0};
+const pops=[],embers=[];
+
+function drawBg(t){
+  if(bg.complete&&bg.naturalWidth){const s=Math.max(W/bg.naturalWidth,H/bg.naturalHeight)*1.04,iw=bg.naturalWidth*s,ih=bg.naturalHeight*s;
+    c.drawImage(bg,(W-iw)/2+Math.sin(t*.2)*4,(H-ih)/2-H*.04,iw,ih)}
+  else{c.fillStyle='#2a0d07';c.fillRect(0,0,W,H)}
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'rgba(18,6,5,.88)');g.addColorStop(.28,'rgba(18,6,5,.35)');g.addColorStop(.6,'rgba(18,6,5,.2)');g.addColorStop(1,'rgba(18,6,5,.92)');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  const r=c.createRadialGradient(W/2,groundY(),10,W/2,groundY(),Math.max(W,H)*.6);r.addColorStop(0,'rgba(255,90,20,.22)');r.addColorStop(1,'rgba(255,90,20,0)');c.fillStyle=r;c.fillRect(0,0,W,H);
+}
+function drawTrack(t){
+  const y=groundY(),h=Math.max(16,R()*.6),step=(tx1()-tx0())/TRACK;
+  for(let i=0;i<=TRACK;i++){const x=posX(i),glow=.35+.25*Math.sin(t*2+i*.7);
+    c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(x,y+h*.55,step*.46,h*.4,0,0,7);c.fill();
+    c.fillStyle='#3b2420';c.strokeStyle=`rgba(255,${120+Math.round(60*glow)},40,${.55+glow*.4})`;c.lineWidth=2;
+    c.beginPath();c.roundRect(x-step*.42,y-h*.2,step*.84,h*.7,6);c.fill();c.stroke();
+    c.strokeStyle=`rgba(255,140,40,${.35+glow*.3})`;c.lineWidth=1.5;c.beginPath();c.moveTo(x-step*.25,y);c.lineTo(x-step*.05,y+h*.25);c.lineTo(x+step*.2,y+h*.05);c.stroke()}
+  // čísla vzdálenosti mezi postavami
+  const d=Math.round(vis.m-vis.p);if(d>1){c.font='900 12px "Nunito Sans",system-ui,sans-serif';c.textAlign='center';c.fillStyle='rgba(255,230,200,.75)';
+    c.fillText(d+' '+(d<5?'kroky':'kroků'),(posX(vis.p)+posX(vis.m))/2,y+h*1.4)}
+}
+function hatDraw(r){
+  const h=look.hat,col={straw:'#e8c35a',helmet:'#f2c230',fire:'#d6332f',cowboy:'#7a5230',cap:'#2f5d9e',chef:'#ffffff',beret:'#3b2418',crown:'#ffd23a'}[h];
+  if(!col)return;c.fillStyle=col;
+  if(h==='chef'){c.beginPath();c.ellipse(0,-r*.62,r*.36,r*.24,0,0,7);c.fill();c.fillRect(-r*.26,-r*.6,r*.52,r*.16);return}
+  if(h==='crown'){c.beginPath();c.moveTo(-r*.34,-r*.42);for(let i=0;i<=4;i++){c.lineTo(-r*.34+i*r*.17,-r*(i%2?.56:.74))}c.lineTo(r*.34,-r*.42);c.fill();return}
+  c.beginPath();c.ellipse(0,-r*.44,r*.6,r*.1,0,0,7);c.fill();c.beginPath();c.ellipse(0,-r*.52,r*.32,r*.2,0,Math.PI,0);c.fill();
+}
+const gearImg={};for(const [k,s] of [['arena_shield','img/stit-areny.png'],['arena_boots','img/boty-areny.png'],['founder_cape','img/plast-zakladatele.png']]){const i=new Image();i.src=s;gearImg[k]=i}
+const arc=v=>Math.sin(v*Math.PI);
+const okImg=i=>i&&i.complete&&i.naturalWidth;
+function drawPlayer(t){
+  const r=R(),x=posX(vis.p)-r*.35+arc(vis.pLunge)*r*.9,y=groundY()-r*1.05-arc(vis.pHop)*r*1.4+Math.sin(t*3)*1.5;
+  c.save();c.translate(x,y);
+  c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(0,r*1.05+arc(vis.pHop)*r*1.4,r*.8,r*.18,0,0,7);c.fill();
+  if(st.gear.banner==='founder_cape'&&okImg(gearImg.founder_cape)){c.globalAlpha=.95;c.drawImage(gearImg.founder_cape,-r*1.35,-r*.7,r*1.3,r*1.6);c.globalAlpha=1}
+  c.beginPath();c.arc(0,0,r,0,7);c.fillStyle='#ffc31f';c.fill();
+  c.save();c.clip();
+  c.fillStyle=look.shirt;c.beginPath();c.ellipse(0,r*.95,r*.82,r*.6,0,0,7);c.fill();
+  c.fillStyle=look.skin;c.beginPath();c.arc(0,-r*.08,r*.46,0,7);c.fill();
+  c.fillStyle='#2b1d0e';c.beginPath();c.arc(-r*.16,-r*.12,r*.06,0,7);c.arc(r*.16,-r*.12,r*.06,0,7);c.fill();
+  c.strokeStyle='#2b1d0e';c.lineWidth=Math.max(1.5,r*.06);c.beginPath();c.arc(0,r*.02,r*.16,.2,Math.PI-.2);c.stroke();
+  hatDraw(r);
+  if(vis.pFlash>0){c.fillStyle=`rgba(255,40,20,${vis.pFlash*.55})`;c.fillRect(-r,-r,2*r,2*r)}
+  c.restore();
+  c.lineWidth=3;c.strokeStyle='#111';c.beginPath();c.arc(0,0,r,0,7);c.stroke();
+  // zbraň v ruce
+  if(st.gear.weapon){c.save();c.translate(r*.95,r*.15);c.rotate(-.9+arc(vis.pLunge)*1.4);c.fillStyle='#d8dde6';c.strokeStyle='#111';c.lineWidth=2;
+    c.beginPath();c.moveTo(-r*.07,0);c.lineTo(-r*.07,-r*1.1);c.lineTo(0,-r*1.28);c.lineTo(r*.07,-r*1.1);c.lineTo(r*.07,0);c.closePath();c.fill();c.stroke();
+    c.fillStyle=st.gear.weapon==='boss_sword'?'#7a2a8a':'#8a5a2a';c.fillRect(-r*.22,-r*.04,r*.44,r*.1);c.fillRect(-r*.05,0,r*.1,r*.28);c.restore()}
+  else{c.fillStyle=look.skin;c.strokeStyle='#111';c.lineWidth=2;c.beginPath();c.arc(r*.95+arc(vis.pLunge)*r*.4,r*.2,r*.2,0,7);c.fill();c.stroke()}
+  if(st.gear.shield==='arena_shield'&&okImg(gearImg.arena_shield))c.drawImage(gearImg.arena_shield,-r*1.25,-r*.05,r*.8,r*.8);
+  if(st.gear.boots==='arena_boots'&&okImg(gearImg.arena_boots)){c.save();c.beginPath();c.roundRect(-r*.45,r*.78,r*.9,r*.5,r*.15);c.clip();c.drawImage(gearImg.arena_boots,-r*.45,r*.6,r*.9,r*.9);c.restore()}
+  c.restore();
+}
+function drawMonster(t){
+  const tier=S?Math.floor(S.f/10):0,r=R()*(2.1+Math.min(.5,tier*.05)),x=posX(vis.m)+r*.35-arc(vis.mLunge)*r*.55,
+    breathe=Math.sin(t*2.2)*.03,y=groundY()-r*.95-arc(vis.mHop)*r*.8;
+  c.save();c.translate(x,y);c.scale(1+breathe*.5,1-breathe);if(vis.mFlash>0)c.filter=`brightness(${1+vis.mFlash*1.6})`;
+  c.fillStyle='rgba(0,0,0,.4)';c.beginPath();c.ellipse(0,r*.98+arc(vis.mHop)*r*.8,r*.95,r*.2,0,0,7);c.fill();
+  const rock='#3d2a25',rock2='#2a1b17',lava=`rgba(255,${110+Math.round(50*Math.sin(t*3))},30,.95)`;
+  const poly=(pts,f,s)=>{c.beginPath();pts.forEach(([a,b],i)=>i?c.lineTo(a*r,b*r):c.moveTo(a*r,b*r));c.closePath();c.fillStyle=f;c.fill();if(s){c.strokeStyle=s;c.lineWidth=2;c.stroke()}};
+  // nohy
+  poly([[-.55,.45],[-.2,.5],[-.25,.98],[-.62,.98]],rock2,'#120806');poly([[.2,.5],[.55,.45],[.62,.98],[.25,.98]],rock2,'#120806');
+  // zadní ruka
+  const sw=arc(vis.mLunge);
+  poly([[.45,-.35],[.85,-.2],[.95,.45],[.6,.55]],rock2,'#120806');
+  // tělo
+  poly([[-.7,-.55],[-.2,-.85],[.45,-.7],[.75,-.2],[.6,.5],[-.1,.62],[-.65,.4],[-.82,-.1]],rock,'#120806');
+  // lávové praskliny
+  c.strokeStyle=lava;c.lineWidth=Math.max(2,r*.05);c.lineCap='round';c.shadowColor='#ff6a00';c.shadowBlur=12;
+  for(const ln of [[[-.5,-.4],[-.2,-.1],[-.35,.25]],[[.1,-.6],[.05,-.2],[.35,.1],[.25,.45]],[[-.1,0],[.2,-.1]]]){c.beginPath();ln.forEach(([a,b],i)=>i?c.lineTo(a*r,b*r):c.moveTo(a*r,b*r));c.stroke()}
+  // hlava + oči
+  poly([[-.35,-.85],[.05,-1.05],[.35,-.9],[.3,-.6],[-.3,-.6]],'#4a332c','#120806');
+  c.fillStyle=vis.mRoar>0?'#fff3a0':'#ffcf3a';c.beginPath();c.ellipse(-.22*r,-.8*r,r*.08,r*.05,.3,0,7);c.ellipse(.12*r,-.82*r,r*.08,r*.05,-.3,0,7);c.fill();
+  if(vis.mRoar>0){c.fillStyle='#ff5a1a';c.beginPath();c.ellipse(-.05*r,-.66*r,r*.14,r*.07*(1+vis.mRoar),0,0,7);c.fill()}
+  c.shadowBlur=0;
+  // přední ruka (ta, co bije)
+  c.save();c.translate(-.6*r,-.3*r);c.rotate(-.2-sw*1.1);
+  poly([[-.12,-.05],[.12,-.05],[.18,.55],[-.2,.6]],rock,'#120806');poly([[-.28,.5],[.25,.48],[.3,.85],[-.32,.88]],'#4a332c','#120806');
+  c.restore();
+  c.restore();
+}
+function pop(who,text,col){const r=R(),x=who==='p'?posX(vis.p):posX(vis.m),y=groundY()-(who==='p'?r*2.4:r*3.4);pops.push({x,y,text,col,t:0})}
+function drawPops(dt){
+  c.textAlign='center';for(let i=pops.length-1;i>=0;i--){const p=pops[i];p.t+=dt;if(p.t>1.3){pops.splice(i,1);continue}
+    const a=Math.min(1,(1.3-p.t)*2.5);c.font=`400 ${Math.round(R()*.85)}px Bungee,system-ui,sans-serif`;c.lineWidth=5;c.strokeStyle=`rgba(20,6,4,${a})`;
+    c.globalAlpha=a;c.strokeText(p.text,p.x,p.y-p.t*50);c.fillStyle=p.col;c.fillText(p.text,p.x,p.y-p.t*50);c.globalAlpha=1}
+}
+function drawEmbers(dt,t){
+  if(embers.length<40&&Math.random()<.5)embers.push({x:Math.random()*W,y:H+10,v:20+Math.random()*40,s:1+Math.random()*2.5,w:Math.random()*6});
+  for(let i=embers.length-1;i>=0;i--){const e=embers[i];e.y-=e.v*dt;e.x+=Math.sin(t+e.w)*.3;if(e.y<-10){embers.splice(i,1);continue}
+    c.fillStyle=`rgba(255,${140+Math.round(e.w*15)},50,${Math.min(1,e.y/H)*.8})`;c.beginPath();c.arc(e.x,e.y,e.s,0,7);c.fill()}
+}
+
+// ---------- HUD ----------
+function hud(){
+  if(!S)return;
+  $('floorT').textContent='PATRO '+S.f;$('floorS').textContent=S.f===1?'Prolog · výhra = 5 stříbrných':S.f<10?'Na 10. patře padá štít':S.f<50?'Na 50. patře padají boty':'∞ patra';
+  $('pHpT').textContent=S.p.hp+' / '+S.p.max;$('pHp').style.width=(100*S.p.hp/S.p.max)+'%';
+  $('pHp').style.background=S.p.hp/S.p.max<.3?'#ff9a2a':'';
+  $('mHpT').textContent=S.m.hp+' / '+S.m.max;$('mHp').style.width=(100*S.m.hp/S.m.max)+'%';
+  $('mSub').textContent='útok '+S.m.dmg+' · úhyb 20 %';
+  $('atkD').textContent='−'+S.dmg+' HP';
+  const d=dist(S),free=!st.busy&&!S.over;
+  $('aAtk').disabled=!free||d>1;$('aStep').disabled=!free||d<=1;$('aJump').disabled=!free;$('aRest').disabled=!free||S.p.hp>=S.p.max;
+  $('aAtk').title=d>1?'Útočit jde jen zblízka. Udělej krok.':'';
+}
+function gearLine(){
+  const g=st.gear,w={boss_sword:'Zubatý meč',basic_sword:'Obyčejný meč',basic_sword_g:'Obyčejný meč'}[g.weapon]||'Pěsti',bits=[w+' · útok '+playerDmg(g)];
+  if(g.shield==='arena_shield')bits.push('🛡️ blok 25 %');if(g.banner==='founder_cape')bits.push('🧥 +50 HP');if(g.boots==='arena_boots')bits.push('🥾 +30 HP');
+  $('pSub').textContent=bits.join(' · ');
+}
+const say=html=>{$('log').innerHTML=html};
+function turnLabel(me){const t=$('turn');t.textContent=me?'Tvůj tah':'Tah příšery';t.className='turn '+(me?'me':'mon')}
+
+// ---------- tahy ----------
+const rnd=Math.random,wait=ms=>new Promise(ok=>setTimeout(ok,ms));
+const TXT={p:{step:'Uděláš krok vpřed.',jump:'Odskočíš. Příšera tě v dalším tahu netrefí.',rest:n=>n?`Oddechneš si: <b>+${n} HP</b>.`:'Oddechneš si.',atk:''},
+  m:{step:'Příšera se valí k tobě.',jump:'Příšera uskočila. Tvůj další úder ji mine.',rest:n=>`Příšera chladne: <b>+${n} HP</b>.`,roar:'Příšera řve a chrlí jiskry. Tenhle tah neútočí.',atk:''}};
+async function play(ev){
+  const lines=[];
+  for(const e of ev){const o=e.who==='p'?'m':'p';
+    if(e.kind==='step'){}
+    else if(e.kind==='jump'){vis[e.who+'Hop']=1}
+    else if(e.kind==='rest'){pop(e.who,'+'+e.n,'#7dff8a')}
+    else if(e.kind==='atk'){vis[e.who+'Lunge']=1;await wait(180)}
+    else if(e.kind==='roar'){vis.mRoar=1;vis.shake=.4}
+    else if(e.kind==='hit'){vis[e.who+'Flash']=1;vis.shake=e.who==='p'?1:.6;pop(e.who,'−'+e.n,e.who==='p'?'#ff5a3a':'#ffd23a');
+      lines.push(e.who==='m'?`Zásah! Příšera <b>−${e.n} HP</b>.`:`Příšera tě trefila: <b>−${e.n} HP</b>.`)}
+    else if(e.kind==='dodge'){pop(e.who,'ÚHYB','#ffffff');lines.push(e.who==='m'?'Příšera uhnula.':'Uhnul jsi!')}
+    else if(e.kind==='evade'){pop(e.who,'VEDLE','#ffffff');lines.push(e.who==='m'?'Příšera odskočila, rána šla vedle.':'Díky odskoku tě netrefila.')}
+    else if(e.kind==='block'){pop(e.who,'BLOK','#c9a2ff');lines.push('🛡️ Štít podsvětí zablokoval úder!')}
+    const t=TXT[e.who][e.kind];if(t)lines.push(typeof t==='function'?t(e.n):t);
+  }
+  say(lines.join(' '));hud();await wait(650);
+}
+async function act(a){
+  if(!S||st.busy||S.over)return;st.busy=true;hud();
+  await play(playerDo(S,a,rnd));
+  if(S.over){st.busy=false;end();return}
+  turnLabel(false);await wait(350);
+  await play(monsterDo(S,rnd));
+  st.busy=false;
+  if(S.over){end();return}
+  turnLabel(true);hud();
+}
+for(const [id,a] of [['aAtk','atk'],['aStep','step'],['aJump','jump'],['aRest','rest']])$(id).onclick=()=>act(a);
+addEventListener('keydown',e=>{const k={'1':'atk','2':'step','3':'jump','4':'rest',a:'atk',d:'step',s:'jump',w:'rest'}[e.key.toLowerCase()];if(k&&$('modal').hidden)act(k)});
+
+// ---------- konec boje (ukládání přijde v dalším kroku) ----------
+function modal(title,html,btns){$('mT').textContent=title;$('mP').innerHTML=html;const row=$('mRow');row.replaceChildren(...btns);$('modal').hidden=false;btns[0]&&btns[0].focus()}
+function btn(cls,text,fn){const b=document.createElement(fn?'button':'a');b.className=cls;b.textContent=text;if(fn)b.onclick=fn;else b.href='./';return b}
+function end(){
+  hud();
+  if(S.over==='win'){
+    st.hp=S.p.hp;st.floor++;
+    modal('Vyhrál jsi! 🏆',`Patro <b>${S.f}</b> je čisté. Zbývá ti <b>${S.p.hp} HP</b>. Pokračuj do patra ${st.floor}, nebo se vrať do města a vyléč se.`,
+      [btn('go','Další patro ⚔️',()=>{$('modal').hidden=true;begin()}),btn('city','Do města',null)]);
+  }else{
+    modal('Padl jsi 💀',`Příšera na patře <b>${S.f}</b> tě porazila. Příště pokračuješ tady.`,[btn('city','Do města',null)]);
+  }
+}
+function begin(){
+  S=newFight(st.floor,Math.max(1,st.hp),st.hpMax,st.gear);vis.p=0;vis.m=TRACK;
+  turnLabel(true);gearLine();hud();say(st.floor===1?'Prolog: porazíš-li golema, dostaneš <b>5 stříbrných</b>. Jdi k němu.':'Příšera čeká na konci dráhy. Jdi k ní.');
+}
+
+// ---------- přihlášení a načtení postavy ----------
+const load=src=>new Promise((ok,bad)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.append(s)});
+function gate(title,text,link){modal(title,text,[link===false?null:btn('gold',link||'Zpět na planetu',null)].filter(Boolean));st.busy=true;hud()}
+function wearOf(items,equip,floor){ // stejně jako ve hře: uložené vybavení, jinak to, co máš
+  const own=Object.keys(items||{});if(floor>10)own.push('arena_shield');if(floor>50)own.push('arena_boots');
+  const SLOT={boss_sword:'weapon',basic_sword:'weapon',basic_sword_g:'weapon',earth_heart_1:'talisman',earth_heart_2:'talisman',earth_heart_3:'talisman',founder_cape:'banner',arena_shield:'shield',arena_boots:'boots'};
+  const g={};if(equip&&typeof equip==='object'){for(const [s,it] of Object.entries(equip))if(SLOT[it]===s&&own.includes(it))g[s]=it}
+  else for(const it of own){const s=SLOT[it];if(s&&!g[s])g[s]=it}
+  return g;
+}
+async function start(){
+  if(DEMO){st.nick='zkouška';$('pName').textContent='Zkušební boj';st.floor=Math.max(1,+q.get('f')||1);
+    st.gear=wearOf(Object.fromEntries((q.get('g')||'').split(',').filter(Boolean).map(k=>[k,true])),null,st.floor);
+    st.hpMax=100+(st.gear.banner==='founder_cape'?50:0)+(st.gear.boots==='arena_boots'?30:0);st.hp=st.hpMax;begin();return}
+  begin();st.busy=true;hud();say('Načítám tvou postavu…');
+  try{
+    let at=0;try{at=+localStorage.getItem(LOGIN_AT)||0}catch(_){}
+    if(!at||Date.now()-at>SESSION_MS){gate('Nejdřív se přihlas','Do arény můžou jen přihlášení hráči. Přihlas se na planetě přes Google a vrať se sem.','Přihlásit se na planetě');return}
+    const B='https://www.gstatic.com/firebasejs/10.12.2/';
+    await load(B+'firebase-app-compat.js');await load(B+'firebase-auth-compat.js');
+    if(!firebase.apps.length)firebase.initializeApp({apiKey:FB_API_KEY,authDomain:'planetafolloweru.firebaseapp.com',databaseURL:LIVE_DB,projectId:'planetafolloweru'});
+    const u=await new Promise(ok=>{const off=firebase.auth().onAuthStateChanged(x=>{off();ok(x)})});
+    if(!u){gate('Nejdřív se přihlas','Do arény můžou jen přihlášení hráči. Přihlas se na planetě přes Google a vrať se sem.','Přihlásit se na planetě');return}
+    const tok=await u.getIdToken(),a=await fetch(`${LIVE_DB}/accounts/${u.uid}.json?auth=${encodeURIComponent(tok)}`).then(r=>r.ok?r.json():null);
+    if(!a||!a.nick){gate('Vyber si postavu','Na planetě si nejdřív vyber svou postavu (nick). Pak můžeš do arény.');return}
+    if(Date.now()<ARENA_FROM&&a.nick!==ADMIN){gate('Aréna je zavřená','Brána do podsvětí se otevře <b>ve středu 25. 11. ve 12:00</b>.');return}
+    st.user=u;st.nick=a.nick;$('pName').textContent='@'+a.nick;
+    const k=liveKey(a.nick),get=P=>fetch(`${LIVE_DB}/${P}/${k}.json`).then(r=>r.ok?r.json():null).catch(()=>null);
+    const [items,equip,fight,health]=await Promise.all([get('items'),get('equip'),get('fight'),get('health')]);
+    st.floor=Math.max(1,+(fight&&fight.f)||1);st.gear=wearOf(items,equip,st.floor);
+    st.hpMax=100+(st.gear.banner==='founder_cape'?50:0)+(st.gear.boots==='arena_boots'?30:0);
+    if(health&&health.dead){gate('Jsi mrtvý 💀','Tvoje postava leží u hrobu. Až tě někdo oživí (nebo uplyne čas), můžeš zpátky do arény.');return}
+    st.hp=Math.min(st.hpMax,Math.max(1,health&&health.hp!=null?+health.hp:st.hpMax));
+    st.busy=false;begin();
+  }catch(e){console.warn(e);gate('Něco se pokazilo','Nepodařilo se načíst tvou postavu. Zkus to znovu z planety.')}
+}
+start();
+
+// ---------- smyčka ----------
+let lastT=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-lastT)/1000);lastT=now;const t=now/1000;
+  if(S){vis.p+=(S.p.pos-vis.p)*Math.min(1,dt*9);vis.m+=(S.m.pos-vis.m)*Math.min(1,dt*9)}
+  for(const k of ['pHop','mHop','pLunge','mLunge','pFlash','mFlash','mRoar'])vis[k]=Math.max(0,vis[k]-dt*(k.endsWith('Flash')?2.2:k==='mRoar'?1.4:3.2));
+  vis.shake=Math.max(0,vis.shake-dt*3);
+  c.save();if(vis.shake>0&&!matchMedia('(prefers-reduced-motion: reduce)').matches)c.translate((Math.random()-.5)*14*vis.shake,(Math.random()-.5)*10*vis.shake);
+  drawBg(t);drawTrack(t);drawEmbers(dt,t);drawMonster(t);drawPlayer(t);drawPops(dt);
+  c.restore();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
