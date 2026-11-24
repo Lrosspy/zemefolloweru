@@ -197,6 +197,10 @@ body.playing .admin-key{display:none}
 .shop-offer{aspect-ratio:1;border-radius:14px;border:1.5px dashed rgba(255,255,255,.25);background:#1d1838;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink-dim);font-size:13px}
 .shop-offer .ic{font-size:26px;opacity:.6}
 button.shop-offer{font:inherit;cursor:pointer;border:2px solid #9aa1ad;padding:6px;gap:3px;color:var(--ink);text-align:center}
+
+.item-tip{position:fixed;z-index:9999;max-width:240px;pointer-events:none;background:#14112a;border:2px solid #9aa1ad;border-radius:12px;padding:8px 11px;box-shadow:0 10px 30px rgba(0,0,0,.55);font-size:13px;line-height:1.35;color:#fff4e2;display:flex;flex-direction:column;gap:2px}
+.item-tip[hidden]{display:none}
+.item-tip b{font-size:14px}.item-tip .rr{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}.item-tip .st{color:#ffe27a;font-weight:800}
 button.shop-offer img{width:100%;flex:1 1 0;min-height:0;object-fit:cover;border-radius:9px}
 button.shop-offer b{font-size:11px;line-height:1.15}
 button.shop-offer .pr{font-size:11px;font-weight:900;color:#e8e8f0}
@@ -4081,7 +4085,7 @@ function shopOffersRender(){
   document.getElementById('shopWho').textContent='Základní výbava pro začátek. Ceny ve stříbrných.';
   for(const k of SHOP_ITEMS){const it=ITEMS[k],b=document.createElement('button');b.type='button';b.className='shop-offer'+(own.includes(k)?' own':'')+(shopSel===k?' sel':'');
     b.innerHTML=`<img src="${it.img}" alt=""><b></b><span class="pr"></span>`;b.querySelector('b').textContent=it.name;b.querySelector('.pr').textContent=own.includes(k)?'✓ máš':it.price+' stříbrných';
-    b.setAttribute('aria-label',it.name+', '+(own.includes(k)?'už máš':it.price+' stříbrných'));b.onclick=()=>{shopSel=k;shopOffersRender()};box.append(b)}
+    b.setAttribute('aria-label',it.name+', '+(own.includes(k)?'už máš':it.price+' stříbrných'));tipBind(b,k);b.onclick=()=>{shopSel=k;shopOffersRender()};box.append(b)}
   const buy=document.getElementById('shopBuy');if(!shopSel){buy.hidden=true;return}
   const it=ITEMS[shopSel],has=own.includes(shopSel),money=Math.floor(+inv.money[liveKey(meId)]||0);buy.hidden=false;buy.replaceChildren();
   const t=document.createElement('b');t.textContent=it.name+' · '+it.stats;const d=document.createElement('span');d.textContent=it.desc;
@@ -4198,6 +4202,27 @@ async function invLoad(){ // a failed read (network hiccup) must never look like
   return !bad;
 }
 setTimeout(invLoad,0);setInterval(()=>{if(meId&&document.visibilityState==='visible')invLoad()},120000); // setTimeout: LIVE_DB is declared further down, a direct call here threw and the inventory never loaded
+// Co věc přidává: krátký řádek pro bublinu při najetí myší (inventář i obchod)
+const ITEM_STATS={boss_sword:'Útok 20 v aréně · 2× DMG v klikačkách · 2× rychlejší kopání',repair_hat:'Kopání +1 m za každé kliknutí',
+  basic_sword:'Útok 12 v aréně · 1,2× DMG v klikačkách',basic_sword_g:'Útok 13 v aréně · 1,3× DMG v klikačkách',
+  meds:'Vyléčí chybějící HP i nemoc · hodinu neonemocníš',grain:'Z 5 kusů upečeš u pekařky chleba',bread:'+20 HP · prodáš za 5 stříbrných',herb:'Ze 3 bylin uvaříš v lékárně antibiotika',
+  earth_heart_1:'+1,5 útok za úder · +1,5 m kopání za kliknutí',earth_heart_2:'+1,2 útok za úder · +1,2 m kopání za kliknutí',earth_heart_3:'+1 útok za úder · +1 m kopání za kliknutí',
+  founder_cape:'+50 HP · všechny práce o 10 % rychleji',arena_shield:'25 % šance zablokovat úder příšery',
+  arena_boots:'+30 HP · 10 % šance na dvojnásobek u bylin, antibiotik, obilí a chleba'};
+const itemStats=k=>{const it=ITEMS[k];return it?(it.stats||ITEM_STATS[k]||''):''};
+let tipEl=null;
+function tipShow(el,k){
+  if(matchMedia('(hover: none)').matches)return; // na dotyku stačí klepnutí (popis se ukáže pod mřížkou)
+  const it=ITEMS[k];if(!it)return;const ry=RARITY[it.rarity||'common'];
+  if(!tipEl){tipEl=document.createElement('div');tipEl.className='item-tip';tipEl.setAttribute('role','tooltip');document.body.append(tipEl)}
+  tipEl.replaceChildren();const n=document.createElement('b');n.textContent=it.name;const r=document.createElement('span');r.className='rr';r.textContent=ry.name;r.style.color=ry.color;
+  const st=document.createElement('span');st.className='st';st.textContent=itemStats(k)||'Bez bonusů';tipEl.append(n,r,st);tipEl.style.borderColor=ry.color;tipEl.hidden=false;
+  const b=el.getBoundingClientRect(),t=tipEl.getBoundingClientRect();
+  let x=b.left+b.width/2-t.width/2,y=b.top-t.height-8;if(y<8)y=b.bottom+8;x=Math.max(8,Math.min(innerWidth-t.width-8,x));
+  tipEl.style.left=x+'px';tipEl.style.top=y+'px';
+}
+const tipHide=()=>{if(tipEl)tipEl.hidden=true};
+function tipBind(el,k){el.addEventListener('mouseenter',()=>tipShow(el,k));el.addEventListener('mouseleave',tipHide);el.addEventListener('focus',()=>tipShow(el,k));el.addEventListener('blur',tipHide);el.addEventListener('click',tipHide)}
 function invCell(key,label,icon,item,cls){
   const b=document.createElement('button');b.type='button';b.className='inv-slot'+(cls||'');b.dataset.slot=key;
   const it=item&&ITEMS[item];
@@ -4207,6 +4232,7 @@ function invCell(key,label,icon,item,cls){
   if(it&&it.img){const im=document.createElement('img');im.src=it.img;im.alt='';im.style.cssText='width:2.1em;height:2.1em;object-fit:contain;display:block;margin:0 auto';ic.append(im)}else ic.textContent=it?it.icon:icon;
   const lb=document.createElement('span');lb.className='lb';lb.textContent=it?(it.stack?it.name.split(' ').pop()+' ×'+stackN(item):it.name.split(' ')[0]):label;
   b.append(ic,lb);if(inv.sel===key)b.classList.add('sel');
+  if(it)tipBind(b,item);
   b.onclick=()=>invClick(key);return b;
 }
 async function herbRoll(){
