@@ -24,26 +24,33 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 .bar{height:12px;border-radius:99px;background:rgba(0,0,0,.55);margin-top:6px;overflow:hidden;border:1px solid rgba(255,255,255,.12)}
 .bar i{display:block;height:100%;width:100%;background:var(--hp);border-radius:99px;transition:width .45s ease,background .3s}
 .card.m .bar i{background:var(--mhp)}
+.bar.sta{height:6px;margin-top:4px}.bar.sta i,.card.m .bar.sta i{background:#ffc300}
 .card .sub{margin-top:5px;font-size:11px;font-weight:700;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .floor{text-align:center;padding-top:2px}
 .floor b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(24px,5.6vw,40px);line-height:1;background:linear-gradient(180deg,#fff3c4,#ffcf4a 35%,#ff7a1a 70%,#d2260c);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 3px 0 #3a0700)}
 .floor span{display:block;margin-top:4px;font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
-.back{position:fixed;z-index:3;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 168px);font:900 13px var(--body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 14px;text-decoration:none}
-.turn{position:fixed;z-index:2;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 170px);font:900 13px var(--body);letter-spacing:1px;text-transform:uppercase;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;white-space:nowrap;transition:color .2s,border-color .2s}
+.back{position:fixed;z-index:3;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 182px);font:900 13px var(--body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 14px;text-decoration:none}
+.turn{position:fixed;z-index:2;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 184px);font:900 13px var(--body);letter-spacing:1px;text-transform:uppercase;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;white-space:nowrap;transition:color .2s,border-color .2s}
 .turn.me{color:var(--sun);border-color:rgba(255,195,0,.6)}
 .turn.mon{color:#ff8a6a}
-.log{position:fixed;z-index:2;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 132px);text-align:center;font-size:13px;font-weight:700;color:var(--dim);min-height:18px;text-shadow:0 1px 3px #000}
+.log{position:fixed;z-index:2;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 122px);text-align:center;font-size:13px;font-weight:700;color:var(--dim);min-height:18px;text-shadow:0 1px 3px #000}
 .log b{color:var(--ink)}
-.acts{position:fixed;z-index:3;left:0;right:0;bottom:0;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 12px);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;background:linear-gradient(rgba(18,6,5,0),rgba(18,6,5,.85) 30%)}
-.acts button{font:inherit;color:var(--ink);background:linear-gradient(180deg,#4a1d10,#2a0d07);border:2px solid rgba(255,140,60,.45);border-radius:16px;padding:10px 4px 9px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:84px;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.45);transition:transform .08s,opacity .2s,border-color .2s}
-.acts button .ic{font-size:26px;line-height:1}
+.acts{position:fixed;z-index:3;left:50%;transform:translateX(-50%);width:min(430px,calc(100% - 16px));bottom:0;padding:6px 0 calc(env(safe-area-inset-bottom,0px) + 8px);display:grid;gap:5px;background:linear-gradient(rgba(18,6,5,0),rgba(18,6,5,.85) 30%)}
+.acts button{font:inherit;color:var(--ink);background:linear-gradient(180deg,#4a1d10,#2a0d07);border:2px solid rgba(255,140,60,.45);border-radius:12px;padding:6px 2px 5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:50px;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.45);transition:transform .08s,opacity .2s,border-color .2s}
+.acts .row4,.acts .row5{display:grid;gap:5px}.acts .row4{grid-template-columns:repeat(4,minmax(0,1fr))}.acts .row5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.acts button .ic{font-size:17px;line-height:1}
 .acts button .tx{display:flex;flex-direction:column;align-items:center;gap:2px}
-.acts button .t{font-family:var(--display);font-size:14px;line-height:1.1}
-.acts button .d{font-size:11px;font-weight:900;color:var(--dim);white-space:nowrap}
+.acts button .t{font-family:var(--display);font-size:11px;line-height:1.1;white-space:nowrap}
+.acts button .d{font-size:9.5px;font-weight:900;color:var(--dim);white-space:nowrap}
 .acts button:not(:disabled):hover{border-color:var(--sun)}
 .acts button:not(:disabled):active{transform:scale(.96)}
 .acts button.atk{background:linear-gradient(180deg,#b3260c,#6a1105);border-color:#ffb36b}
-.acts button:disabled{opacity:.38;cursor:not-allowed}
+.acts button:disabled{opacity:.35;cursor:not-allowed}
+.acts button.boost:not(:disabled){border-color:#fff3a0;box-shadow:0 0 18px rgba(255,220,80,.7)}
+.crowd{position:fixed;z-index:2;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 150px);width:min(240px,60%);text-align:center;font:900 11px var(--body);letter-spacing:.5px;color:var(--dim)}
+.crowd .cbar{height:7px;border-radius:99px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);overflow:hidden;margin-bottom:3px}
+.crowd .cbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff7a1a,#ffe27a);transition:width .4s}
+.crowd.full{color:#fff3a0}.crowd.full .cbar i{box-shadow:0 0 12px #ffe27a}
 .acts button:focus-visible,.back:focus-visible,.modal button:focus-visible,.modal a:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .modal{position:fixed;inset:0;z-index:6;display:grid;place-items:center;padding:16px;background:rgba(10,3,2,.72);backdrop-filter:blur(4px)}
 .modal[hidden]{display:none}
@@ -59,13 +66,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 @media (max-width:560px){
   .top{grid-template-columns:1fr 1fr;grid-template-areas:"f f" "p m"}
   .top .floor{grid-area:f}.top .card.p{grid-area:p}.top .card.m{grid-area:m}
-  .acts{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .acts button{min-height:62px;flex-direction:row;gap:8px;padding:8px}
-  .acts button .ic{font-size:22px}
-  .acts button span.tx{display:flex;flex-direction:column;align-items:flex-start}
-  .back{bottom:calc(env(safe-area-inset-bottom,0px) + 214px)}
-  .turn{bottom:calc(env(safe-area-inset-bottom,0px) + 216px);left:auto;right:12px;transform:none}
-  .log{bottom:calc(env(safe-area-inset-bottom,0px) + 178px)}
+  .turn{left:auto;right:12px;transform:none}
 }
 @media (prefers-reduced-motion:reduce){.bar i{transition:none}}
 </style>
@@ -73,19 +74,15 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 <body>
 <canvas id="cv" aria-label="Aréna: tvoje postava vlevo, příšera vpravo, mezi vámi dráha o deseti krocích"></canvas>
 <header class="top">
-  <section class="card p" aria-label="Tvoje životy"><div class="nm"><span id="pName">Ty</span><b id="pHpT">100 / 100</b></div><div class="bar"><i id="pHp"></i></div><div class="sub" id="pSub">Pěsti · útok 10</div></section>
+  <section class="card p" aria-label="Tvoje životy"><div class="nm"><span id="pName">Ty</span><b id="pHpT">100 / 100</b></div><div class="bar"><i id="pHp"></i></div><div class="bar sta" title="Výdrž"><i id="pSta"></i></div><div class="sub" id="pSub">Pěsti · útok 10</div></section>
   <div class="floor"><b id="floorT">PATRO 1</b><span id="floorS">Prolog</span></div>
-  <section class="card m" aria-label="Životy příšery"><div class="nm"><span>Lávový golem</span><b id="mHpT">100 / 100</b></div><div class="bar"><i id="mHp"></i></div><div class="sub" id="mSub">útok 15</div></section>
+  <section class="card m" aria-label="Životy příšery"><div class="nm"><span>Lávový golem</span><b id="mHpT">100 / 100</b></div><div class="bar"><i id="mHp"></i></div><div class="bar sta" title="Výdrž"><i id="mSta"></i></div><div class="sub" id="mSub">útok 15</div></section>
 </header>
 <a class="back" id="back" href="./">← Město</a>
 <p class="turn me" id="turn" aria-live="polite">Tvůj tah</p>
 <p class="log" id="log" aria-live="polite">Příšera čeká na konci dráhy. Jdi k ní.</p>
-<nav class="acts" aria-label="Tvůj tah">
-  <button id="aAtk" class="atk"><span class="ic" aria-hidden="true">⚔️</span><span class="tx"><span class="t">Útok</span><span class="d" id="atkD">−10 HP</span></span></button>
-  <button id="aStep"><span class="ic" aria-hidden="true">👣</span><span class="tx"><span class="t">Krok</span><span class="d">k příšeře</span></span></button>
-  <button id="aJump"><span class="ic" aria-hidden="true">↩️</span><span class="tx"><span class="t">Odskok</span><span class="d">uhneš úderu</span></span></button>
-  <button id="aRest"><span class="ic" aria-hidden="true">💤</span><span class="tx"><span class="t">Odpočinek</span><span class="d">+20 HP</span></span></button>
-</nav>
+<div class="crowd" id="crowdW" aria-live="polite"><div class="cbar"><i id="crowd"></i></div><span id="crowdT">Diváci 0 %</span></div>
+<nav class="acts" aria-label="Tvůj tah"><div class="row4" id="rowAtk"></div><div class="row5" id="rowMove"></div></nav>
 <section class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mT"><div><h1 id="mT"></h1><p id="mP"></p><div class="row" id="mRow"></div></div></section>
 <script>
 (()=>{
@@ -101,44 +98,63 @@ const DEMO=q.has('demo'); // jen na zkoušku: hraje se bez přihlášení a nic 
 
 // ---------- pravidla boje (čistá logika, bez kreslení) ----------
 /*LOGIC*/
-const TRACK=10,DODGE=.2,REST=20,HAND=10;
+// Boj ve stylu Sword and Sandals: 3 druhy útoku, výdrž, pohyb o víc polí, provokace a diváci
+const TRACK=10,REST=20,STA_REST=40,STA_REGEN=6,HAND=10,CROWD_MAX=100;
 const W8={boss_sword:2,basic_sword:1.2,basic_sword_g:1.3},TAL={earth_heart_1:1.5,earth_heart_2:1.2,earth_heart_3:1};
+const ATK={quick:{mul:.6,hit:.85,sta:8},normal:{mul:1,hit:.7,sta:16},power:{mul:1.7,hit:.45,sta:30}};
+const MOVE={step:{d:1,sta:4},run:{d:3,sta:12},back:{d:-1,sta:4},jump:{d:-1,sta:10}};
 function monsterOf(f){const tier=Math.floor(f/10);return {hp:tier?105+5*tier:100,dmg:15+5*tier}} // 1–9: 100/15 · 10–19: 110/20 · každých dalších 10 pater +5/+5
 function playerDmg(gear){return Math.round(HAND*(W8[gear.weapon]||1)+(TAL[gear.talisman]||0))}
-function newFight(f,hp,hpMax,gear){const m=monsterOf(f);return {f,p:{pos:0,hp,max:hpMax,jump:false},m:{pos:TRACK,hp:m.hp,max:m.hp,dmg:m.dmg,jump:false},dmg:playerDmg(gear),block:gear.shield==='arena_shield'?.25:0,over:null}}
+const fighter=(pos,hp,max,dmg)=>({pos,hp,max,dmg,sta:100,smax:100,jump:false,rage:false});
+function newFight(f,hp,hpMax,gear){const m=monsterOf(f);return {f,p:fighter(0,hp,hpMax,playerDmg(gear)),m:fighter(TRACK,m.hp,m.hp,m.dmg),crowd:0,block:gear.shield==='arena_shield'?.25:0,over:null}}
 const dist=S=>S.m.pos-S.p.pos;
-// každá akce vrací seznam událostí pro animaci: {who,kind,n?}
-function playerDo(S,act,rnd){
-  const ev=[];S.p.jump=false;
-  if(act==='step'&&dist(S)>1){S.p.pos++;ev.push({who:'p',kind:'step'})}
-  else if(act==='jump'){if(S.p.pos>0)S.p.pos--;S.p.jump=true;ev.push({who:'p',kind:'jump'})}
-  else if(act==='rest'){const n=Math.min(REST,S.p.max-S.p.hp);S.p.hp+=n;ev.push({who:'p',kind:'rest',n})}
-  else if(act==='atk'&&dist(S)<=1){
-    if(S.m.jump)ev.push({who:'p',kind:'atk'},{who:'m',kind:'evade'});
-    else if(rnd()<DODGE)ev.push({who:'p',kind:'atk'},{who:'m',kind:'dodge'});
-    else{const n=Math.min(S.dmg,S.m.hp);S.m.hp-=n;ev.push({who:'p',kind:'atk'},{who:'m',kind:'hit',n});if(S.m.hp<=0)S.over='win'}}
-  S.m.jump=false;return ev;
+const atkDmg=(A,a,boost)=>Math.round(A.dmg*ATK[a].mul*(boost?1.5:1));
+function canDo(S,who,a){
+  const A=S[who],d=dist(S);
+  if(ATK[a])return d<=1&&A.sta>=ATK[a].sta;
+  if(a==='step'||a==='run')return d>1&&A.sta>=MOVE[a].sta;
+  if(a==='back')return A.sta>=MOVE.back.sta&&(who==='p'?A.pos>0:A.pos<TRACK);
+  if(a==='jump')return A.sta>=MOVE.jump.sta;
+  return a==='rest'||a==='taunt'||a==='roar';
 }
-function monsterAI(S,rnd){ // jednoduchá AI: přijde k tobě, většinou bije, občas oddechuje, uskočí nebo jen zařve
-  if(dist(S)>1)return 'step';
-  const r=rnd(),hurt=S.m.hp<S.m.max*.45;
-  if(hurt&&r<.22)return 'rest';
-  if(r<.34)return 'roar';
-  if(r<.44)return 'jump';
-  return 'atk';
-}
-function monsterDo(S,rnd){
-  const act=monsterAI(S,rnd),ev=[];S.m.jump=false;
-  if(act==='step'){S.m.pos--;ev.push({who:'m',kind:'step'})}
-  else if(act==='jump'){if(S.m.pos<TRACK)S.m.pos++;S.m.jump=true;ev.push({who:'m',kind:'jump'})}
-  else if(act==='rest'){const n=Math.min(REST,S.m.max-S.m.hp);S.m.hp+=n;ev.push({who:'m',kind:'rest',n})}
-  else if(act==='roar')ev.push({who:'m',kind:'roar'});
+// jedna akce jednoho bojovníka; vrací události pro animaci
+function doAct(S,who,a,rnd){
+  const o=who==='p'?'m':'p',me=S[who],foe=S[o],dir=who==='p'?1:-1,ev=[],cr=n=>{if(n)S.crowd=Math.max(0,Math.min(CROWD_MAX,S.crowd+n))};
+  me.jump=false;let regen=true;
+  if(!canDo(S,who,a))a='rest';
+  if(MOVE[a]){
+    me.sta-=MOVE[a].sta;
+    const n=a==='step'||a==='run'?Math.min(MOVE[a].d,dist(S)-1):1,back=a==='back'||a==='jump';
+    const to=Math.max(0,Math.min(TRACK,me.pos+(back?-dir:dir)*n));me.pos=to;
+    if(a==='jump')me.jump=true;
+    ev.push({who,kind:a});
+  }else if(a==='rest'){
+    const n=Math.min(REST,me.max-me.hp),s=Math.min(STA_REST,me.smax-me.sta);me.hp+=n;me.sta+=s;regen=false;
+    if(who==='p')cr(-5);ev.push({who,kind:'rest',n,s});
+  }else if(a==='taunt'){cr(30);foe.rage=true;ev.push({who,kind:'taunt'})}
+  else if(a==='roar'){ev.push({who,kind:'roar'})}
   else{
-    if(S.p.jump)ev.push({who:'m',kind:'atk'},{who:'p',kind:'evade'});
-    else if(rnd()<DODGE)ev.push({who:'m',kind:'atk'},{who:'p',kind:'dodge'});
-    else if(S.block&&rnd()<S.block)ev.push({who:'m',kind:'atk'},{who:'p',kind:'block'});
-    else{const n=Math.min(S.m.dmg,S.p.hp);S.p.hp-=n;ev.push({who:'m',kind:'atk'},{who:'p',kind:'hit',n});if(S.p.hp<=0)S.over='lose'}}
-  S.p.jump=false;return ev;
+    const A=ATK[a];me.sta-=A.sta;const boost=who==='p'&&S.crowd>=CROWD_MAX;
+    const chance=A.hit-(me.rage?.2:0);me.rage=false;
+    ev.push({who,kind:'atk',type:a,boost});
+    if(boost)S.crowd=0;
+    if(foe.jump&&!boost){ev.push({who:o,kind:'evade'});if(who==='p')cr(-5)}
+    else if(!boost&&rnd()>chance){ev.push({who:o,kind:'dodge'});cr(who==='p'?-5:5)}
+    else if(who==='m'&&S.block&&rnd()<S.block){ev.push({who:o,kind:'block'});cr(10)}
+    else{const n=Math.min(atkDmg(me,a,boost),foe.hp);foe.hp-=n;ev.push({who:o,kind:'hit',n,boost});
+      if(who==='p')cr(a==='power'?20:a==='normal'?12:8);
+      if(foe.hp<=0)S.over=who==='p'?'win':'lose'}
+  }
+  if(regen)me.sta=Math.min(me.smax,me.sta+STA_REGEN);
+  return ev;
+}
+function monsterAI(S,rnd){ // jednoduchá AI, aby se dalo vyhrát: jde k tobě, většinou bije, občas oddechuje, uskočí nebo jen zařve
+  const m=S.m,d=dist(S),r=rnd();
+  if(d>1)return d>3&&canDo(S,'m','run')?'run':canDo(S,'m','step')?'step':'rest';
+  if(m.sta<16||(m.hp<m.max*.45&&r<.2))return 'rest';
+  if(r<.3)return 'roar';
+  if(r<.38&&canDo(S,'m','jump'))return 'jump';
+  const q=rnd();if(q<.2&&canDo(S,'m','power'))return 'power';return q<.55?'quick':'normal';
 }
 /*END*/
 
@@ -152,7 +168,7 @@ function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight
 addEventListener('resize',resize);resize();
 const bg=new Image();bg.src='img/arena-pozadi.jpg';
 const narrow=()=>W<560;
-const groundY=()=>narrow()?H*.58:H*.64;
+const groundY=()=>narrow()?H*.62:H*.6;
 const tx0=()=>Math.max(28,W*.1),tx1=()=>W-Math.max(28,W*.1);
 const posX=p=>tx0()+(tx1()-tx0())*p/TRACK;
 const R=()=>narrow()?Math.max(24,W*.068):Math.max(26,Math.min(42,W*.032));
@@ -189,28 +205,62 @@ function hatDraw(r){
 const gearImg={};for(const [k,s] of [['arena_shield','img/stit-areny.png'],['arena_boots','img/boty-areny.png'],['founder_cape','img/plast-zakladatele.png']]){const i=new Image();i.src=s;gearImg[k]=i}
 const arc=v=>Math.sin(v*Math.PI);
 const okImg=i=>i&&i.complete&&i.naturalWidth;
-function drawPlayer(t){
-  const r=R(),x=posX(vis.p)-r*.35+arc(vis.pLunge)*r*.9,y=groundY()-r*1.05-arc(vis.pHop)*r*1.4+Math.sin(t*3)*1.5;
+function drawPlayer(t){ // celá postava z boku (styl gladiátora), kouká doprava na příšeru
+  const u=R(),g=st.gear,walk=S?Math.min(1,Math.abs(S.p.pos-vis.p)*3):0,ph=t*11,
+    hop=arc(vis.pHop),lunge=arc(vis.pLunge),breathe=Math.sin(t*2.4)*u*.03;
+  const x=posX(vis.p)-u*.4+lunge*u*.9-hop*u*.5,y=groundY()+u*.1-hop*u*1.3; // y = chodidla
+  const legA=Math.sin(ph)*.55*walk,armA=Math.sin(ph+Math.PI)*.45*walk;
+  const ink='#1a0f08',skin=look.skin,shirt=look.shirt,dark='rgba(0,0,0,.22)';
+  const line=(w)=>{c.strokeStyle=ink;c.lineWidth=w||Math.max(1.5,u*.07);c.lineJoin='round';c.lineCap='round'};
   c.save();c.translate(x,y);
-  c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(0,r*1.05+arc(vis.pHop)*r*1.4,r*.8,r*.18,0,0,7);c.fill();
-  if(st.gear.banner==='founder_cape'&&okImg(gearImg.founder_cape)){c.globalAlpha=.95;c.drawImage(gearImg.founder_cape,-r*1.35,-r*.7,r*1.3,r*1.6);c.globalAlpha=1}
-  c.beginPath();c.arc(0,0,r,0,7);c.fillStyle='#ffc31f';c.fill();
-  c.save();c.clip();
-  c.fillStyle=look.shirt;c.beginPath();c.ellipse(0,r*.95,r*.82,r*.6,0,0,7);c.fill();
-  c.fillStyle=look.skin;c.beginPath();c.arc(0,-r*.08,r*.46,0,7);c.fill();
-  c.fillStyle='#2b1d0e';c.beginPath();c.arc(-r*.16,-r*.12,r*.06,0,7);c.arc(r*.16,-r*.12,r*.06,0,7);c.fill();
-  c.strokeStyle='#2b1d0e';c.lineWidth=Math.max(1.5,r*.06);c.beginPath();c.arc(0,r*.02,r*.16,.2,Math.PI-.2);c.stroke();
-  hatDraw(r);
-  if(vis.pFlash>0){c.fillStyle=`rgba(255,40,20,${vis.pFlash*.55})`;c.fillRect(-r,-r,2*r,2*r)}
+  c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(0,hop*u*1.3,u*.75*(1-hop*.3),u*.15,0,0,7);c.fill();
+  const hipY=-u*1.15,shY=-u*2.15+breathe,headY=-u*2.72+breathe;
+  // plášť za zády
+  if(g.banner==='founder_cape'){const sway=Math.sin(t*2)*u*.08+walk*u*.15;c.beginPath();c.moveTo(-u*.15,shY);c.quadraticCurveTo(-u*.75-sway,-u*1.1,-u*.85-sway,-u*.15);
+    c.lineTo(-u*.15,-u*.35);c.closePath();const cg=c.createLinearGradient(0,shY,0,0);cg.addColorStop(0,'#ffe27a');cg.addColorStop(1,'#c98a06');c.fillStyle=cg;c.fill();line();c.stroke()}
+  // noha: kyčel → koleno → chodidlo
+  const leg=(a,back)=>{c.save();c.translate(0,hipY);c.rotate(a);
+    c.fillStyle=back?'#4a3526':'#5c4330';c.beginPath();c.roundRect(-u*.16,0,u*.32,u*1.0,u*.14);c.fill();line();c.stroke();
+    const boots=g.boots==='arena_boots';c.fillStyle=boots?'#6a2bb0':'#7a4a22';c.beginPath();c.roundRect(-u*.2,u*.82,u*.5,u*.28,u*.1);c.fill();line();c.stroke();
+    if(boots){c.fillStyle='#ffc300';c.fillRect(-u*.2,u*.82,u*.4,u*.07)}
+    c.restore()};
+  // paže: rameno → ruka
+  const arm=(a,back,len)=>{c.save();c.translate(u*.05,shY+u*.12);c.rotate(a);
+    c.fillStyle=back?'#d4a988':skin;c.beginPath();c.roundRect(-u*.13,0,u*.26,len,u*.12);c.fill();line();c.stroke();
+    c.beginPath();c.arc(0,len,u*.16,0,7);c.fill();line();c.stroke();return len};
+  // zadní noha + zadní paže (se štítem)
+  leg(-legA,true);
+  arm(.25+armA*.6,true,u*.78);
+  if(g.shield==='arena_shield'){if(okImg(gearImg.arena_shield))c.drawImage(gearImg.arena_shield,-u*.55,u*.25,u*1.1,u*1.1);
+    else{c.fillStyle='#5a2a9a';c.beginPath();c.arc(0,u*.75,u*.5,0,7);c.fill();line();c.stroke()}}
   c.restore();
-  c.lineWidth=3;c.strokeStyle='#111';c.beginPath();c.arc(0,0,r,0,7);c.stroke();
-  // zbraň v ruce
-  if(st.gear.weapon){c.save();c.translate(r*.95,r*.15);c.rotate(-.9+arc(vis.pLunge)*1.4);c.fillStyle='#d8dde6';c.strokeStyle='#111';c.lineWidth=2;
-    c.beginPath();c.moveTo(-r*.07,0);c.lineTo(-r*.07,-r*1.1);c.lineTo(0,-r*1.28);c.lineTo(r*.07,-r*1.1);c.lineTo(r*.07,0);c.closePath();c.fill();c.stroke();
-    c.fillStyle=st.gear.weapon==='boss_sword'?'#7a2a8a':'#8a5a2a';c.fillRect(-r*.22,-r*.04,r*.44,r*.1);c.fillRect(-r*.05,0,r*.1,r*.28);c.restore()}
-  else{c.fillStyle=look.skin;c.strokeStyle='#111';c.lineWidth=2;c.beginPath();c.arc(r*.95+arc(vis.pLunge)*r*.4,r*.2,r*.2,0,7);c.fill();c.stroke()}
-  if(st.gear.shield==='arena_shield'&&okImg(gearImg.arena_shield))c.drawImage(gearImg.arena_shield,-r*1.25,-r*.05,r*.8,r*.8);
-  if(st.gear.boots==='arena_boots'&&okImg(gearImg.arena_boots)){c.save();c.beginPath();c.roundRect(-r*.45,r*.78,r*.9,r*.5,r*.15);c.clip();c.drawImage(gearImg.arena_boots,-r*.45,r*.6,r*.9,r*.9);c.restore()}
+  // trup
+  c.fillStyle=shirt;c.beginPath();c.moveTo(-u*.42,shY);c.lineTo(u*.42,shY);c.lineTo(u*.36,hipY+u*.1);c.lineTo(-u*.36,hipY+u*.1);c.closePath();c.fill();line();c.stroke();
+  c.fillStyle=dark;c.beginPath();c.moveTo(-u*.42,shY);c.lineTo(-u*.1,shY);c.lineTo(-u*.12,hipY+u*.1);c.lineTo(-u*.36,hipY+u*.1);c.closePath();c.fill();
+  c.fillStyle='#3a2414';c.fillRect(-u*.38,hipY-u*.05,u*.76,u*.16);c.fillStyle='#ffc300';c.fillRect(u*.02,hipY-u*.04,u*.14,u*.14); // opasek
+  // sukně / tunika
+  c.fillStyle=shirt;c.beginPath();c.moveTo(-u*.38,hipY+u*.1);c.lineTo(u*.38,hipY+u*.1);c.lineTo(u*.45,hipY+u*.5);c.lineTo(-u*.45,hipY+u*.5);c.closePath();c.fill();line();c.stroke();
+  // přední noha
+  leg(legA,false);
+  // hlava
+  c.save();c.translate(u*.04,headY);const hr=u*.5;
+  c.fillStyle=skin;c.beginPath();c.arc(0,0,hr,0,7);c.fill();line();c.stroke();
+  c.fillStyle='#3a2414';c.beginPath();c.arc(0,0,hr,Math.PI*.95,Math.PI*1.9);c.lineTo(-hr*.2,-hr*.15);c.closePath();c.fill(); // vlasy
+  c.fillStyle='#fff';c.beginPath();c.ellipse(hr*.42,-hr*.05,hr*.17,hr*.2,0,0,7);c.fill();
+  c.fillStyle=ink;c.beginPath();c.arc(hr*.48,-hr*.03,hr*.09,0,7);c.fill();
+  line(Math.max(1.5,u*.06));c.beginPath();c.moveTo(hr*.25,-hr*.32);c.lineTo(hr*.62,-hr*.26);c.stroke(); // obočí
+  c.beginPath();c.moveTo(hr*.35,hr*.42);c.quadraticCurveTo(hr*.6,hr*.5,hr*.78,hr*.32);c.stroke(); // úsměv
+  if(vis.pFlash>0){c.fillStyle=`rgba(255,40,20,${vis.pFlash*.5})`;c.beginPath();c.arc(0,0,hr,0,7);c.fill()}
+  c.save();c.scale(hr/(.46*u)*u/u,hr/(.46*u)*u/u);hatDraw(u);c.restore();
+  c.restore();
+  // přední paže se zbraní (při útoku máchne)
+  const swing=-1.25+lunge*2.4-armA*.6;
+  arm(swing+1.1*(g.weapon?0:0)+(g.weapon?0:.9),false,u*.8);
+  if(g.weapon){c.translate(0,u*.8);c.rotate(-1.2+lunge*.4);
+    c.fillStyle='#d8dde6';line(2);c.beginPath();c.moveTo(-u*.08,-u*.1);c.lineTo(-u*.08,-u*1.45);c.lineTo(0,-u*1.65);c.lineTo(u*.08,-u*1.45);c.lineTo(u*.08,-u*.1);c.closePath();c.fill();c.stroke();
+    c.fillStyle=g.weapon==='boss_sword'?'#7a2a8a':'#8a5a2a';c.fillRect(-u*.26,-u*.14,u*.52,u*.11);c.fillRect(-u*.06,-u*.05,u*.12,u*.3)}
+  c.restore();
+  if(vis.pFlash>0){c.save();c.globalAlpha=vis.pFlash*.35;c.fillStyle='#ff2a14';c.fillRect(x-u*.9,y-u*3.3,u*1.8,u*3.3);c.restore()}
   c.restore();
 }
 function drawMonster(t){
@@ -254,17 +304,29 @@ function drawEmbers(dt,t){
 }
 
 // ---------- HUD ----------
+const BTN={quick:['⚡','Rychlý'],normal:['⚔️','Útok'],power:['💥','Silný'],taunt:['😤','Provokace'],back:['⬅️','Vzad'],step:['👣','Krok'],run:['🏃','Běh'],jump:['↩️','Odskok'],rest:['💤','Oddech']};
+const KEYS={quick:'1',normal:'2',power:'3',taunt:'4',back:'Q',step:'W',run:'E',jump:'R',rest:'T'};
+for(const [row,list] of [['rowAtk',['quick','normal','power','taunt']],['rowMove',['back','step','run','jump','rest']]])
+  for(const a of list){const b=document.createElement('button');b.id='a_'+a;b.className=ATK[a]?'atk':'';b.title='Klávesa '+KEYS[a];
+    b.innerHTML=`<span class="ic" aria-hidden="true">${BTN[a][0]}</span><span class="t">${BTN[a][1]}</span><span class="d"></span>`;b.onclick=()=>act(a);$(row).append(b)}
+function detail(a){
+  if(ATK[a])return `−${atkDmg(S.p,a,false)} · ${Math.round((ATK[a].hit-(S.p.rage?.2:0))*100)} %`;
+  if(MOVE[a])return a==='run'?'až 3 pole':a==='jump'?'uhneš':'1 pole';
+  if(a==='rest')return S.p.hp>=S.p.max&&S.p.sta>=S.p.smax?'jen čekáš':'+20 HP';
+  return 'diváci +30';
+}
 function hud(){
   if(!S)return;
   $('floorT').textContent='PATRO '+S.f;$('floorS').textContent=S.f===1?'Prolog · výhra = 5 stříbrných':S.f<10?'Na 10. patře padá štít':S.f<50?'Na 50. patře padají boty':'∞ patra';
-  $('pHpT').textContent=S.p.hp+' / '+S.p.max;$('pHp').style.width=(100*S.p.hp/S.p.max)+'%';
-  $('pHp').style.background=S.p.hp/S.p.max<.3?'#ff9a2a':'';
+  $('pHpT').textContent=S.p.hp+' / '+S.p.max;$('pHp').style.width=(100*S.p.hp/S.p.max)+'%';$('pHp').style.background=S.p.hp/S.p.max<.3?'#ff9a2a':'';
   $('mHpT').textContent=S.m.hp+' / '+S.m.max;$('mHp').style.width=(100*S.m.hp/S.m.max)+'%';
-  $('mSub').textContent='útok '+S.m.dmg+' · úhyb 20 %';
-  $('atkD').textContent='−'+S.dmg+' HP';
-  const d=dist(S),free=!st.busy&&!S.over;
-  $('aAtk').disabled=!free||d>1;$('aStep').disabled=!free||d<=1;$('aJump').disabled=!free;$('aRest').disabled=!free||S.p.hp>=S.p.max;
-  $('aAtk').title=d>1?'Útočit jde jen zblízka. Udělej krok.':'';
+  $('pSta').style.width=S.p.sta+'%';$('mSta').style.width=S.m.sta+'%';
+  $('mSub').textContent='útok '+S.m.dmg+(S.m.rage?' · 😤 rozzuřený (míň trefuje)':'');
+  $('crowd').style.width=S.crowd+'%';$('crowdW').classList.toggle('full',S.crowd>=CROWD_MAX);
+  $('crowdT').textContent=S.crowd>=CROWD_MAX?'Diváci šílí! Další úder: jistý zásah ×1,5':'Diváci '+S.crowd+' %';
+  const free=!st.busy&&!S.over;
+  for(const a of Object.keys(BTN)){const b=$('a_'+a);b.disabled=!free||!canDo(S,'p',a);b.querySelector('.d').textContent=detail(a);
+    b.classList.toggle('boost',!!ATK[a]&&S.crowd>=CROWD_MAX)}
 }
 function gearLine(){
   const g=st.gear,w={boss_sword:'Zubatý meč',basic_sword:'Obyčejný meč',basic_sword_g:'Obyčejný meč'}[g.weapon]||'Pěsti',bits=[w+' · útok '+playerDmg(g)];
@@ -276,37 +338,41 @@ function turnLabel(me){const t=$('turn');t.textContent=me?'Tvůj tah':'Tah pří
 
 // ---------- tahy ----------
 const rnd=Math.random,wait=ms=>new Promise(ok=>setTimeout(ok,ms));
-const TXT={p:{step:'Uděláš krok vpřed.',jump:'Odskočíš. Příšera tě v dalším tahu netrefí.',rest:n=>n?`Oddechneš si: <b>+${n} HP</b>.`:'Oddechneš si.',atk:''},
-  m:{step:'Příšera se valí k tobě.',jump:'Příšera uskočila. Tvůj další úder ji mine.',rest:n=>`Příšera chladne: <b>+${n} HP</b>.`,roar:'Příšera řve a chrlí jiskry. Tenhle tah neútočí.',atk:''}};
+const ANAME={quick:'rychlý útok',normal:'útok',power:'silný útok'};
+const TXT={p:{step:'Uděláš krok vpřed.',run:'Rozběhneš se k příšeře.',back:'Couvneš o krok.',jump:'Odskočíš. Další úder příšery tě mine.',
+    rest:(n,s)=>n||s?`Oddechneš si: ${n?`<b>+${n} HP</b> `:''}${s?`<b>+${s} výdrže</b>`:''}.`:'Máš plné síly, jen čekáš a necháš tah příšeře.',taunt:'Provokuješ! Diváci řvou a příšera zuří (příště míň trefí).'},
+  m:{step:'Příšera se valí k tobě.',run:'Příšera se k tobě řítí!',back:'Příšera couvne.',jump:'Příšera uskočila. Tvůj další úder ji mine.',
+    rest:n=>n?`Příšera chladne: <b>+${n} HP</b>.`:'Příšera nabírá síly.',roar:'Příšera řve a chrlí jiskry. Tenhle tah neútočí.'}};
 async function play(ev){
   const lines=[];
-  for(const e of ev){const o=e.who==='p'?'m':'p';
-    if(e.kind==='step'){}
-    else if(e.kind==='jump'){vis[e.who+'Hop']=1}
-    else if(e.kind==='rest'){pop(e.who,'+'+e.n,'#7dff8a')}
-    else if(e.kind==='atk'){vis[e.who+'Lunge']=1;await wait(180)}
+  for(const e of ev){
+    if(e.kind==='jump'||e.kind==='back'){vis[e.who+'Hop']=e.kind==='jump'?1:.45}
+    else if(e.kind==='rest'){if(e.n)pop(e.who,'+'+e.n,'#7dff8a')}
+    else if(e.kind==='taunt'){pop('p','😤','#ffffff');vis.mRoar=.6}
+    else if(e.kind==='atk'){vis[e.who+'Lunge']=1;vis[e.who+'Power']=e.type==='power'?1:0;
+      if(e.who==='p')lines.push(e.boost?'<b>Diváci šílí!</b> Tvůj '+ANAME[e.type]+' sedí jistě.':'Tvůj '+ANAME[e.type]+'…');
+      else lines.push('Příšera: '+ANAME[e.type]+'…');await wait(e.type==='power'?320:180)}
     else if(e.kind==='roar'){vis.mRoar=1;vis.shake=.4}
-    else if(e.kind==='hit'){vis[e.who+'Flash']=1;vis.shake=e.who==='p'?1:.6;pop(e.who,'−'+e.n,e.who==='p'?'#ff5a3a':'#ffd23a');
-      lines.push(e.who==='m'?`Zásah! Příšera <b>−${e.n} HP</b>.`:`Příšera tě trefila: <b>−${e.n} HP</b>.`)}
-    else if(e.kind==='dodge'){pop(e.who,'ÚHYB','#ffffff');lines.push(e.who==='m'?'Příšera uhnula.':'Uhnul jsi!')}
-    else if(e.kind==='evade'){pop(e.who,'VEDLE','#ffffff');lines.push(e.who==='m'?'Příšera odskočila, rána šla vedle.':'Díky odskoku tě netrefila.')}
-    else if(e.kind==='block'){pop(e.who,'BLOK','#c9a2ff');lines.push('🛡️ Štít podsvětí zablokoval úder!')}
-    const t=TXT[e.who][e.kind];if(t)lines.push(typeof t==='function'?t(e.n):t);
+    else if(e.kind==='hit'){vis[e.who+'Flash']=1;vis.shake=(e.who==='p'?1:.6)*(e.n>20?1.4:1);pop(e.who,'−'+e.n,e.who==='p'?'#ff5a3a':'#ffd23a');
+      lines.push(e.who==='m'?`zásah, <b>−${e.n} HP</b>!`:`trefila tě, <b>−${e.n} HP</b>.`)}
+    else if(e.kind==='dodge'){pop(e.who,'VEDLE','#ffffff');lines.push(e.who==='m'?'příšera uhnula.':'uhnul jsi!')}
+    else if(e.kind==='evade'){pop(e.who,'VEDLE','#ffffff');lines.push(e.who==='m'?'příšera odskočila, rána šla vedle.':'díky odskoku tě minula.')}
+    else if(e.kind==='block'){pop(e.who,'BLOK','#c9a2ff');lines.push('🛡️ štít podsvětí úder zablokoval!')}
+    const t=TXT[e.who][e.kind];if(t)lines.push(typeof t==='function'?t(e.n,e.s):t);
   }
   say(lines.join(' '));hud();await wait(650);
 }
 async function act(a){
-  if(!S||st.busy||S.over)return;st.busy=true;hud();
-  await play(playerDo(S,a,rnd));
+  if(!S||st.busy||S.over||!canDo(S,'p',a))return;st.busy=true;hud();
+  await play(doAct(S,'p',a,rnd));
   if(S.over){st.busy=false;end();return}
   turnLabel(false);await wait(350);
-  await play(monsterDo(S,rnd));
+  await play(doAct(S,'m',monsterAI(S,rnd),rnd));
   st.busy=false;
   if(S.over){end();return}
   turnLabel(true);hud();
 }
-for(const [id,a] of [['aAtk','atk'],['aStep','step'],['aJump','jump'],['aRest','rest']])$(id).onclick=()=>act(a);
-addEventListener('keydown',e=>{const k={'1':'atk','2':'step','3':'jump','4':'rest',a:'atk',d:'step',s:'jump',w:'rest'}[e.key.toLowerCase()];if(k&&$('modal').hidden)act(k)});
+addEventListener('keydown',e=>{if(!$('modal').hidden)return;const k=e.key.toUpperCase(),a=Object.keys(KEYS).find(x=>KEYS[x]===k);if(a)act(a)});
 
 // ---------- konec boje (ukládání přijde v dalším kroku) ----------
 function modal(title,html,btns){$('mT').textContent=title;$('mP').innerHTML=html;const row=$('mRow');row.replaceChildren(...btns);$('modal').hidden=false;btns[0]&&btns[0].focus()}
