@@ -232,6 +232,19 @@ button.shop-offer.sel{outline:3px solid #ffc300;outline-offset:1px}
 .shop-purse span{display:inline-flex;align-items:center;gap:6px}
 .shop-bag{grid-template-columns:repeat(5,minmax(0,1fr))}
 .shop-btn{background:#c98f45}
+.mlab-btn{background:#7a3cff}
+.mlab-card{max-width:420px;text-align:center}
+.mlab-prog{margin:12px 0}
+.mlab-bar{height:16px;border-radius:99px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.15);overflow:hidden}
+.mlab-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3ff2d8,#b48cff,#ff4fd8);transition:width .4s}
+.mlab-prog p{margin:6px 0 0;font-weight:900;font-variant-numeric:tabular-nums}
+.mlab-hammer{width:132px;height:132px;border-radius:50%;border:4px solid #ffc300;background:radial-gradient(circle at 40% 35%,#9a6bff,#3d1a8a);font-size:62px;cursor:pointer;box-shadow:0 0 30px rgba(180,140,255,.55);transition:transform .06s;touch-action:manipulation}
+.mlab-hammer:active{transform:scale(.92) rotate(-18deg)}
+.mlab-hammer:disabled{opacity:.5;cursor:not-allowed}
+.mlab-hammer:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.mlab-mine{min-height:20px;font-weight:800;color:#ffe27a}
+.mlab-top{margin:6px auto 0;padding:0 0 0 22px;text-align:left;max-width:260px;font-size:14px;line-height:1.6}
+.mlab-top li span{float:right;font-variant-numeric:tabular-nums;color:#e8d9b8}
 .lab-btn{background:#2a9a6a}
 .revive-btn{background:#7a5ad1}
 .farm-btn{background:#b9861c}
@@ -434,6 +447,17 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
     </div>
   </div>
 </section>
+<section class="inv" id="mlabBox" hidden aria-labelledby="mlabTitle">
+  <div class="inv-card mlab-card">
+    <header><h2 id="mlabTitle">🧪 Laboratoř</h2><button type="button" id="mlabClose">Zavřít</button></header>
+    <p class="inv-who">Tajemná laboratoř za městem je zamčená a rozpadlá. Opravme ji společně: každé klepnutí na kladivo je jeden úder.</p>
+    <div class="mlab-prog"><div class="mlab-bar"><i id="mlabBar"></i></div><p id="mlabTotal">Načítám…</p></div>
+    <button type="button" class="mlab-hammer" id="mlabHammer" aria-label="Udeřit kladivem"><span aria-hidden="true">🔨</span></button>
+    <p class="mlab-mine" id="mlabMine" aria-live="polite"></p>
+    <h3 class="inv-sub">Nejvíc pomáhají</h3>
+    <ol class="mlab-top" id="mlabTop"></ol>
+  </div>
+</section>
 <section class="inv" id="questBox" hidden aria-labelledby="questTitle">
   <div class="inv-card">
     <header><h2 id="questTitle">🌱 Zahradnice</h2><button type="button" id="questClose">Zavřít</button></header>
@@ -606,6 +630,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <button class="water-btn" id="waterBtn" type="button" hidden>💧 Zalít kytky</button>
   <button class="water-btn quest-btn" id="questBtn" type="button" hidden>🌱 Mluvit se zahradnicí</button>
   <button class="water-btn shop-btn" id="shopBtn" type="button" hidden>🛒 Otevřít obchod</button>
+  <button class="water-btn mlab-btn" id="mlabBtn" type="button" hidden>🔨 Přidej se k opravě</button>
   <button class="water-btn lab-btn" id="labBtn" type="button" hidden>⚗️ Lékárnický stůl</button>
   <button class="water-btn revive-btn" id="reviveBtn" type="button" hidden>✨ Oživit</button>
   <button class="water-btn farm-btn" id="farmBtn" type="button" hidden>🌾 Pole</button>
@@ -710,6 +735,7 @@ SITES.radio={title:'Rádiová stanice',dir:ringDir(12,1.0),r:.1,always:true};
 SITES.mayor={title:'Radnice',dir:ringDir(128,.62),r:.1};
 SITES.kfc={title:'KFP – Křupavé kuře planety',dir:ringDir(60,.93),r:.1}; // fried-chicken bistro, run by @adam.morgi
 SITES.shop={title:'Obchod planety',dir:ringDir(170,.95),r:.11,always:true}; // public shop, open only to players walking their character
+SITES.mlab={title:'Laboratoř',dir:ringDir(250,1.06),r:.12,always:true}; // tajemná laboratoř za městem: zamčená, hráči ji společně opravují klikáním na kladivo (od středy 25. 11. 12:00)
 SITES.pharmacy={title:'Lékárna planety',dir:ringDir(280,.97),r:.1}; // pharmacy for @turtle.9884488 (also the planet's doctor)
 SITES.castle={title:'Hrad 500. obyvatele',dir:ringDir(240,.95),r:.11}; // goes to the 500th resident ("Starosta mrzne" challenge) // town hall next to the barbershop; the mayor (role 'mayor') won the election in the comments // next to the stadium, beams radio waves into space; belongs to the whole planet
 const BASE={dir:START.clone().negate(),r:.25,scale:2.2}; // Boss ze záhrobí (used to be the UFO base), far side of the planet
@@ -734,7 +760,7 @@ function frostLevel(){const n=aliveCount();if(n>=MRAZ_GOAL)return 0;
   return Math.max(0,Math.min(1,need*(.6+Math.min(.4,days*.06))))}
 function siteKeyOf(role){return role?(SITES[role]?role:(WORKER_OF[role]||null)):null}
 function siteMembers(k){return residents.filter(r=>hasRole(r,k)||WORKER_OF[r.role]===k).sort((a,b)=>a.at-b.at)}
-const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡',mayor:'👑',castle:'🏰',kfc:'🍗',pharmacy:'💊',shop:'🛒'};
+const SITE_ICON={doctor:'🏥',farmer:'🌾',builder:'🏗️',tennis:'🎾',gardener:'🌷',football:'⚽',scientist:'🔭',cafe:'☕',barber:'💈',kebab:'🥙',firefighter:'🚒',mechanic:'🔧',sheriff:'⭐',studio:'🎙️',burger:'🍔',temple:'🛕',post:'📮',radio:'📡',mayor:'👑',castle:'🏰',kfc:'🍗',pharmacy:'💊',shop:'🛒',mlab:'🧪'};
 const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',builder:'Opuštěná stavební firma',tennis:'Opuštěný tenisový kurt',gardener:'Opuštěné zahradnictví',football:'Opuštěný stadion',scientist:'Opuštěná hvězdárna',cafe:'Zavřená kavárna',barber:'Zavřené holičství',kebab:'Zavřená kebabárna',firefighter:'Opuštěná hasičárna',mechanic:'Opuštěná autodílna',sheriff:'Opuštěná šerifova stanice',studio:'Opuštěné nahrávací studio',burger:'Opuštěný Mekáč planety',temple:'Opuštěný chrám',post:'Zavřená pošta',radio:'Tichá rádiová stanice',mayor:'Opuštěná radnice',castle:'Opuštěný hrad',kfc:'Zavřené kuřecí bistro',pharmacy:'Zavřená lékárna'};
 (function(){
   const g=Math.PI*(3-Math.sqrt(5));
@@ -1456,7 +1482,7 @@ function animateComet(now){
 }
 const siteArms=[];
 let siteSig='';
-function activeSites(){return Object.keys(SITES).filter(k=>SITES[k].always||residents.some(r=>siteKeyOf(r.role)===k||hasRole(r,k)))}
+function activeSites(){return Object.keys(SITES).filter(k=>k==='mlab'?mlabOn():SITES[k].always||residents.some(r=>siteKeyOf(r.role)===k||hasRole(r,k)))}
 function siteOwner(k){return residents.filter(r=>hasRole(r,k)).sort((a,b)=>a.at-b.at)[0]}
 function flyToResident(r,h){
   if(r.left){flyToSurface(CEM,h);return}
@@ -2631,10 +2657,51 @@ function buildRadio(){ // radio station: lattice mast, a dish aimed at the sky a
   g.userData.height=1.2*S;return g;
 }
 
+function buildMagicLab(){ // kamenná chatka se břidlicovou střechou, kouzelný strom se zářícími žilkami, krystaly, barevný kouř z komína; dveře zatlučené prkny
+  const g=new THREE.Group(),S=1.6,b=new THREE.Group();b.scale.setScalar(S);g.add(b);
+  const glow=c=>new THREE.MeshBasicMaterial({color:c}),stone=mat('#8d9199'),stoneD=mat('#6c7078'),slate=mat('#55606e'),moss=mat('#4f7a3a'),wood=mat('#6a4628'),woodD=mat('#4a301a');
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(.46,.5,.05,22),mat('#3f6a34'));base.position.y=-.01;b.add(base);
+  const dirt=new THREE.Mesh(new THREE.CylinderGeometry(.5,.44,.06,22),mat('#5a4130'));dirt.position.y=-.06;b.add(dirt);
+  // chatka
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.34,.2,.26),stone);body.position.set(.08,.1,0);b.add(body);
+  const rr=rnd(31);for(let i=0;i<22;i++){const st=new THREE.Mesh(new THREE.BoxGeometry(.045,.025,.008),rr()<.5?stoneD:stone);st.position.set(-.07+rr()*.3,.02+rr()*.17,.132);b.add(st)}
+  for(const sx of [-1,1]){const r=new THREE.Mesh(new THREE.BoxGeometry(.38,.012,.2),slate);r.position.set(.08,.255,sx*.07);r.rotation.x=sx*.62;b.add(r)}
+  const gable=new THREE.Shape();gable.moveTo(-.13,0);gable.lineTo(.13,0);gable.lineTo(0,.1);gable.closePath();
+  for(const x of [-.09,.25]){const gm=new THREE.Mesh(new THREE.ExtrudeGeometry(gable,{depth:.01,bevelEnabled:false}),stone);gm.rotation.y=Math.PI/2;gm.position.set(x,.2,.0);b.add(gm)}
+  const mossTop=new THREE.Mesh(new THREE.BoxGeometry(.1,.015,.05),moss);mossTop.position.set(-.03,.27,.06);mossTop.rotation.x=.62;b.add(mossTop);
+  const chim=new THREE.Mesh(new THREE.BoxGeometry(.04,.09,.04),stoneD);chim.position.set(.16,.3,-.02);b.add(chim);
+  // kouzelný kouř a kruhy nad komínem
+  const smoke=new THREE.Group();smoke.position.set(.16,.36,-.02);b.add(smoke);
+  [['#3ff2d8',.03,.0],['#ff4fd8',.04,.05],['#3ff2d8',.035,.1],['#ffd23a',.025,.14]].forEach(([c,r,y])=>{const p=new THREE.Mesh(new THREE.SphereGeometry(r,10,8),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.55,blending:THREE.AdditiveBlending,depthWrite:false}));p.position.y=y;smoke.add(p)});
+  ['#3ff2d8','#ff4fd8','#ffd23a'].forEach((c,i)=>{const t=new THREE.Mesh(new THREE.TorusGeometry(.05+i*.012,.002,4,24),glow(c));t.rotation.x=Math.PI/2+.3*(i-1);t.position.y=.05+i*.03;smoke.add(t)});
+  smoke.userData.spin=true;g.userData.mlabSmoke=smoke;
+  // okno s galaxií, dveře zatlučené prkny, zářící runy
+  const win=new THREE.Mesh(new THREE.CircleGeometry(.032,16),glow('#7a4bff'));win.position.set(-.01,.12,.131);b.add(win);
+  const sw=new THREE.Mesh(new THREE.TorusGeometry(.018,.004,4,16),glow('#ff9af0'));sw.position.set(-.01,.12,.132);b.add(sw);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(.07,.13,.008),wood);door.position.set(.12,.065,.132);b.add(door);
+  for(const r of [.5,-.5]){const pl=new THREE.Mesh(new THREE.BoxGeometry(.09,.014,.006),woodD);pl.position.set(.12,.07,.138);pl.rotation.z=r;b.add(pl)}
+  const lock=new THREE.Mesh(new THREE.BoxGeometry(.018,.016,.008),mat('#c9a233'));lock.position.set(.12,.07,.143);b.add(lock);
+  const shackle=new THREE.Mesh(new THREE.TorusGeometry(.007,.002,4,10,Math.PI),mat('#c9a233'));shackle.position.set(.12,.078,.143);b.add(shackle);
+  const rc=['#3ff2d8','#ff4fd8','#5dff8a','#ffd23a'],r2=rnd(9);
+  for(let i=0;i<12;i++){const rn=new THREE.Mesh(new THREE.BoxGeometry(.004,.016,.003),glow(rc[i%4]));rn.position.set(i<6?.04+r2()*.02:.2+r2()*.02,.03+((i%6)*.028),.133);rn.rotation.z=(r2()-.5)*1.2;b.add(rn)}
+  // strom se zářícími žilkami
+  const tree=new THREE.Group();tree.position.set(-.22,0,-.02);b.add(tree);
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.025,.05,.32,7),mat('#5a4030'));trunk.position.y=.16;trunk.rotation.z=.12;tree.add(trunk);
+  for(const [c,x,z] of [['#4fb0ff',.02,.03],['#ffc83a',-.02,.035],['#4fb0ff',.03,-.02]]){const v=new THREE.Mesh(new THREE.BoxGeometry(.004,.26,.004),glow(c));v.position.set(x,.15,z);v.rotation.z=.12;tree.add(v)}
+  const leaf=mat('#2f5a2c'),leaf2=mat('#3d6e35');[[0,.38,0,.13],[-.08,.33,.05,.09],[.08,.34,-.04,.1],[0,.46,.02,.09],[-.05,.42,-.06,.08]].forEach(([x,y,z,r],i)=>{const l=new THREE.Mesh(new THREE.IcosahedronGeometry(r,0),i%2?leaf:leaf2);l.position.set(x+.02,y,z);tree.add(l)});
+  for(const a of [0,2.1,4.2]){const root=new THREE.Mesh(new THREE.CylinderGeometry(.008,.016,.09,5),mat('#5a4030'));root.position.set(Math.cos(a)*.05,.015,Math.sin(a)*.05);root.rotation.z=Math.PI/2.4;root.rotation.y=a;tree.add(root)}
+  // krystaly a hrnce s krystaly
+  const cry=new THREE.MeshLambertMaterial({color:'#b48cff',emissive:'#7a3cff',emissiveIntensity:.8,flatShading:true});
+  [[-.32,.03,.18,.035],[-.1,.02,.2,.025],[-.3,.02,-.12,.03],[.32,.02,.16,.02]].forEach(([x,y,z,r])=>{const c=new THREE.Mesh(new THREE.OctahedronGeometry(r),cry);c.scale.y=1.8;c.position.set(x,y+r,z);b.add(c)});
+  for(const [x,c] of [[.04,'#7fd8ff'],[.2,'#9affb8'],[.26,'#c9a2ff']]){const pot=new THREE.Mesh(new THREE.CylinderGeometry(.018,.014,.03,8),mat('#b0763a'));pot.position.set(x,.015,.17);b.add(pot);
+    const cc=new THREE.Mesh(new THREE.OctahedronGeometry(.014),new THREE.MeshLambertMaterial({color:c,emissive:c,emissiveIntensity:.6,flatShading:true}));cc.scale.y=1.6;cc.position.set(x,.045,.17);b.add(cc)}
+  const light=new THREE.PointLight('#b48cff',.6,.9);light.position.set(0,.2,.25);b.add(light);
+  g.userData.height=.75*S;return g;
+}
 const SITE_BUILD={castle:buildCastle,doctor:buildHospital,farmer:buildFarm,builder:buildConstruction,tennis:buildTennis,gardener:buildGreenhouse,
-  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio,mayor:buildTownHall,kfc:buildKfc,pharmacy:buildPharmacy,shop:buildShop};
+  football:buildStadium,scientist:buildObservatory,cafe:buildCafe,barber:buildBarber,kebab:buildKebab,firefighter:buildFireStation,mechanic:buildGarage,mlab:buildMagicLab,sheriff:buildSheriff,studio:buildStudio,burger:buildBurger,temple:buildTemple,post:buildPost,radio:buildRadio,mayor:buildTownHall,kfc:buildKfc,pharmacy:buildPharmacy,shop:buildShop};
 function syncSites(animate){
-  const sig=Object.keys(SITES).map(k=>k+':'+siteMembers(k).map(m=>m.id+':'+(m.role||'')+(m.left?'x':'')).join(',')).join('|');
+  const sig=(mlabOn()?'L|':'')+Object.keys(SITES).map(k=>k+':'+siteMembers(k).map(m=>m.id+':'+(m.role||'')+(m.left?'x':'')).join(',')).join('|');
   if(sig===siteSig)return;siteSig=sig;
   siteGroup.clear();siteArms.length=0;
   for(const k of activeSites()){
@@ -2651,6 +2718,7 @@ function siteDead(k){if(SITES[k].always)return false;const own=residents.filter(
 function siteLabelText(k){
   const S=SITES[k],alive=residents.filter(r=>hasRole(r,k)&&!r.left).sort((a,b)=>a.at-b.at),n=alive.map(r=>r.name).join(' & ');
   if(k==='doctor'){const pm=residents.filter(r=>r.role==='paramedic'&&!r.left).map(r=>r.name);return `Nemocnice · ředitel ${n}`+(pm.length?` · záchranář/ka ${pm.join(', ')}`:'')}
+  if(k==='mlab')return `Laboratoř · zamčená · oprava ${mlabPct()} %`;
   if(k==='builder')return `Stavitel ${n}`;
   if(k==='football')return `Stadion Galaxia United · kapitán ${n}`;
   if(k==='kebab')return `Nejlepší kebab na planetě · ${n}`;
@@ -2930,7 +2998,7 @@ function loop(now){
   }
   animateFountain(now);
   updateWalker(now);
-  updatePlay(now);updateWater(now);updateQuest();updateShop();updateLab();updateGrave();updateFarm(now);
+  updatePlay(now);updateWater(now);updateQuest();updateShop();updateMlab();updateLab();updateGrave();updateFarm(now);
   updateRemotes(now);
   updateWanderers(now);
   updateFox(now);
@@ -4105,6 +4173,46 @@ async function launchGift(){
   try{if(await acctPut('/gifts/'+k+'/launch',{'.sv':'timestamp'})){inv.gifts=inv.gifts||{};inv.gifts[k]={launch:Date.now()};toast('🎁 Dárek k updatu: Obyčejný meč (zelený, 1,3× DMG)! Najdeš ho v inventáři.')}}catch(_){}
 }
 
+// ---------- Laboratoř za městem: zamčená, hráči ji společně opravují (2 500 000 úderů kladivem) ----------
+// /labfix/<nick> = {c: úderů celkem, t: čas posledního zápisu}; zápis jen vlastník nicku, nejvýš +100 úderů za 2 s (hlídají pravidla Firebase)
+var MLAB_GOAL=2500000,MLAB_PUSH=2500; // var/function: activeSites() a popisky je volají už při startu hry
+var mlab={near:false,all:{},pend:0,busy:false,lastLoad:0,mine:0};
+function mlabOn(){try{return Date.now()>=ARENA_FROM||meId==='lubikosuch'||/[?&]labtest\b/.test(location.search)}catch(_){return false}} // ?labtest = jen náhled stavby (opravovat jde až od středy, hlídají pravidla)
+function mlabTotal(){if(!mlab)return 0;return Object.values(mlab.all).reduce((a,v)=>a+(+((v||{}).c)||0),0)+mlab.pend}
+function mlabPct(){const p=Math.min(100,mlabTotal()/MLAB_GOAL*100);return p<1?p.toFixed(2).replace('.',','):p.toFixed(1).replace('.',',')}
+function mlabDoor(){const S=SITES.mlab;return slerpDir(S.dir,START,.075/S.dir.angleTo(START))}
+async function mlabLoad(){mlab.lastLoad=Date.now();try{const r=await fetch(LIVE_DB+'/labfix.json',{cache:'no-store'});if(r.ok){mlab.all=(await r.json())||{};mlabRender()}}catch(_){}}
+function mlabRender(){
+  const tot=mlabTotal(),done=tot>=MLAB_GOAL;document.getElementById('mlabBar').style.width=Math.min(100,tot/MLAB_GOAL*100)+'%';
+  document.getElementById('mlabTotal').textContent=done?'🎉 Laboratoř je opravená! Brzy prozradíme, co v ní bude.':`${Math.min(tot,MLAB_GOAL).toLocaleString('cs-CZ')} / ${MLAB_GOAL.toLocaleString('cs-CZ')} úderů · ${mlabPct()} %`;
+  const k=meId?liveKey(meId):'',mine=(+((mlab.all[k]||{}).c)||0)+mlab.pend;document.getElementById('mlabMine').textContent=meId?`Tvoje údery: ${mine.toLocaleString('cs-CZ')}`:'';document.getElementById('mlabHammer').disabled=done||!acct.user||!meId;
+  const top=Object.entries(mlab.all).map(([n,v])=>[n,+((v||{}).c)||0]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,5),ol=document.getElementById('mlabTop');ol.replaceChildren();
+  if(!top.length){const li=document.createElement('li');li.textContent='Zatím nikdo. Buď první!';ol.append(li)}
+  for(const [n,c] of top){const li=document.createElement('li');li.textContent='@'+n.replace(/-/g,'.');const sp=document.createElement('span');sp.textContent=c.toLocaleString('cs-CZ');li.append(sp);ol.append(li)}
+}
+async function mlabFlush(){
+  if(mlab.busy||!mlab.pend||!acct.user||!meId)return;mlab.busy=true;
+  const k=liveKey(meId),n=Math.min(100,mlab.pend),old=+((mlab.all[k]||{}).c)||0;
+  const ok=await acctPut('/labfix/'+k,{c:old+n,t:{'.sv':'timestamp'}}).catch(()=>false);
+  if(ok){mlab.pend-=n;mlab.all[k]={c:old+n,t:Date.now()}}else{await mlabLoad()} // nepovedlo se (třeba moc rychle): načíst stav ze serveru a zkusit znovu
+  mlab.busy=false;mlabRender();
+}
+setInterval(()=>{mlabFlush();if(!document.getElementById('mlabBox').hidden&&Date.now()-mlab.lastLoad>15000)mlabLoad()},MLAB_PUSH);
+function mlabOpen(){
+  if(!play){toast('🔨 K laboratoři musíš doběhnout za svou postavou.');return}
+  if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Opravovat můžou jen přihlášení hráči.');return}
+  keys.clear();document.getElementById('mlabBox').hidden=false;mlabRender();mlabLoad();document.getElementById('mlabHammer').focus();
+}
+function mlabHit(){if(document.getElementById('mlabHammer').disabled)return;mlab.pend++;mlabRender();const h=document.getElementById('mlabHammer');h.animate?.([{transform:'rotate(0)'},{transform:'rotate(-28deg) scale(.94)'},{transform:'rotate(0)'}],{duration:140})}
+document.getElementById('mlabHammer').onclick=mlabHit;
+document.getElementById('mlabBtn').onclick=mlabOpen;
+document.getElementById('mlabClose').onclick=()=>{document.getElementById('mlabBox').hidden=true;mlabFlush()};
+document.getElementById('mlabBox').addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('mlabBox').hidden=true;mlabFlush()}else if((e.code==='Space'||e.code==='Enter')&&e.target===document.getElementById('mlabHammer')){}e.stopPropagation()});
+document.getElementById('mlabBox').addEventListener('click',e=>{if(e.target.id==='mlabBox'){e.target.hidden=true;mlabFlush()}});
+function updateMlab(){
+  let near=false;if(play&&mlabOn())near=mlabDoor().distanceTo(play.p)<.04;
+  if(near!==mlab.near){mlab.near=near;const b=document.getElementById('mlabBtn');b.hidden=!near;b.textContent='🔨 Přidej se k opravě'+(touchUI()?'':' (F)');if(near&&!mlab.lastLoad)mlabLoad()}
+}
 // ---------- the shop: only reachable on foot; 3 daily offers (coming soon), a golden "own plot" offer, and your inventory to sell from ----------
 const shop={near:false};
 function shopDoor(){const S=SITES.shop;return slerpDir(S.dir,START,.07/S.dir.angleTo(START))}
@@ -4638,6 +4746,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyF'&&!e.repeat&&quest.near){questOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&deadNear.id){graveRevive(deadNear.id);return}
   if(e.code==='KeyF'&&!e.repeat&&shop.near){shopOpen();return}
+  if(e.code==='KeyF'&&!e.repeat&&mlab.near){mlabOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&lab.near&&!lab.job){labOpen();return}
   if(e.code==='KeyF'&&!e.repeat&&farm.near&&!farm.act){farmClick();return}
   if(e.code==='KeyF'&&!e.repeat&&arena.near&&play){arenaGo();return}
