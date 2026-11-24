@@ -198,9 +198,6 @@ body.playing .admin-key{display:none}
 .shop-offer .ic{font-size:26px;opacity:.6}
 button.shop-offer{font:inherit;cursor:pointer;border:2px solid #9aa1ad;padding:6px;gap:3px;color:var(--ink);text-align:center}
 
-.shop-tiers{display:flex;gap:6px;margin:0 0 8px}
-.shop-tiers button{flex:1;font:900 12px var(--body,system-ui);padding:7px 4px;border-radius:999px;border:2px solid var(--c);background:transparent;color:var(--c);cursor:pointer}
-.shop-tiers button[aria-selected="true"]{background:var(--c);color:#14112a}
 .item-tip{position:fixed;z-index:9999;max-width:240px;pointer-events:none;background:#14112a;border:2px solid #9aa1ad;border-radius:12px;padding:8px 11px;box-shadow:0 10px 30px rgba(0,0,0,.55);font-size:13px;line-height:1.35;color:#fff4e2;display:flex;flex-direction:column;gap:2px}
 .item-tip[hidden]{display:none}
 .item-tip b{font-size:14px}.item-tip .rr{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}.item-tip .st{color:#ffe27a;font-weight:800}
@@ -4080,17 +4077,27 @@ function shopRender(){
   INV_BAG.forEach((k,n)=>{if(n>=invBagN(meId)&&!st[k])return;const c=invCell(k,'Slot '+(n+1),'＋',st[k]);c.onclick=()=>{const it=st[k]&&ITEMS[st[k]];document.getElementById('shopDetail').textContent=it?`${it.name}: výkup se spustí s prvním zbožím. Již brzy!`:'Prázdný slot.'};bag.append(c)});
 }
 // Obchod: základní výbava (dřevěné meče, plátěné kalhoty a rukavice) od středy 25. 11. 12:00. Nákup = jeden zápis: money −cena, /buys/<nick>/<item>=true, /buys/<nick>/last=<item> (hlídají pravidla Firebase)
-const SHOP_BASE=['wood_sword_1','wood_sword_2','wood_sword_3','cloth_pants_1','cloth_pants_2','cloth_pants_3','cloth_gloves_1','cloth_gloves_2','cloth_gloves_3'];
-const SHOP_TIERS=[['','Šedá'],['_u','Zelená'],['_r','Modrá']];
-let shopSel=null,shopBusy=false,shopTier='';
+// Nabídka obchodu: 3 věci, z každé kategorie (meč, kalhoty, rukavice) jedna. Mění se ve 12:00 a o půlnoci pražského času, pro všechny hráče stejně.
+// Rarita se losuje podle RARITY.chance (šedá 50, zelená 30, modrá 15).
+let shopCache=null;
+function shopToday(){
+  if(shopCache&&Date.now()<shopCache.end)return shopCache;
+  const now=Date.now(),parts=t=>Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Prague',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(t).map(x=>[x.type,x.value]));
+  const p=parts(now),half=+p.hour<12?0:1,seed=`${p.year}-${p.month}-${p.day}/${half}`;
+  let end=now+60000;while(true){const q=parts(end);if(`${q.year}-${q.month}-${q.day}/${+q.hour<12?0:1}`!==seed)break;end+=60000} // konec období (hledá se po minutách, nejvýš 12 h)
+  end=Math.floor(end/60000)*60000;
+  let x=0;for(const ch of seed)x=Math.imul(x^ch.charCodeAt(0),2654435761)>>>0;const rnd=()=>{x=Math.imul(x^(x>>>15),2246822519)>>>0;x^=x>>>13;return (x>>>0)/4294967296};
+  const tiers=[['','common'],['_u','uncommon'],['_r','rare']],sum=tiers.reduce((a,[,r])=>a+RARITY[r].chance,0);
+  const items=['wood_sword','cloth_pants','cloth_gloves'].map(c=>{const n=1+Math.floor(rnd()*3);let r=rnd()*sum,t='';for(const [suf,ry] of tiers){r-=RARITY[ry].chance;if(r<0){t=suf;break}}return `${c}_${n}${t}`});
+  return shopCache={items,end,seed};
+}
+let shopSel=null,shopBusy=false;
 const shopOn=()=>Date.now()>=ARENA_FROM||meId==='lubikosuch';
 function shopOffersRender(){
   if(!shopOn())return;const box=document.getElementById('shopOffers'),own=invOwned(meId);box.replaceChildren();
-  let tabs=document.getElementById('shopTiers');if(!tabs){tabs=document.createElement('div');tabs.id='shopTiers';tabs.className='shop-tiers';tabs.setAttribute('role','tablist');box.before(tabs)}
-  tabs.replaceChildren(...SHOP_TIERS.map(([t,l])=>{const b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-selected',String(t===shopTier));b.textContent=l;
-    b.style.setProperty('--c',RARITY[t==='_r'?'rare':t==='_u'?'uncommon':'common'].color);b.onclick=()=>{shopTier=t;shopSel=null;shopOffersRender()};return b}));
-  const SHOP_ITEMS=SHOP_BASE.map(k=>k+shopTier);
-  document.getElementById('shopWho').textContent='Základní výbava pro začátek. Ceny ve stříbrných.';
+  const SHOP_ITEMS=shopToday().items;
+  if(shopSel&&!SHOP_ITEMS.includes(shopSel))shopSel=null;
+  {const left=shopToday().end-Date.now(),h=Math.floor(left/3600000),m=Math.ceil(left%3600000/60000);document.getElementById('shopWho').textContent=`Nabídka se mění ve 12:00 a o půlnoci. Nová za ${h?h+' h ':''}${m} min. Zásoby jsou neomezené.`}
   for(const k of SHOP_ITEMS){const it=ITEMS[k],b=document.createElement('button');b.type='button';b.className='shop-offer'+(own.includes(k)?' own':'')+(shopSel===k?' sel':'');b.style.borderColor=RARITY[it.rarity].color;
     b.innerHTML=`<img src="${it.img}" alt=""><b></b><span class="pr"></span>`;b.querySelector('b').textContent=it.name;b.querySelector('.pr').textContent=own.includes(k)?'✓ máš':it.price+' stříbrných';
     b.setAttribute('aria-label',it.name+', '+(own.includes(k)?'už máš':it.price+' stříbrných'));tipBind(b,k);b.onclick=()=>{shopSel=k;shopOffersRender()};box.append(b)}
@@ -4101,7 +4108,7 @@ function shopOffersRender(){
   buy.append(t,d,btn);
 }
 async function shopBuy(k){
-  if(shopBusy||!acct.user||!meId||!shopOn())return;const it=ITEMS[k];shopBusy=true;shopOffersRender();
+  if(shopBusy||!acct.user||!meId||!shopOn()||!shopToday().items.includes(k)){shopOffersRender();return}const it=ITEMS[k];shopBusy=true;shopOffersRender();
   const key=liveKey(meId);let m=null;try{const r=await fetch(LIVE_DB+'/money/'+key+'.json',{cache:'no-store'});if(r.ok)m=+(await r.json())||0}catch(_){}
   let ok=false;if(m!=null&&m>=it.price){const body={};body['money/'+key]=m-it.price;body['buys/'+key+'/'+k]=true;body['buys/'+key+'/last']=k;ok=await farmPatch(body);
     if(ok){inv.money[key]=m-it.price;inv.buys=inv.buys||{};inv.buys[key]={...(inv.buys[key]||{}),[k]:true,last:k}}}
