@@ -4044,13 +4044,28 @@ function packMesh(){ // plátěný batoh na zádech
   const flap=new THREE.Mesh(new THREE.BoxGeometry(.035,.012,.017),new THREE.MeshLambertMaterial({color:'#8f7550',flatShading:true}));flap.position.y=.014;g.add(flap);
   g.position.set(0,.065,-.032);return g;
 }
-function clothRefresh(o,pants,gloves,shield,pack){ // plátěné kalhoty (přes nohy), rukavice (přes ruce), dřevěný štít a batoh
+function makeWoodSword(id){ // dřevěný meč z obchodu: světlé dřevo, tmavší záštita; zelená / modrá verze má barevnou omotávku rukojeti
+  const g=new THREE.Group(),t=/_r$/.test(id)?'#3a8dff':/_u$/.test(id)?'#3fbf5f':null,wood=mat('#c49a62'),dark=mat('#7a5430');
+  const blade=new THREE.Mesh(new THREE.BoxGeometry(.014,.11,.005),wood);blade.position.y=.07;g.add(blade);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(.0095,.022,4),wood);tip.rotation.y=Math.PI/4;tip.scale.z=.4;tip.position.y=.136;g.add(tip);
+  const guard=new THREE.Mesh(new THREE.BoxGeometry(.042,.008,.012),dark);guard.position.y=.013;g.add(guard);
+  const gr=new THREE.Mesh(new THREE.CylinderGeometry(.0048,.0048,.028,8),t?mat(t):mat('#8a6a3a'));gr.position.y=-.004;g.add(gr);
+  const p=new THREE.Mesh(new THREE.SphereGeometry(.0065,8,6),dark);p.position.y=-.021;g.add(p);
+  g.scale.setScalar(.85);return g;
+}
+function weaponRefresh(o,w){ // meč v pravé ruce (Zubatý meč má vlastní model, ten se jen ukazuje / skrývá)
+  const a=o.getObjectByName('armR');if(!a)return;let m=a.getObjectByName('handWeapon');const want=w&&w!=='boss_sword'?w:null;
+  if(m&&m.userData.w!==want){a.remove(m);m=null}
+  if(want&&!m){m=want.startsWith('basic_sword')?makeBasicSword(want==='basic_sword_g'?'uncommon':'common'):makeWoodSword(want);m.name='handWeapon';m.userData.w=want;m.position.y=.05;m.rotation.x=1.9;a.add(m)}
+}
+function clothRefresh(o,pants,gloves,shield,pack,weapon){ // plátěné kalhoty (přes nohy), rukavice (přes ruce), dřevěný štít a batoh
   for(const n of ['legL','legR']){const lg=o.getObjectByName(n);if(!lg)continue;const m=lg.getObjectByName('clothPants');
     if(pants&&!m){const c=new THREE.Mesh(new THREE.BoxGeometry(.0145,.026,.0155),BURLAP);c.name='clothPants';c.position.y=-.013;lg.add(c)}else if(!pants&&m)lg.remove(m)}
   for(const n of ['armL','armR']){const a=o.getObjectByName(n);if(!a)continue;const m=a.getObjectByName('clothGlove');
     if(gloves&&!m){const c=new THREE.Mesh(new THREE.SphereGeometry(.0092,6,4),BURLAP);c.name='clothGlove';c.position.y=-.048;a.add(c)}else if(!gloves&&m)a.remove(m)}
   {const al=o.getObjectByName('armL');if(al){const m=al.getObjectByName('woodShield');if(shield&&!m)al.add(woodShieldMesh());else if(!shield&&m)al.remove(m)}}
   {const m=o.getObjectByName('clothPack');if(pack&&!m)o.add(packMesh());else if(!pack&&m)m.parent.remove(m)}
+  weaponRefresh(o,weapon);
 }
 function arenaGearRefresh(){ // show the shield / boots on every figure whose owner wears them
   const put=(o,s,b)=>{const al=o.getObjectByName('armL');if(al){const m=al.getObjectByName('arenaShield');if(s&&!m)al.add(shieldMesh());else if(!s&&m)al.remove(m)}
@@ -4059,9 +4074,9 @@ function arenaGearRefresh(){ // show the shield / boots on every figure whose ow
   scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.getObjectByName('legL'))return;
     if(!seen.has(id))seen.set(id,[wearsShield(id),wearsBoots(id)]);const [s,b]=seen.get(id);if(s||b||o.getObjectByName('arenaShield')||o.getObjectByName('arenaBoot'))put(o,s,b)});
   if(play&&play.av&&play.av.fig&&meId)put(play.av.fig,wearsShield(meId),wearsBoots(meId));
-  const cl=new Map(),of=id=>{if(!cl.has(id)){let p=false,g=false,w=false,k=false;try{const st=invState(id);p=!!(ITEMS[st.pants]||{}).hp;g=!!(ITEMS[st.gloves]||{}).hp;w=/^wood_shield/.test(st.shield||'');k=!!st.backpack}catch(_){}cl.set(id,[p,g,w,k])}return cl.get(id)};
-  scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.getObjectByName('legL'))return;const [p,g,w,k]=of(id);if(p||g||w||k||o.getObjectByName('clothPants')||o.getObjectByName('clothGlove')||o.getObjectByName('woodShield')||o.getObjectByName('clothPack'))clothRefresh(o,p,g,w,k)});
-  if(play&&play.av&&play.av.fig&&meId){const [p,g,w,k]=of(meId);clothRefresh(play.av.fig,p,g,w,k)}
+  const cl=new Map(),of=id=>{if(!cl.has(id)){let p=false,g=false,w=false,k=false,wp=null;try{const st=invState(id);p=!!(ITEMS[st.pants]||{}).hp;g=!!(ITEMS[st.gloves]||{}).hp;w=/^wood_shield/.test(st.shield||'');k=!!st.backpack;wp=st.weapon||null}catch(_){}cl.set(id,[p,g,w,k,wp])}return cl.get(id)};
+  scene.traverse(o=>{const id=o.userData&&o.userData.memberId;if(!id||!o.isGroup||!o.getObjectByName('legL'))return;const [p,g,w,k,wp]=of(id);if(p||g||w||k||(wp&&wp!=='boss_sword')||o.getObjectByName('clothPants')||o.getObjectByName('clothGlove')||o.getObjectByName('woodShield')||o.getObjectByName('clothPack')||o.getObjectByName('handWeapon'))clothRefresh(o,p,g,w,k,wp)});
+  if(play&&play.av&&play.av.fig&&meId){const [p,g,w,k,wp]=of(meId);clothRefresh(play.av.fig,p,g,w,k,wp)}
 }
 function capeRefresh(){
   const put=(o,w)=>{const c=o.getObjectByName('founderCape');if(w&&!c)o.add(capeMesh());else if(!w&&c)c.parent.remove(c)};
