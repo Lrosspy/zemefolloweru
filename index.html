@@ -3028,6 +3028,15 @@ function cullBefore(){
     if(g.position.distanceToSquared(camera.position)>100)for(const m of d.limbs)if(m.visible){m.visible=false;_cullOff.push(m)}
   }
 }
+// drobné objekty v celé scéně (končetiny chodců, oči, ploty, klasy…): když by na obrazovce měly < ~7 px, nekreslí se
+const _tiny=[],PERF_PX=.0028;
+function cullTiny(){
+  if(_cullN%60===2){_tiny.length=0;scene.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||!o.geometry)return;const g=o.geometry;if(!g.boundingSphere)g.computeBoundingSphere();
+    const r=g.boundingSphere.radius*o.matrixWorld.getMaxScaleOnAxis();if(r<.03){o.userData._tr=r;_tiny.push(o)}})}
+  const cp=camera.position,k=PERF_PX*PERF_PX;
+  for(const o of _tiny){if(!o.visible)continue;const e=o.matrixWorld.elements,dx=e[12]-cp.x,dy=e[13]-cp.y,dz=e[14]-cp.z,r=o.userData._tr;
+    if(r*r<k*(dx*dx+dy*dy+dz*dz)){o.visible=false;_cullOff.push(o)}}
+}
 function cullAfter(){for(const o of _cullOff)o.visible=true;_cullOff.length=0}
 // měřák výkonu: zemefolloweru.cz/?fps
 const fpsEl=/[?&]fps\b/.test(location.search)?Object.assign(document.body.appendChild(document.createElement('div')),{style:'position:fixed;left:6px;top:6px;z-index:9999;background:#000a;color:#7f7;font:12px monospace;padding:3px 6px;border-radius:4px;pointer-events:none'}):null;
@@ -3083,7 +3092,7 @@ function loop(now){
     siteGroup.children.forEach(g=>{if(g.userData.anim)g.userData.anim(T)});
   }else{for(const [,h] of houses)(h.g.userData.waveArms||[]).forEach(a=>a.arm.rotation.z=-.5)}
   if(!fly&&!panning&&!play)controls.update();
-  cullBefore();renderer.render(scene,camera);cullAfter();fpsTick(now);
+  cullBefore();cullTiny();renderer.render(scene,camera);cullAfter();fpsTick(now);
   updateLabels();
   updateBubbles(now);
   requestAnimationFrame(loop);
