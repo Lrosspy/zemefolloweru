@@ -929,6 +929,25 @@ function makeJet(y,onPole){ // a small grey fighter jet parked on a roof (on a s
   root.position.y=y;root.rotation.y=.6;root.userData.isJet=true;return root;
 }
 
+// ---------- výkon: pevné části domu/postavičky slepit do 1–2 objektů (barvy se uloží do vrcholů) ----------
+const VCM={},_mm=new THREE.Matrix4();
+function vcMat(basic,side){const k=(basic?'B':'L')+side;return VCM[k]||(VCM[k]=basic?new THREE.MeshBasicMaterial({vertexColors:true,side}):new THREE.MeshLambertMaterial({vertexColors:true,flatShading:true,side}))}
+function mergeStatic(root,list){
+  root.updateMatrixWorld(true);
+  const inv=new THREE.Matrix4().copy(root.matrixWorld).invert(),by=new Map();
+  for(const m of list){const t=m.material;
+    if(!t||Array.isArray(t)||t.map||t.transparent||t.vertexColors||!(t.isMeshLambertMaterial||t.isMeshBasicMaterial)||(t.emissive&&t.emissive.getHex()))continue;
+    const k=(t.isMeshBasicMaterial?'B':'L')+t.side;if(!by.has(k))by.set(k,[]);by.get(k).push(m)}
+  for(const [k,ms] of by){if(ms.length<2)continue;
+    let n=0;const gs=ms.map(m=>{const g=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();g.applyMatrix4(_mm.multiplyMatrices(inv,m.matrixWorld));if(!g.attributes.normal)g.computeVertexNormals();n+=g.attributes.position.count;return g});
+    const P=new Float32Array(n*3),N=new Float32Array(n*3),C=new Float32Array(n*3);let o=0;
+    gs.forEach((g,i)=>{const c=ms[i].material.color,cnt=g.attributes.position.count;P.set(g.attributes.position.array,o*3);N.set(g.attributes.normal.array,o*3);
+      for(let j=0;j<cnt;j++){C[(o+j)*3]=c.r;C[(o+j)*3+1]=c.g;C[(o+j)*3+2]=c.b}o+=cnt;g.dispose()});
+    const G=new THREE.BufferGeometry();G.setAttribute('position',new THREE.BufferAttribute(P,3));G.setAttribute('normal',new THREE.BufferAttribute(N,3));G.setAttribute('color',new THREE.BufferAttribute(C,3));G.computeBoundingSphere();
+    root.add(new THREE.Mesh(G,vcMat(k[0]==='B',ms[0].material.side)));
+    for(const m of ms)m.parent.remove(m);
+  }
+}
 function makeHouse(home){
   const idx=home.i;
   const rr=rnd(hash(home.key+'|'+home.members[0].id));
@@ -976,10 +995,11 @@ function makeHouse(home){
     waveArms.push({arm:right,ph:pr()*6.28,sp:6+pr()*3});
     const n=living.length;
     fig.position.set((k-(n-1)/2)*.08,0,d/2+.09+(k%2)*.04);
+    mergeStatic(fig,fig.children.filter(c=>c.isMesh));
     g.add(fig);
   });
   const door=new THREE.Mesh(new THREE.PlaneGeometry(.07,.12),mat('#5a3b2a'));door.position.set(0,.06,d/2+.003);if(floors===1)door.position.x=0;else door.position.x=0;g.add(door);
-  if(rr()<.7){const t=makeTree(1);t.position.set(w/2+.14,0,(rr()-.5)*.2);g.add(t)}
+  let tree=null;if(rr()<.7){const t=makeTree(1);t.position.set(w/2+.14,0,(rr()-.5)*.2);g.add(t);tree=t}
   // flower bed along the left wall; the gardener comes here to water it
   const bedX=-(w/2+.09), flowers=[];
   const bed=new THREE.Mesh(new THREE.BoxGeometry(.08,.025,.26),mat('#5b3a22'));bed.position.set(bedX,.012,.02);g.add(bed);
@@ -993,6 +1013,7 @@ function makeHouse(home){
     st.userData.orig=st.material;bl.userData.orig=bl.material;fl.userData.stem=st;fl.userData.bloom=bl;
     g.add(fl);flowers.push(fl);
   }
+  mergeStatic(g,[...g.children.filter(c=>c.isMesh&&c!==bed&&c!==edge),...(tree?tree.children:[])]);
   g.userData={id:home.key,height:h+.3,waveArms,flowers,bedAt:new THREE.Vector3(bedX,0,.02),standAt:new THREE.Vector3(bedX-.11,0,.1)};
   g.traverse(o=>{if(o.isMesh)o.userData.house=g});
   bed.userData.bed=edge.userData.bed=home.key;flowers.forEach(f=>f.traverse(o=>{if(o.isMesh)o.userData.bed=home.key}));
@@ -3001,8 +3022,10 @@ function cullBefore(){
   for(const [,h] of houses){const g=h.g;if(!g.visible||!g.parent)continue;
     if(g.position.distanceToSquared(camera.position)<PERF_FAR2)continue;
     let d=g.userData._det;
-    if(!d){d=g.userData._det=[];g.traverse(m=>{if(m.isMesh&&m.geometry){if(!m.geometry.boundingSphere)m.geometry.computeBoundingSphere();if(m.geometry.boundingSphere.radius<PERF_TINY)d.push(m)}})}
-    for(const m of d)if(m.visible){m.visible=false;_cullOff.push(m)}
+    if(!d){d=g.userData._det={tiny:[...(g.userData.flowers||[])],limbs:[]};
+      g.traverse(m=>{if(/^(arm|leg)[LR]$/.test(m.name))d.limbs.push(m);else if(m.isMesh&&m.geometry){if(!m.geometry.boundingSphere)m.geometry.computeBoundingSphere();if(m.geometry.boundingSphere.radius<PERF_TINY)d.tiny.push(m)}})}
+    for(const m of d.tiny)if(m.visible){m.visible=false;_cullOff.push(m)}
+    if(g.position.distanceToSquared(camera.position)>100)for(const m of d.limbs)if(m.visible){m.visible=false;_cullOff.push(m)}
   }
 }
 function cullAfter(){for(const o of _cullOff)o.visible=true;_cullOff.length=0}
