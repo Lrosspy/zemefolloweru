@@ -3098,6 +3098,7 @@ function setResidents(list){
   groupHomes();figDirty=true;residentById=new Map(list.map(r=>[r.id,r]));
   const fresh=new Set(firstLoad?[]:list.filter(r=>!prev.has(r.id)).map(r=>r.id));
   syncHouses(!firstLoad);syncWanderers();syncSites(!firstLoad);syncGraves(!firstLoad);paintPlanet();updateHud();applyMe(firstLoad&&!!meId);
+  try{if(inv.loaded)hatRefresh()}catch(_){} // nově postavené postavy hned dostanou oblečení
   const died=firstLoad?[]:list.filter(r=>r.left&&prevLeft.get(r.id)===false);
   const revived=firstLoad?[]:list.filter(r=>!r.left&&prevLeft.get(r.id)===true);
   if(firstLoad){
@@ -4661,6 +4662,7 @@ function startPlay(){
   tangentize(face,p);
   play={av,p,f:face.clone(),face:face.clone(),speed:0,camDist:1.7,pitch:1.0,camInit:false,lastSend:0,sentP:null,sentM:-1,jy:0,jv:0,jn:0,pet:null,abduct:null};
   if(hasPet())givePet();
+  try{hatRefresh()}catch(_){} // oblečení na nové postavě hned po startu (např. po návratu z arény)
   document.body.classList.add('playing');playUi.hidden=false;joy.hidden=jumpBtn.hidden=!touchUI();
   playHelp.textContent=touchUI()?'Chůze: táhni žlutým kolečkem · Skok: tlačítko vpravo · Kamera: táhni prstem po planetě':'Chůze: W A S D · Shift běh · Mezerník skok · Kamera: Q/E nebo táhni myší · kolečko zoom · Enter chat · Esc konec';
   playHelp.style.opacity=1;clearTimeout(helpTimer);helpTimer=setTimeout(()=>playHelp.style.opacity=0,7000);
