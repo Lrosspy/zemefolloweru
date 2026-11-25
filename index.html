@@ -219,6 +219,7 @@ button.shop-offer.sel{outline:3px solid #ffc300;outline-offset:1px}
 .shop-buy b{display:block;font-size:14px}
 .shop-buy button{margin-top:8px;font:900 14px var(--body,system-ui);border:0;border-radius:999px;padding:9px 16px;background:#ffc300;color:#2b1d0e;cursor:pointer}
 .shop-buy button:disabled{opacity:.5;cursor:not-allowed}
+.shop-sell{display:flex;flex-direction:column;gap:6px}.shop-sell button{align-self:flex-start;font:900 14px var(--body,system-ui);border:0;border-radius:999px;padding:10px 16px;min-height:44px;background:#ffc300;color:#2b1d0e;cursor:pointer}.shop-sell button.warn{background:#ff7a59;color:#fff}.shop-sell button:disabled{opacity:.5;cursor:not-allowed}
 .shop-special{position:relative;margin-top:12px;border-radius:18px;overflow:hidden;border:2px solid #ffc300;background:#3a2a08;min-height:150px;display:grid;place-items:center}
 .shop-rays{position:absolute;inset:-60%;background:repeating-conic-gradient(from 0deg,rgba(255,214,90,.38) 0deg 10deg,rgba(255,214,90,0) 10deg 22deg);animation:shopSpin 14s linear infinite}
 @keyframes shopSpin{to{transform:rotate(360deg)}}
@@ -442,7 +443,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
         <h3 class="inv-sub">Tvůj inventář</h3>
         <div class="shop-purse" id="shopPurse"></div>
         <div class="inv-bag shop-bag" id="shopBag" aria-label="Věci k prodeji"></div>
-        <p class="inv-detail" id="shopDetail">Klepni na věc v batohu a prodáš ji. Výkup se spustí s prvním zbožím.</p>
+        <div class="inv-detail shop-sell" id="shopDetail">Klepni na věc v batohu a můžeš ji prodat. Vykupuje se jen výbava, ne byliny, léky ani jídlo.</div>
       </div>
     </div>
   </div>
@@ -4298,6 +4299,37 @@ function shopOpen(){
   if(!meId||!acct.user){showWelcome(acct.user?'nick':'login','Nakupovat můžou jen přihlášení hráči.');return}
   keys.clear();shopRender();document.getElementById('shopBox').hidden=false;document.getElementById('shopClose').focus();
 }
+// Výkup v obchodě: jen výbava (ne byliny, léky, obilí, chleba). Cena náhodně podle rarity. Zápis: /sold/<nick>/<item>={t,p,c} + /sold/<nick>/last + money (c 's' stříbrné, 'g' zlaté = p*100) nebo diamonds (c 'd').
+const SELL={common:[1,2,'s'],uncommon:[2,4,'s'],rare:[3,6,'s'],epic:[6,12,'s'],legend:[1,2,'g'],divine:[1,2,'d']};
+const SELL_UNIT={s:['stříbrný','stříbrné','stříbrných'],g:['zlatý','zlaté','zlatých'],d:['diamant','diamanty','diamantů']};
+function isGear(k){return !!ITEMS[k]&&ITEMS[k].slot!=='bag'}
+function soldOf(id){try{return (inv.sold||{})[liveKey(id||'')]||{}}catch(_){return {}}}
+const sellRange=k=>{const [a,b,c]=SELL[ITEMS[k].rarity]||SELL.common,u=SELL_UNIT[c];return `${a}–${b} ${b>=5?u[2]:u[1]}`};
+let sellBusy=false,sellArm=null;
+function shopSellShow(k){
+  const box=document.getElementById('shopDetail');box.replaceChildren();const it=k&&ITEMS[k];
+  if(!it){box.textContent='Prázdný slot.';sellArm=null;return}
+  const t=document.createElement('b');t.textContent=it.name+' · '+RARITY[it.rarity].name;box.append(t);
+  if(!isGear(k)){const d=document.createElement('span');d.textContent='Byliny, léky a jídlo obchod nevykupuje.';box.append(d);sellArm=null;return}
+  const d=document.createElement('span');d.textContent=`Výkupní cena: ${sellRange(k)} (náhodně). Prodaná věc zmizí z inventáře.`;box.append(d);
+  const btn=document.createElement('button');btn.type='button';const armed=sellArm===k;btn.className=armed?'warn':'';
+  btn.textContent=sellBusy?'Prodávám…':armed?'Opravdu prodat? Klikni znovu':`Prodat (${sellRange(k)})`;btn.disabled=sellBusy;
+  btn.onclick=()=>{if(sellArm!==k){sellArm=k;shopSellShow(k);return}shopSell(k)};box.append(btn);
+}
+async function shopSell(k){
+  if(sellBusy||!acct.user||!meId||!shopOn()||!isGear(k)||!invOwned(meId).includes(k))return;
+  const it=ITEMS[k],[a,b,c]=SELL[it.rarity]||SELL.common,p=a+Math.floor(Math.random()*(b-a+1)),key=liveKey(meId);sellBusy=true;shopSellShow(k);
+  let ok=false,cur=null;const path=c==='d'?'diamonds':'money';
+  try{const r=await fetch(LIVE_DB+'/'+path+'/'+key+'.json',{cache:'no-store'});if(r.ok)cur=+(await r.json())||0}catch(_){}
+  const add=c==='g'?p*100:p;
+  if(cur!=null){const body={};body['sold/'+key+'/'+k]={t:{'.sv':'timestamp'},p,c};body['sold/'+key+'/last']=k;body[path+'/'+key]=cur+add;ok=await farmPatch(body);
+    if(ok){inv.sold=inv.sold||{};inv.sold[key]={...(inv.sold[key]||{}),[k]:{t:Date.now(),p,c},last:k};if(c==='d'){inv.dia=inv.dia||{};inv.dia[key]=cur+add}else inv.money[key]=cur+add}}
+  sellBusy=false;sellArm=null;shopRender();
+  const u=SELL_UNIT[c],w=p===1?u[0]:p<5?u[1]:u[2];
+  document.getElementById('shopDetail').textContent=ok?`Prodáno: ${it.name} za ${p} ${w}.`:'Prodej se nepovedl, zkus to znovu.';
+  toast(ok?`💰 Prodal jsi ${it.name} za ${p} ${w}.`:'💰 Prodej se nepovedl, zkus to znovu.');
+  if(ok){try{hatRefresh()}catch(_){}try{invRefreshFigs(meId)}catch(_){}try{lvlCard()}catch(_){}}
+}
 function shopRender(){
   const m=wallet(meId),purse=document.getElementById('shopPurse');purse.replaceChildren();
   const pl=(n,a,b,c)=>n===1?a:n>=2&&n<=4?b:c;
@@ -4305,7 +4337,7 @@ function shopRender(){
     const sp=document.createElement('span');const ic=document.createElement('span');ic.className=cls;ic.setAttribute('aria-hidden','true');if(cls==='dia')ic.textContent='💎';sp.append(ic,v+' '+l);purse.append(sp)}
   const st=invState(meId),bag=document.getElementById('shopBag');bag.replaceChildren();
   try{shopOffersRender()}catch(_){}
-  INV_BAG.forEach((k,n)=>{if(n>=invBagN(meId)&&!st[k])return;const c=invCell(k,'Slot '+(n+1),'＋',st[k]);c.onclick=()=>{const it=st[k]&&ITEMS[st[k]];document.getElementById('shopDetail').textContent=it?`${it.name}: výkup se spustí s prvním zbožím. Již brzy!`:'Prázdný slot.'};bag.append(c)});
+  INV_BAG.forEach((k,n)=>{if(n>=invBagN(meId)&&!st[k])return;const c=invCell(k,'Slot '+(n+1),'＋',st[k]);c.onclick=()=>{if(sellArm!==st[k])sellArm=null;shopSellShow(st[k])};bag.append(c)});
 }
 // Obchod: základní výbava (dřevěné meče, plátěné kalhoty a rukavice) od středy 25. 11. 12:00. Nákup = jeden zápis: money −cena, /buys/<nick>/<item>=true, /buys/<nick>/last=<item> (hlídají pravidla Firebase)
 // Nabídka obchodu: 3 věci ze 3 různých kategorií (meč, kalhoty, rukavice, štít, batoh) jedna. Mění se ve 12:00 a o půlnoci pražského času, pro všechny hráče stejně.
@@ -4334,7 +4366,7 @@ function shopTick(){ // odpočet „Nové zboží za: hh:mm:ss“ v levém rohu 
 setInterval(()=>{if(!document.getElementById('shopBox').hidden)shopTick()},1000);
 const shopOn=()=>Date.now()>=ARENA_FROM||meId==='lubikosuch';
 function shopOffersRender(){
-  if(!shopOn())return;const box=document.getElementById('shopOffers'),own=invOwned(meId);box.replaceChildren();
+  if(!shopOn())return;const box=document.getElementById('shopOffers'),own=[...invOwned(meId),...Object.keys((inv.buys||{})[liveKey(meId)]||{})];box.replaceChildren();
   const SHOP_ITEMS=shopToday().items;
   if(shopSel&&!SHOP_ITEMS.includes(shopSel))shopSel=null;
   document.getElementById('shopWho').textContent='Nabídka se mění ve 12:00 a o půlnoci. Zásoby jsou neomezené.';shopTick();
@@ -4344,7 +4376,7 @@ function shopOffersRender(){
   const buy=document.getElementById('shopBuy');if(!shopSel){buy.hidden=true;return}
   const it=ITEMS[shopSel],has=own.includes(shopSel),money=Math.floor(+inv.money[liveKey(meId)]||0);buy.hidden=false;buy.replaceChildren();
   const t=document.createElement('b');t.textContent=it.name+' · '+it.stats;const d=document.createElement('span');d.textContent=it.desc;
-  const btn=document.createElement('button');btn.type='button';btn.textContent=has?'Už ho máš v inventáři':money<it.price?`Nemáš dost stříbrných (${it.price})`:`Koupit za ${it.price} stříbrných`;btn.disabled=has||money<it.price||shopBusy;btn.onclick=()=>shopBuy(shopSel);
+  const btn=document.createElement('button');btn.type='button';btn.textContent=has?(invOwned(meId).includes(shopSel)?'Už ho máš v inventáři':'Tuhle věc už jsi jednou koupil'):money<it.price?`Nemáš dost stříbrných (${it.price})`:`Koupit za ${it.price} stříbrných`;btn.disabled=has||money<it.price||shopBusy;btn.onclick=()=>shopBuy(shopSel);
   buy.append(t,d,btn);
 }
 async function shopBuy(k){
@@ -4453,7 +4485,7 @@ function invOwned(id){
   {const h=heartOf(id);if(h&&!own.includes(h))own.push(h)}
   for(const d of arenaDrops(id))if(!own.includes(d))own.push(d);
   for(const b of Object.keys((inv.buys||{})[liveKey(id)]||{}))if(ITEMS[b]&&!own.includes(b))own.push(b); // koupené v obchodě (/buys)
-  return own;
+  const sd=soldOf(id);return own.filter(k=>!(sd[k]&&isGear(k))); // prodané v obchodě (/sold) už hráč nemá
 }
 function invState(id){ // {slot: itemId} with every owned item either worn or in the bag
   const own=invOwned(id),saved=inv.equip[invKey(id)],st={},used=new Set();
@@ -4470,7 +4502,7 @@ function invRefreshFigs(id){
 }
 let invTry=0;
 async function invLoad(){ // a failed read (network hiccup) must never look like an empty inventory: keep old data and retry
-  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread','dig','fight','buys'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread','dig','fight','buys'];
+  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread','dig','fight','buys','sold'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread','dig','fight','buys','sold'];
   const res=await Promise.all(keys.map(k=>fetch(LIVE_DB+'/'+k+'.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json().then(v=>({ok:true,v})):{ok:false}).catch(()=>({ok:false}))));
   let bad=0;res.forEach((r,i)=>{if(r.ok)inv[dst[i]]=r.v||{};else{bad++;inv[dst[i]]=inv[dst[i]]||{}}});
   if(!bad){inv.loaded=true;invTry=0}else setTimeout(invLoad,Math.min(30000,2000*++invTry));
@@ -5292,7 +5324,9 @@ $id('giftItem').addEventListener('submit',async e=>{
       msg.textContent=(sub?`Odebráno ${cur-next}× ${nm}`:`Přidáno ${n}× ${nm}`)+` hráči @${gift.id} · teď má ${next}×.`;
     }else{
       const cur=await fetch(LIVE_DB+'/items/'+key+'/'+it+'.json').then(x=>x.json());
-      if(!sub&&(cur===true||invOwned(gift.id).includes(it))){msg.textContent=`@${gift.id} už ${nm} má.`;return}
+      const sd=((inv.sold||{})[key]||{})[it];
+      if(!sub&&sd){const r0=await fetch(LIVE_DB+'/sold/'+key+'/'+it+'.json'+au,{method:'DELETE'});if(!r0.ok){msg.textContent='Nepovedlo se. Zkontroluj pravidla ve Firebase.';return}delete inv.sold[key][it]}
+      if(!sub&&(cur===true||invOwned(gift.id).includes(it))){msg.textContent=sd?`@${gift.id} má zase ${nm} (předtím ho prodal).`:`@${gift.id} už ${nm} má.`;return}
       if(sub&&cur!==true){msg.textContent=invOwned(gift.id).includes(it)?`${nm} má @${gift.id} ze hry (dárek nebo výhra), ten odebrat nejde.`:`@${gift.id} ${nm} nemá.`;return}
       const r=await fetch(LIVE_DB+'/items/'+key+'/'+it+'.json'+au,{method:sub?'DELETE':'PUT',body:sub?undefined:'true'});
       if(!r.ok){msg.textContent='Nepovedlo se. Zkontroluj pravidla ve Firebase.';return}
