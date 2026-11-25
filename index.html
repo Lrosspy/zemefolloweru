@@ -116,7 +116,7 @@ body.playing .hud,body.playing .me,body.playing .bar,body.playing .status,body.p
 .label.player{background:rgba(20,18,40,.9);font-size:11px;padding:3px 8px}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 90px);transform:translate(-50%,20px);max-width:min(420px,calc(100% - 32px));padding:12px 18px;border-radius:14px;background:#15122b;border:1px solid var(--panel-line);color:var(--ink);font-weight:800;font-size:14px;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:30}
 .toast.on{opacity:1;transform:translate(-50%,0)}
-.play-bar{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:flex;justify-content:center;pointer-events:none}
+.play-bar{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:flex;justify-content:center;gap:10px;pointer-events:none}
 .play-bar button{pointer-events:auto;min-height:44px}
 .water-btn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 150px);padding:12px 20px;border-radius:999px;background:#3a9be0;color:#fff;border:2px solid rgba(255,255,255,.6);font-weight:900;font-size:16px;pointer-events:auto;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .water-btn[hidden]{display:none}
@@ -626,7 +626,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <div class="abduct-flash" id="abductFlash" aria-hidden="true"></div>
   <div class="joy" id="joy" hidden aria-label="Joystick pro chůzi"><i id="joyKnob"></i></div>
   <button class="jump-btn" id="jumpBtn" type="button" hidden>Skok</button>
-  <div class="play-bar"><button type="button" id="playInv">Inventář 🎒</button></div>
+  <div class="play-bar"><button type="button" id="playInv">Inventář 🎒</button><button type="button" id="playArena" hidden>Aréna ⚔️</button></div>
   <button class="water-btn" id="waterBtn" type="button" hidden>💧 Zalít kytky</button>
   <button class="water-btn quest-btn" id="questBtn" type="button" hidden>🌱 Mluvit se zahradnicí</button>
   <button class="water-btn shop-btn" id="shopBtn" type="button" hidden>🛒 Otevřít obchod</button>
@@ -1373,7 +1373,7 @@ function arenaGo(){
   if(hp.dead){toast('🪦 Jsi mrtvý. Do arény můžeš, až tě někdo oživí.');return}
   location.href='arena.html'+digLook();
 }
-function arenaVis(){const o=arenaOpen();portal.visible=o;const b=document.getElementById('arenaBtn');if(b)b.hidden=!(meId&&o)}
+function arenaVis(){const o=arenaOpen();portal.visible=o;const b=document.getElementById('arenaBtn');if(b)b.hidden=!(meId&&o);const pb=document.getElementById('playArena');if(pb)pb.hidden=!(meId&&o)}
 setInterval(arenaVis,30000);
 function drawBossTag(u,dead,hp){
   const c=u.cv.getContext('2d'),W=u.cv.width,H=u.cv.height;
@@ -4479,6 +4479,7 @@ function openInv(){if(!meId)return;keys.clear();inv.sel=null;if(!inv.loaded)invL
 document.getElementById('invBtn').onclick=openInv;
 document.getElementById('arenaBtn').onclick=arenaGo;
 document.getElementById('playInv').onclick=openInv;
+document.getElementById('playArena').onclick=arenaGo;
 document.getElementById('invClose').onclick=()=>{document.getElementById('inv').hidden=true};
 document.getElementById('inv').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('inv').hidden=true;e.stopPropagation()});
 document.getElementById('inv').addEventListener('click',e=>{if(e.target.id==='inv')e.target.hidden=true});
