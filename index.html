@@ -779,7 +779,7 @@ const SITE_DEAD={doctor:'Opuštěná nemocnice',farmer:'Opuštěná farma',build
 
 // ---------- scene ----------
 const canvas=document.getElementById('world');
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
 const scene=new THREE.Scene();
 scene.background=new THREE.Color('#0b0a1a');
@@ -2969,6 +2969,47 @@ addEventListener('pointercancel',endPan,true);
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
 addEventListener('resize',resize);resize();
 const _sz=new THREE.Vector2();
+// ---------- výkon: nekreslit, co je schované za planetou, a drobnosti (oči, ruce, květy) u vzdálených domů ----------
+// Viditelnost se vypne jen na dobu jednoho renderu a hned se vrátí, takže ostatní kód o ní neví.
+const _cull=[],_cullOff=[],_cc=new THREE.Vector3(),_cs=new THREE.Sphere(),_cb=new THREE.Box3();
+let _cullN=0;
+const PERF_FAR2=25, PERF_TINY=.016; // drobnosti jen do 5 jednotek od kamery; "drobnost" = poloměr geometrie < .016
+function cullList(){
+  _cull.length=0;
+  const onSurf=o=>{const l=o.position.length();return l>R*.8&&l<R*1.35};
+  for(const o of scene.children){
+    if(o.isLight||o.isCamera)continue;
+    if(onSurf(o))_cull.push(o);
+    else if(o.isGroup&&o.position.lengthSq()<1)for(const c of o.children)if(onSurf(c))_cull.push(c);
+  }
+}
+function cullRadius(o){
+  if(o.userData._cr===undefined){let r=.5;try{_cb.setFromObject(o);if(!_cb.isEmpty())r=Math.max(r,_cb.getBoundingSphere(_cs).radius)}catch(_){}o.userData._cr=Math.min(r,3)}
+  return o.userData._cr;
+}
+function cullBefore(){
+  if(_cullN++%30===0)cullList();
+  const D=camera.position.length();if(D<=R+.01)return;
+  const a0=Math.acos(R/D);_cc.copy(camera.position).normalize();
+  for(const o of _cull){
+    if(!o.visible||!o.parent)continue;
+    const p=o.position,L=p.length();if(L<1e-3)continue;
+    const ang=Math.acos(Math.max(-1,Math.min(1,p.dot(_cc)/L)));
+    const lim=a0+Math.acos(Math.min(1,R/(R+Math.max(0,L-R)+cullRadius(o))))+.03;
+    if(ang>lim){o.visible=false;_cullOff.push(o)}
+  }
+  for(const [,h] of houses){const g=h.g;if(!g.visible||!g.parent)continue;
+    if(g.position.distanceToSquared(camera.position)<PERF_FAR2)continue;
+    let d=g.userData._det;
+    if(!d){d=g.userData._det=[];g.traverse(m=>{if(m.isMesh&&m.geometry){if(!m.geometry.boundingSphere)m.geometry.computeBoundingSphere();if(m.geometry.boundingSphere.radius<PERF_TINY)d.push(m)}})}
+    for(const m of d)if(m.visible){m.visible=false;_cullOff.push(m)}
+  }
+}
+function cullAfter(){for(const o of _cullOff)o.visible=true;_cullOff.length=0}
+// měřák výkonu: zemefolloweru.cz/?fps
+const fpsEl=/[?&]fps\b/.test(location.search)?Object.assign(document.body.appendChild(document.createElement('div')),{style:'position:fixed;left:6px;top:6px;z-index:9999;background:#000a;color:#7f7;font:12px monospace;padding:3px 6px;border-radius:4px;pointer-events:none'}):null;
+let fpsT=0,fpsN=0;
+function fpsTick(now){if(!fpsEl)return;fpsN++;if(now-fpsT>=500){fpsEl.textContent=Math.round(fpsN*1000/(now-fpsT))+' FPS · '+renderer.info.render.calls+' draw calls';fpsT=now;fpsN=0}}
 function loop(now){
   {const cw=canvas.clientWidth,ch=canvas.clientHeight; // render size follows the canvas (phones can change it without a resize event)
    renderer.getSize(_sz);
@@ -3019,7 +3060,7 @@ function loop(now){
     siteGroup.children.forEach(g=>{if(g.userData.anim)g.userData.anim(T)});
   }else{for(const [,h] of houses)(h.g.userData.waveArms||[]).forEach(a=>a.arm.rotation.z=-.5)}
   if(!fly&&!panning&&!play)controls.update();
-  renderer.render(scene,camera);
+  cullBefore();renderer.render(scene,camera);cullAfter();fpsTick(now);
   updateLabels();
   updateBubbles(now);
   requestAnimationFrame(loop);
