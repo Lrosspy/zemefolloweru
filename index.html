@@ -2664,7 +2664,10 @@ function buildMagicLab(){ // kamenná chatka se břidlicovou střechou, kouzeln�
   const dirt=new THREE.Mesh(new THREE.CylinderGeometry(.5,.44,.06,22),mat('#5a4130'));dirt.position.y=-.06;b.add(dirt);
   // chatka
   const body=new THREE.Mesh(new THREE.BoxGeometry(.34,.2,.26),stone);body.position.set(.08,.1,0);b.add(body);
-  const rr=rnd(31);for(let i=0;i<22;i++){const st=new THREE.Mesh(new THREE.BoxGeometry(.045,.025,.008),rr()<.5?stoneD:stone);st.position.set(-.07+rr()*.3,.02+rr()*.17,.132);b.add(st)}
+  const rr=rnd(31); // kameny v mřížce bez překryvů, mimo okno a dveře (jinak blikají)
+  for(let row=0;row<6;row++)for(let col=0;col<6;col++){const x=-.065+col*.05+(row%2?.025:0),y=.025+row*.03;
+    if(x>.23||rr()<.35||(x>.06&&x<.18&&y<.15)||(x>-.06&&x<.04&&y>.07&&y<.17))continue;
+    const st=new THREE.Mesh(new THREE.BoxGeometry(.04,.022,.006),rr()<.5?stoneD:stone);st.position.set(x,y,.132);b.add(st)}
   for(const sx of [-1,1]){const r=new THREE.Mesh(new THREE.BoxGeometry(.38,.012,.2),slate);r.position.set(.08,.255,sx*.07);r.rotation.x=sx*.62;b.add(r)}
   const gable=new THREE.Shape();gable.moveTo(-.13,0);gable.lineTo(.13,0);gable.lineTo(0,.1);gable.closePath();
   for(const x of [-.09,.25]){const gm=new THREE.Mesh(new THREE.ExtrudeGeometry(gable,{depth:.01,bevelEnabled:false}),stone);gm.rotation.y=Math.PI/2;gm.position.set(x,.2,.0);b.add(gm)}
@@ -2676,14 +2679,14 @@ function buildMagicLab(){ // kamenná chatka se břidlicovou střechou, kouzeln�
   ['#3ff2d8','#ff4fd8','#ffd23a'].forEach((c,i)=>{const t=new THREE.Mesh(new THREE.TorusGeometry(.05+i*.012,.002,4,24),glow(c));t.rotation.x=Math.PI/2+.3*(i-1);t.position.y=.05+i*.03;smoke.add(t)});
   smoke.userData.spin=true;g.userData.mlabSmoke=smoke;
   // okno s galaxií, dveře zatlučené prkny, zářící runy
-  const win=new THREE.Mesh(new THREE.CircleGeometry(.032,16),glow('#7a4bff'));win.position.set(-.01,.12,.131);b.add(win);
-  const sw=new THREE.Mesh(new THREE.TorusGeometry(.018,.004,4,16),glow('#ff9af0'));sw.position.set(-.01,.12,.132);b.add(sw);
-  const door=new THREE.Mesh(new THREE.BoxGeometry(.07,.13,.008),wood);door.position.set(.12,.065,.132);b.add(door);
-  for(const r of [.5,-.5]){const pl=new THREE.Mesh(new THREE.BoxGeometry(.09,.014,.006),woodD);pl.position.set(.12,.07,.138);pl.rotation.z=r;b.add(pl)}
-  const lock=new THREE.Mesh(new THREE.BoxGeometry(.018,.016,.008),mat('#c9a233'));lock.position.set(.12,.07,.143);b.add(lock);
-  const shackle=new THREE.Mesh(new THREE.TorusGeometry(.007,.002,4,10,Math.PI),mat('#c9a233'));shackle.position.set(.12,.078,.143);b.add(shackle);
+  const win=new THREE.Mesh(new THREE.CircleGeometry(.032,16),glow('#7a4bff'));win.position.set(-.01,.12,.137);b.add(win);
+  const sw=new THREE.Mesh(new THREE.TorusGeometry(.018,.004,4,16),glow('#ff9af0'));sw.position.set(-.01,.12,.139);b.add(sw);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(.07,.13,.01),wood);door.position.set(.12,.065,.136);b.add(door);
+  for(const r of [.5,-.5]){const pl=new THREE.Mesh(new THREE.BoxGeometry(.09,.014,.006),woodD);pl.position.set(.12,.07,.1445);pl.rotation.z=r;b.add(pl)}
+  const lock=new THREE.Mesh(new THREE.BoxGeometry(.018,.016,.008),mat('#c9a233'));lock.position.set(.12,.07,.1515);b.add(lock);
+  const shackle=new THREE.Mesh(new THREE.TorusGeometry(.007,.002,4,10,Math.PI),mat('#c9a233'));shackle.position.set(.12,.081,.1515);b.add(shackle);
   const rc=['#3ff2d8','#ff4fd8','#5dff8a','#ffd23a'],r2=rnd(9);
-  for(let i=0;i<12;i++){const rn=new THREE.Mesh(new THREE.BoxGeometry(.004,.016,.003),glow(rc[i%4]));rn.position.set(i<6?.04+r2()*.02:.2+r2()*.02,.03+((i%6)*.028),.133);rn.rotation.z=(r2()-.5)*1.2;b.add(rn)}
+  for(let i=0;i<12;i++){const rn=new THREE.Mesh(new THREE.BoxGeometry(.004,.016,.003),glow(rc[i%4]));rn.position.set(i<6?.04+r2()*.02:.2+r2()*.02,Math.min(.19,.03+((i%6)*.028)),.139);rn.rotation.z=(r2()-.5)*1.2;b.add(rn)}
   // strom se zářícími žilkami
   const tree=new THREE.Group();tree.position.set(-.22,0,-.02);b.add(tree);
   const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.025,.05,.32,7),mat('#5a4030'));trunk.position.y=.16;trunk.rotation.z=.12;tree.add(trunk);
