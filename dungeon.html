@@ -38,6 +38,7 @@ canvas{display:block;touch-action:none;outline:none}
 .tools{position:fixed;top:12px;right:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:60vw}
 .tools button,.btn{min-height:44px;padding:8px 14px;border-radius:12px;border:2px solid #e9c46a;background:rgba(12,10,6,.8);color:#f4e3b5;font:700 14px 'Nunito Sans',sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
 .tools button:focus-visible,.btn:focus-visible,.cell:focus-visible{outline:3px solid #7ff2dc}
+body.ml canvas{cursor:none}
 #cross{position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#f4e3b5;box-shadow:0 0 0 2px rgba(0,0,0,.6);pointer-events:none}
 #hurt{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,transparent 45%,rgba(200,0,0,.55));opacity:0}
 .pop{position:fixed;pointer-events:none;font:800 20px 'Nunito Sans',sans-serif;text-shadow:0 2px 4px #000;transform:translate(-50%,-50%);white-space:nowrap}
@@ -903,16 +904,21 @@ promptEl.onclick=()=>{near&&near.act();cv.focus()};
 const keys={};
 let yaw=0,pitch=.38,dist=5.5,drag=null,relock=false;
 // Q: zamčená myš – kurzor zmizí, kamera i postava se otáčí pohybem myši bez klikání; levé tlačítko útočí
-const locked=()=>document.pointerLockElement===cv;
+let ml=false; // Q: otáčení pohybem myši; kde to prohlížeč dovolí, myš se navíc úplně zamkne (pointer lock)
+const locked=()=>ml;
 const modeUi=()=>{$('modeBtn').textContent=locked()?'🔒 Myš zamčená (Q)':'🖱️ Zamknout myš (Q)';$('cross').hidden=!locked()};
-function lockMouse(){if(locked()||touch||paused())return;try{const r=cv.requestPointerLock();if(r&&r.catch)r.catch(()=>toast('Klikni do hry a zkus Q znovu.'))}catch(_){toast('Zamknutí myši tady nejde.')}}
-function unlockMouse(){if(locked())document.exitPointerLock()}
+function lockMouse(){if(ml||touch||paused())return;ml=true;document.body.classList.add('ml');modeUi();
+  toast('Otáčíš pohybem myši, levé tlačítko útočí. Q nebo Esc to vypne.');
+  try{const r=cv.requestPointerLock();if(r&&r.catch)r.catch(()=>{})}catch(_){}}
+function unlockMouse(){if(!ml)return;ml=false;document.body.classList.remove('ml');if(document.pointerLockElement)document.exitPointerLock();modeUi()}
 function toggleMode(){locked()?unlockMouse():lockMouse()}
 $('modeBtn').onclick=toggleMode;
-document.addEventListener('pointerlockchange',()=>{modeUi();if(locked())toast('Myš zamčená: otáčíš pohybem myši. Q nebo Esc ji uvolní.')});
-document.addEventListener('pointerlockerror',()=>toast('Zamknutí myši se nepovedlo. Klikni do hry a stiskni Q.'));
+document.addEventListener('pointerlockchange',()=>{if(!document.pointerLockElement&&ml&&lockedReal)unlockMouse();lockedReal=document.pointerLockElement===cv});
+let lockedReal=false;
+document.addEventListener('pointerlockerror',()=>{}); // bez zamčení (např. v náhledu) to jede dál, jen kurzor může narazit na okraj
 document.addEventListener('mousemove',e=>{if(!locked()||paused())return;yaw-=e.movementX*.0026;pitch=clamp(pitch+e.movementY*.002,.08,1.25)});
 addEventListener('keydown',e=>{
+  if(e.code==='Escape'&&ml){unlockMouse();return}
   if(!invEl.hidden){if(e.code==='Escape'||e.code==='KeyI'){e.preventDefault();closeInv(e.code==='KeyI')}return}
   if(!gateEl.hidden)return;
   keys[e.code]=true;
