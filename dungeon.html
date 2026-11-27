@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Krypta pod planetou</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Nunito+Sans:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: temný, tajemný fantasy dungeon, hratelný prototyp
+   IDEA: kamenná krypta pod Planetou followerů – chodíš za postavou s lucernou
+   PICTURE: celá obrazovka je 3D scéna (three.js), HUD jen minimální
+   COLOUR and TYPE: noční mlha #0b1216, oheň pochodní, tyrkysový portál; Cinzel + Nunito Sans
+   LAYOUT: plátno přes celou plochu, titul vlevo nahoře, nápověda dole, akce uprostřed dole */
+:root{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;height:100%;background:#05080a;color:#ece4d2;overflow:hidden;font:15px/1.4 'Nunito Sans',system-ui,sans-serif}
+canvas{display:block;touch-action:none;outline:none}
+.hud{position:fixed;top:14px;left:16px;pointer-events:none;text-shadow:0 2px 8px #000}
+.hud b{display:block;font:700 clamp(20px,3vw,30px)/1.1 Cinzel,serif;color:#e9c46a}
+.hud span{font-size:13px;opacity:.75}
+#help{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);width:max-content;max-width:94vw;text-align:center;font-size:13px;padding:6px 12px;border-radius:10px;background:rgba(5,8,10,.55);color:#cfc6b2;pointer-events:none}
+#prompt{position:fixed;bottom:64px;left:50%;transform:translateX(-50%);min-height:44px;padding:10px 20px;border-radius:24px;border:2px solid #e9c46a;background:rgba(12,10,6,.8);color:#f4e3b5;font:700 16px 'Nunito Sans',sans-serif;cursor:pointer}
+#prompt:focus-visible{outline:3px solid #7ff2dc}
+#toast{position:fixed;top:70px;left:50%;transform:translate(-50%,-10px);max-width:90vw;padding:10px 18px;border-radius:12px;background:rgba(10,20,22,.85);border:1px solid #3fd8c0;color:#dffcf6;opacity:0;transition:.35s;pointer-events:none;text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#fade{position:fixed;inset:0;background:radial-gradient(circle,#7ff2dc,#0a3a36);opacity:0;transition:opacity .8s;pointer-events:none}
+#joy{position:fixed;left:22px;bottom:56px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(233,196,106,.45);touch-action:none}
+#joy i{position:absolute;left:37px;top:37px;width:56px;height:56px;border-radius:50%;background:rgba(233,196,106,.55)}
+#load{position:fixed;inset:0;display:grid;place-items:center;font:700 22px Cinzel,serif;color:#e9c46a;background:#05080a;transition:opacity .6s}
+@media (max-width:600px){#help{font-size:12px}.hud span{display:none}}
+@media (prefers-reduced-motion:reduce){#toast,#fade,#load{transition:none}}
+.hud .hpw{margin-top:8px;width:min(260px,52vw);height:16px;border-radius:9px;background:rgba(0,0,0,.6);border:1px solid #6b1d1d;overflow:hidden;position:relative}
+.hud .hpw i{position:absolute;inset:0 auto 0 0;background:linear-gradient(#e2483d,#9c1f1a);transition:width .25s}
+.hud .hpw em{position:relative;display:block;text-align:center;font:700 11px/16px 'Nunito Sans',sans-serif;font-style:normal;color:#fff}
+.hud .kills{display:block;margin-top:4px;font-size:13px;opacity:.85}
+#demo{position:fixed;top:12px;left:50%;transform:translateX(-50%);padding:4px 12px;border-radius:8px;background:#3a2a06;border:1px solid #e9c46a;color:#f4e3b5;font-size:13px}
+.tools{position:fixed;top:12px;right:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:60vw}
+.tools button,.btn{min-height:44px;padding:8px 14px;border-radius:12px;border:2px solid #e9c46a;background:rgba(12,10,6,.8);color:#f4e3b5;font:700 14px 'Nunito Sans',sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.tools button:focus-visible,.btn:focus-visible,.cell:focus-visible{outline:3px solid #7ff2dc}
+#cross{position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#f4e3b5;box-shadow:0 0 0 2px rgba(0,0,0,.6);pointer-events:none}
+#hurt{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,transparent 45%,rgba(200,0,0,.55));opacity:0}
+.pop{position:fixed;pointer-events:none;font:800 20px 'Nunito Sans',sans-serif;text-shadow:0 2px 4px #000;transform:translate(-50%,-50%);white-space:nowrap}
+#touchBtns{position:fixed;right:18px;bottom:56px;display:flex;gap:12px;align-items:flex-end}
+#touchBtns button{width:64px;height:64px;border-radius:50%;border:2px solid #e9c46a;background:rgba(12,10,6,.7);color:#fff;font-size:26px}
+#touchBtns #atkBtn{width:86px;height:86px;font-size:34px}
+.over{position:fixed;inset:0;display:grid;place-items:center;background:rgba(3,5,7,.72);z-index:5;padding:16px}
+.over[hidden]{display:none}
+.card{width:min(760px,100%);max-height:92vh;overflow:auto;background:#14100b;border:2px solid #e9c46a;border-radius:16px;padding:18px;box-shadow:0 20px 60px #000}
+.card h2{margin:0 0 6px;font:700 24px/1.1 Cinzel,serif;color:#e9c46a}
+.card .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.invhead{display:flex;align-items:center;gap:10px}.invhead span{flex:1;opacity:.75;font-size:14px}
+.invhead button{width:44px;height:44px;border-radius:50%;border:1px solid #6d5a2c;background:#221a10;color:#f4e3b5;font-size:18px;cursor:pointer}
+.invg{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:18px;margin-top:10px}
+.doll{display:grid;grid-template-columns:repeat(3,58px);gap:8px}
+.bag{display:grid;grid-template-columns:repeat(auto-fill,58px);gap:8px;align-content:start}
+.cell{position:relative;width:58px;height:58px;border-radius:12px;border:2px solid #3d3122;background:#0d0a07;color:#fff;font-size:26px;display:grid;place-items:center;cursor:pointer;padding:0}
+.cell img{width:46px;height:46px;object-fit:contain}
+.cell.empty{opacity:.35;font-size:22px}
+.cell small{position:absolute;right:4px;bottom:2px;font:800 12px 'Nunito Sans',sans-serif;text-shadow:0 1px 2px #000}
+.stats,.money{font-size:14px;margin:10px 0 0;color:#d9cfb8}
+.det{min-height:44px;margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#0d0a07;font-size:15px}
+@media (max-width:600px){.invg{grid-template-columns:minmax(0,1fr)}.tools{max-width:70vw}.tools button{padding:6px 10px;font-size:13px}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="monsters.js"></script>
+</head>
+<body>
+<header class="hud"><b>Krypta pod planetou</b><span>Dungeon · Planeta followerů · <span id="who">host</span></span>
+  <div class="hpw" role="meter" aria-label="Životy"><i id="hpBar"></i><em id="hpTxt"></em></div>
+  <span class="kills" id="kills">Poražení kostlivci: 0</span></header>
+<nav class="tools">
+  <button id="invBtn" type="button">🎒 Inventář (I)</button>
+  <button id="modeBtn" type="button"></button>
+  <button id="homeBtn" type="button">⬅ Na planetu</button>
+</nav>
+<div id="demo" hidden>Zkušební režim · nic se neukládá</div>
+<div id="help">WASD chůze · Shift běh · Mezerník skok · táhni myší = rozhlížení · Q = zamknout myš (otáčíš bez klikání, postava se točí s kamerou) · levé tlačítko = útok (3 údery za sebou) · pravé tlačítko = štít (drž) · I inventář · F akce</div>
+<button id="prompt" hidden></button>
+<div id="toast"></div>
+<div id="fade"></div>
+<div id="hurt"></div>
+<div id="cross" hidden></div>
+<div id="pops"></div>
+<div id="joy" hidden><i></i></div>
+<div id="touchBtns" hidden><button id="shieldBtn" type="button" aria-label="Štít (drž)">🛡️</button><button id="jumpBtn" type="button" aria-label="Skok">⤒</button><button id="atkBtn" type="button" aria-label="Útok">⚔️</button></div>
+<section class="over" id="inv" hidden role="dialog" aria-modal="true" aria-labelledby="invT"><div class="card">
+  <div class="invhead"><h2 id="invT">Inventář</h2><span id="invWho"></span><button id="invX" type="button" aria-label="Zavřít">✕</button></div>
+  <div class="invg"><div><div class="doll" id="doll"></div><p class="stats" id="invStats"></p></div>
+  <div><div class="bag" id="bag"></div><p class="money" id="money"></p></div></div>
+  <p class="det" id="invDet">Klepni na věc a nasadíš ji, nebo ji uložíš do batohu.</p>
+</div></section>
+<section class="over" id="gate" hidden role="dialog" aria-modal="true" aria-labelledby="gT"><div class="card">
+  <h2 id="gT"></h2><p id="gP"></p><div class="row" id="gRow"></div>
+</div></section>
+<div id="load">Načítám kryptu…</div>
+<script>
+{
+const $=id=>document.getElementById(id);
+if(!window.THREE){$('load').textContent='3D knihovna se nenačetla. Zkus obnovit stránku.';throw new Error('THREE missing')}
+const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+let seed=7;
+const R=()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const rr=(a,b)=>a+R()*(b-a);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ---------- renderer a scéna ---------- */
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.2;
+document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x070b0e);
+scene.fog=new THREE.FogExp2(0x0b1216,.03);
+const cam=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,120);
+scene.add(new THREE.HemisphereLight(0x4a6078,0x140f0a,.6));
+const moon=new THREE.DirectionalLight(0x9cbcff,.45);moon.position.set(10,20,-8);scene.add(moon);
+
+/* ---------- procedurální textury ---------- */
+const canv=(w,h,draw)=>{const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);return c};
+const T=(c,rx=1,ry=1)=>{const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rx,ry);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return t};
+const cobC=canv(512,512,(x,w,h)=>{
+  x.fillStyle='#17140f';x.fillRect(0,0,w,h);
+  for(let i=0;i<170;i++){
+    const cx=R()*w,cy=R()*h,rx=rr(16,30),ry=rr(13,24),a=R()*3,l=rr(18,34);
+    for(const dx of[-w,0,w])for(const dy of[-h,0,h]){
+      x.save();x.translate(cx+dx,cy+dy);x.rotate(a);
+      const g=x.createRadialGradient(-rx*.3,-ry*.3,2,0,0,rx);
+      g.addColorStop(0,`hsl(32,9%,${l+10}%)`);g.addColorStop(1,`hsl(30,10%,${l-8}%)`);
+      x.fillStyle=g;x.beginPath();x.ellipse(0,0,rx,ry,0,0,7);x.fill();x.restore();
+    }
+  }
+  x.fillStyle='rgba(80,120,55,.2)';for(let i=0;i<600;i++)x.fillRect(R()*w,R()*h,2,2);
+});
+const brickC=canv(512,512,(x,w,h)=>{
+  x.fillStyle='#120f0c';x.fillRect(0,0,w,h);
+  for(let r=0;r<16;r++){let bx=r%2?-48:0;
+    while(bx<w){const bw=rr(72,108)|0,l=rr(16,30);
+      x.fillStyle=`hsl(${rr(25,40)},8%,${l}%)`;x.fillRect(bx+3,r*32+3,bw-6,26);
+      x.fillStyle='rgba(255,255,255,.05)';x.fillRect(bx+3,r*32+3,bw-6,4);
+      bx+=bw;}
+  }
+  for(let i=0;i<45;i++){x.fillStyle=`rgba(70,110,50,${rr(.1,.3)})`;x.fillRect(R()*w,R()*h,rr(3,8),rr(20,90))}
+});
+const woodC=canv(256,256,(x,w,h)=>{
+  for(let i=0;i<4;i++){
+    x.fillStyle=`hsl(28,${rr(28,40)}%,${rr(15,24)}%)`;x.fillRect(i*64,0,64,h);
+    x.strokeStyle='rgba(0,0,0,.35)';
+    for(let k=0;k<14;k++){const sx=i*64+R()*64;x.beginPath();x.moveTo(sx,0);x.bezierCurveTo(sx+rr(-6,6),h*.3,sx+rr(-6,6),h*.7,sx,h);x.stroke()}
+    x.fillStyle='#0a0603';x.fillRect(i*64,0,3,h);
+  }
+});
+const webC=canv(256,256,(x,w,h)=>{
+  x.strokeStyle='rgba(225,230,235,.6)';x.lineWidth=1.2;const n=10;
+  for(let i=0;i<n;i++){const a=i/(n-1)*Math.PI/2;x.beginPath();x.moveTo(0,0);x.lineTo(Math.cos(a)*w*1.4,Math.sin(a)*h*1.4);x.stroke()}
+  for(let r=18;r<w*1.3;r+=rr(14,26)){x.beginPath();
+    for(let i=0;i<n;i++){const a=i/(n-1)*Math.PI/2,q=r*rr(.93,1.05);i?x.lineTo(Math.cos(a)*q,Math.sin(a)*q):x.moveTo(Math.cos(a)*q,Math.sin(a)*q)}
+    x.stroke();}
+});
+const softC=canv(64,64,(x)=>{const g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,64,64)});
+const flameC=canv(64,64,(x)=>{const g=x.createRadialGradient(32,36,0,32,32,32);g.addColorStop(0,'rgba(255,250,215,1)');g.addColorStop(.25,'rgba(255,180,60,.9)');g.addColorStop(.6,'rgba(200,70,10,.35)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,64,64)});
+const bannerC=canv(128,256,(x,w,h)=>{
+  x.fillStyle='#5c1515';x.beginPath();x.moveTo(0,0);x.lineTo(w,0);x.lineTo(w,h*.72);
+  for(let i=w;i>=0;i-=10)x.lineTo(i,h*.72+rr(0,h*.27));x.closePath();x.fill();
+  x.strokeStyle='#a8872e';x.lineWidth=5;x.beginPath();x.arc(w/2,h*.33,30,0,7);x.stroke();
+  x.beginPath();x.moveTo(w/2,h*.2);x.lineTo(w/2,h*.47);x.moveTo(w/2-16,h*.29);x.lineTo(w/2+16,h*.29);x.stroke();
+  for(let i=0;i<9;i++)x.clearRect(rr(8,w-16),rr(20,h*.7),rr(3,9),rr(3,12));
+});
+
+/* ---------- materiály a pomocníci ---------- */
+const M=o=>new THREE.MeshStandardMaterial(o);
+const cache={};
+const stone=(rx,ry)=>cache['s'+rx+ry]||(cache['s'+rx+ry]=(()=>{const t=T(brickC,rx,ry);return M({map:t,bumpMap:t,bumpScale:.05,roughness:.95,color:0xbdb5a8})})());
+const floor=(rx,ry)=>{const t=T(cobC,rx,ry);return M({map:t,bumpMap:t,bumpScale:.07,roughness:.9})};
+const woodM=M({map:T(woodC),roughness:.85});
+const ironM=M({color:0x2d2b29,metalness:.8,roughness:.5});
+const darkM=M({color:0x030303,roughness:1});
+const statueM=M({color:0x8d918c,roughness:.95});
+const boneM=M({color:0xd8cfb6,roughness:.8});
+const shroomM=M({color:0x2ad6c0,emissive:0x1fcab0,emissiveIntensity:1.6});
+const stemM=M({color:0xcfe8df,roughness:.7});
+const add=(o,x=0,y=0,z=0,p=scene)=>{o.position.set(x,y,z);p.add(o);return o};
+const box=(w,h,d,m,x,y,z,p)=>add(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m),x,y,z,p);
+const cyl=(rt,rb,h,m,x,y,z,seg=12,p)=>add(new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),m),x,y,z,p);
+const spr=(map,color,s,x,y,z,op=1)=>{const m=new THREE.Sprite(new THREE.SpriteMaterial({map,color,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false}));m.scale.set(s,s,1);return add(m,x,y,z)};
+const flameT=T(flameC),softT=T(softC),webT=T(webC);
+
+/* ---------- kolize ---------- */
+const CH={x0:3.2,z0:-15,z1:-4},BR={x:8.3,w:1.7};
+const circles=[],rects=[];
+function free(x,z){
+  if(x<-13.5||x>13.5||z<-23.3||z>11.5)return false;
+  if(x>CH.x0-.3&&z>CH.z0-.3&&z<CH.z1+.3&&Math.abs(x-BR.x)>BR.w/2-.28)return false;
+  for(const c of circles)if((x-c.x)**2+(z-c.z)**2<c.r*c.r)return false;
+  for(const b of rects)if(Math.abs(x-b.x)<b.w&&Math.abs(z-b.z)<b.d)return false;
+  return true;
+}
+
+/* ---------- podlaha, propast, zdi ---------- */
+const D=14;
+box(17.2,D,36,floor(4.3,9),-5.4,-D/2,-6);
+box(10.8,D,16,floor(2.7,4),8.6,-D/2,4);
+box(10.8,D,9,floor(2.7,2.25),8.6,-D/2,-19.5);
+box(10.8,.2,11,M({color:0x06141a,emissive:0x0a2a30,emissiveIntensity:.6,roughness:.2,metalness:.3}),8.6,-12,-9.5);
+box(1,27,37,stone(9,7),-14.5,-.5,-6);
+box(1,27,37,stone(9,7),14.5,-.5,-6);
+box(29,27,1,stone(7,7),0,-.5,-24.5);
+box(29,27,1,stone(7,7),0,-.5,12.5);
+box(29,1,37,stone(7,9),0,13.5,-6);
+
+/* sloupy a oblouky */
+for(const x of[-9,3])for(const z of[-20,-12,-4,4]){
+  box(1.6,.6,1.6,stone(.4,.15),x,.3,z);
+  cyl(.6,.66,6.4,stone(1.2,1.6),x,3.6,z,14);
+  box(1.6,.5,1.6,stone(.4,.12),x,7.05,z);
+  circles.push({x,z,r:1.05});
+}
+const arch=(r,x,z,rot)=>{const m=add(new THREE.Mesh(new THREE.TorusGeometry(r,.45,6,20,Math.PI),stone(2,.3)),x,7.3,z);m.rotation.y=rot;return m};
+for(const x of[-9,3])for(const z of[-16,-8,0])arch(4,x,z,Math.PI/2);
+arch(6,-3,-20,0);arch(6,-3,4,0);
+
+/* pochodně */
+const torches=[];
+function torch(x,y,z,ry){
+  const g=add(new THREE.Group(),x,y,z);g.rotation.y=ry;g.updateMatrixWorld();
+  box(.16,.3,.08,ironM,0,0,0,g);
+  const st=cyl(.04,.03,.6,woodM,0,.2,.16,8,g);st.rotation.x=.45;
+  cyl(.11,.05,.14,ironM,0,.47,.29,8,g);
+  const wp=new THREE.Vector3(0,.68,.31);g.localToWorld(wp);
+  const s=spr(flameT,0xffaa55,.6,wp.x,wp.y,wp.z);
+  const l=add(new THREE.PointLight(0xff8a3c,1.7,12,2),wp.x,wp.y+.1,wp.z);
+  torches.push({s,l,ph:R()*9});
+}
+[[-8.3,3.2,-12,Math.PI/2],[-8.3,3.2,4,Math.PI/2],[2.3,3.2,-20,-Math.PI/2],[2.3,3.2,-4,-Math.PI/2],[-13.95,3.2,-10,Math.PI/2],[13.95,3.2,6,-Math.PI/2],[-7,3.2,-23.95,0],[1,3.2,-23.95,0]]
+  .forEach(a=>torch(...a));
+
+/* ---------- portál s houbami ---------- */
+const PX=-3;
+box(.5,5,.8,stone(.2,1.3),PX-1.85,2.5,-23.7);box(.5,5,.8,stone(.2,1.3),PX+1.85,2.5,-23.7);
+add(new THREE.Mesh(new THREE.TorusGeometry(1.85,.3,6,20,Math.PI),stone(1,.2)),PX,5,-23.7);
+box(4.8,.2,1.4,stone(1.2,.3),PX,.1,-23.3);
+const vs='varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}';
+const portalMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uT:{value:0}},vertexShader:vs,fragmentShader:`
+varying vec2 vUv;uniform float uT;
+void main(){
+  vec2 q=vec2((vUv.x-.5)*3.2,vUv.y*6.6);
+  float dd=q.y<5.0?abs(q.x):length(q-vec2(0.,5.));
+  if(dd>1.6)discard;
+  vec2 c=q-vec2(0.,3.0);float d=length(c);float an=atan(c.y,c.x);
+  float v=sin(an*4.0+d*3.5-uT*2.2)*.5+.5;float w=sin(an*7.0-d*5.0+uT*3.1)*.5+.5;
+  vec3 col=mix(vec3(.01,.1,.11),vec3(.25,1.,.85),v*w*exp(-d*.35));
+  col+=vec3(.6,1.,.9)*exp(-d*1.4)*.8+vec3(.2,.9,.8)*smoothstep(1.15,1.6,dd);
+  gl_FragColor=vec4(col,.93);
+}`});
+add(new THREE.Mesh(new THREE.PlaneGeometry(3.2,6.6),portalMat),PX,3.3,-23.85);
+add(new THREE.PointLight(0x3ff0d0,2.4,15,2),PX,2.5,-22.3);
+circles.push({x:PX-1.85,z:-23.4,r:.6},{x:PX+1.85,z:-23.4,r:.6});
+const capG=new THREE.SphereGeometry(1,12,6,0,Math.PI*2,0,Math.PI/2),stemG=new THREE.CylinderGeometry(.35,.5,1,8);
+function shroom(x,y,z,s,rx=0){
+  const g=add(new THREE.Group(),x,y,z);g.rotation.x=rx;g.scale.setScalar(s);
+  const st=new THREE.Mesh(stemG,stemM);st.scale.set(.25,1,.25);st.position.y=.5;g.add(st);
+  const cp=new THREE.Mesh(capG,shroomM);cp.scale.set(.45,.3,.45);cp.position.y=.95;g.add(cp);
+}
+for(let i=0;i<18;i++){const side=R()<.5?-1:1;shroom(PX+side*rr(1.3,3.4),0,rr(-23.6,-21.3),rr(.15,.5))}
+for(let i=0;i<10;i++){const side=R()<.5?-1:1;shroom(PX+side*rr(2.1,2.4),rr(.5,4.5),-23.3,rr(.12,.25),Math.PI/2)}
+for(let i=0;i<6;i++)spr(softT,0x2ad6c0,rr(.8,1.6),PX+(R()<.5?-1:1)*rr(1.6,3),rr(.2,1.2),rr(-23.2,-21.8),.35);
+
+/* ---------- výklenky se sochami ---------- */
+function niche(x,z,ry){
+  const g=add(new THREE.Group(),x,0,z);g.rotation.y=ry;
+  box(2.2,5.6,.4,darkM,0,2.8,0,g);
+  box(.35,5.8,.6,stone(.1,1.5),-1.2,2.9,.1,g);box(.35,5.8,.6,stone(.1,1.5),1.2,2.9,.1,g);
+  box(2.8,.4,.7,stone(.7,.1),0,5.9,.1,g);box(1.3,.8,1,stone(.3,.2),0,.4,.4,g);
+  const s=makeHero(statueM);s.g.scale.setScalar(1.3);s.g.position.set(0,.8,.4);g.add(s.g);
+  s.arms[1].sp.rotation.x=-2.7;s.arms[1].el.rotation.x=-.2;s.arms[0].sp.rotation.x=-.9;s.arms[0].el.rotation.x=-1.3;
+  return g;
+}
+
+/* ---------- mříže ---------- */
+function ironGate(z){
+  box(.3,4.4,3.2,darkM,-13.85,2.2,z);
+  box(.7,4.9,.5,stone(.2,1.2),-13.8,2.45,z-1.85);box(.7,4.9,.5,stone(.2,1.2),-13.8,2.45,z+1.85);
+  box(.7,.6,4.2,stone(1,.15),-13.8,5.1,z);
+  for(let i=0;i<9;i++){const bz=z-1.4+i*.35;cyl(.035,.035,4.1,ironM,-13.55,2.4,bz,6);const sp=cyl(0,.06,.25,ironM,-13.55,.22,bz,6);sp.rotation.x=Math.PI}
+  for(const y of[1.3,2.5,3.7])box(.07,.07,3,ironM,-13.55,y,z);
+  for(let i=0;i<4;i++){const b=cyl(.03,.03,rr(.3,.5),boneM,rr(-13,-11.8),.03,z+rr(-1.5,1.5),6);b.rotation.set(Math.PI/2,R()*3,0)}
+  const sk=add(new THREE.Mesh(new THREE.SphereGeometry(.13,10,8),boneM),-12.6,.12,z+rr(-1,1));
+  for(const s of[-1,1])add(new THREE.Mesh(new THREE.SphereGeometry(.03,6,4),darkM),.11,.03,s*.045,sk);
+}
+ironGate(-6);ironGate(-14);
+
+/* ---------- truhla ---------- */
+const chest=add(new THREE.Group(),-12,0,-18.5);chest.rotation.y=Math.PI/2;
+box(.95,.55,.6,woodM,0,.275,0,chest);
+for(const x of[-.35,.35])box(.06,.57,.62,ironM,x,.28,0,chest);
+const lidP=add(new THREE.Group(),0,.55,-.3,chest);
+const lid=add(new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.95,14,1,false,0,Math.PI),woodM),0,0,.3,lidP);lid.rotation.z=Math.PI/2;
+const gold=box(.7,.12,.4,M({color:0xffc24a,emissive:0xb07810,emissiveIntensity:.9,metalness:.9,roughness:.3}),0,.5,0,chest);gold.visible=false;
+rects.push({x:-12,z:-18.5,w:.55,d:.75});
+let chestOpen=false,lidA=0;
+
+/* ---------- most přes propast ---------- */
+for(let z=-3.8,i=0;z>-15.3;z-=.38,i++){
+  const w=i%7===3?1.1:1.7,p=box(w,.12,.3,woodM,BR.x+(w<1.7?rr(-.3,.3):rr(-.05,.05)),-.07,z);
+  p.rotation.set(rr(-.03,.03),rr(-.05,.05),rr(-.05,.05));
+}
+for(const s of[-1,1]){
+  box(.12,.2,11.8,woodM,BR.x+s*.55,-.25,-9.5);
+  for(const z of[-3.9,-9.5,-15.1])box(.12,1.2,.12,woodM,BR.x+s*.95,.45,z);
+  const rope=cyl(.025,.025,11.2,M({color:0x8a7350}),BR.x+s*.95,.95,-9.5,6);rope.rotation.x=Math.PI/2;
+}
+/* zřícený kamenný most nahoře */
+const ub1=box(3.4,.9,2.4,stone(.9,.25),5,7.2,-9.5);ub1.rotation.z=-.05;
+const ub2=box(2.6,.9,2.4,stone(.7,.25),12.6,7,-9.5);ub2.rotation.z=.12;
+const ub3=box(1.2,.7,1.6,stone(.3,.2),7.5,6.2,-9.2);ub3.rotation.set(.3,.4,-.6);
+
+/* vodopád */
+const waterMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,uniforms:{uT:{value:0}},vertexShader:vs,fragmentShader:`
+varying vec2 vUv;uniform float uT;
+void main(){
+  float n=sin(vUv.x*42.0+sin(vUv.y*6.0)*2.0)*.5+.5;
+  float f=fract(vUv.y*5.0+uT*1.4+n*.35);
+  float a=(.3+.45*smoothstep(.55,1.,f))*smoothstep(0.,.18,vUv.x)*smoothstep(1.,.82,vUv.x);
+  gl_FragColor=vec4(mix(vec3(.28,.48,.58),vec3(.88,.98,1.),f*n),a);
+}`});
+const wf=add(new THREE.Mesh(new THREE.PlaneGeometry(6,23),waterMat),13.9,-1.5,-9.5);wf.rotation.y=-Math.PI/2;
+box(.4,1.2,6.4,darkM,13.85,10.4,-9.5);
+for(let i=0;i<7;i++)spr(softT,0x9fc4d0,rr(3,5),rr(10,13.5),rr(-11,-6),rr(-13,-6),.18);
+/* měsíční paprsek */
+const shaft=add(new THREE.Mesh(new THREE.CylinderGeometry(.8,3.6,26,24,1,true),new THREE.MeshBasicMaterial({color:0x9fc4ff,transparent:true,opacity:.07,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false})),9.5,1,-10);
+shaft.rotation.z=.25;
+
+/* ---------- výklenky, bedny, sudy, pavučiny, prapory ---------- */
+niche(-8,-23.9,0);niche(2,-23.9,0);
+circles.push({x:-8,z:-23.3,r:1},{x:2,z:-23.3,r:1});
+const st3=niche(13.9,-20,-Math.PI/2);circles.push({x:13.3,z:-20,r:1});
+[[-12.4,9.6,1],[-12.3,8.3,.9],[-12.4,9.1,.8,1],[12.2,9.8,1],[12.6,8.5,.8],[11.8,-19.8,.9],[-11.6,-22.8,.8]].forEach(([x,z,s,top])=>{
+  const c=box(s,s,s,woodM,x,top?1.45:s/2,z);c.rotation.y=rr(-.3,.3);
+  if(!top)rects.push({x,z,w:s/2+.3,d:s/2+.3});
+});
+[[-12.8,-1.5],[-12.9,-.6],[6,10.6],[12.8,-17.4]].forEach(([x,z])=>{
+  cyl(.4,.36,1,woodM,x,.5,z,14);for(const y of[.2,.8])cyl(.41,.41,.06,ironM,x,y,z,14);
+  circles.push({x,z,r:.7});
+});
+const webM=new THREE.MeshBasicMaterial({map:webT,transparent:true,depthWrite:false,side:THREE.DoubleSide,opacity:.75});
+[[-13.2,11.6,-23.2,Math.PI/4,0],[13.2,11.6,-23.2,-Math.PI/4,-Math.PI/2],[-13.2,11.6,11.7,3*Math.PI/4,-Math.PI/2],[-9,8.4,-16,Math.PI/2,0],[3,8.4,-8,Math.PI/2,-Math.PI/2],[-13.3,4.6,-14.7,Math.PI/4,0],[-9,1.4,-20.7,0,Math.PI],[3,1.5,3.3,0,Math.PI/2]].forEach(([x,y,z,ry,rz])=>{
+  const w=add(new THREE.Mesh(new THREE.PlaneGeometry(2.4,2.4),webM),x,y,z);w.rotation.set(0,ry,rz);
+});
+const banners=[];const banM=new THREE.MeshStandardMaterial({map:T(bannerC),transparent:true,alphaTest:.4,side:THREE.DoubleSide,roughness:.9});
+[[-13.9,7.4,-10,Math.PI/2],[-13.9,7.4,2,Math.PI/2],[-7,7.6,-23.9,0],[1,7.6,-23.9,0],[13.9,7.4,4,-Math.PI/2]].forEach(([x,y,z,ry],i)=>{
+  const p=add(new THREE.Group(),x,y,z);p.rotation.y=ry;
+  const b=add(new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.6),banM),0,-1.3,.08,p);
+  box(1.6,.08,.08,woodM,0,0,.08,p);banners.push({p,ph:i*1.7});
+});
+
+/* prach ve vzduchu */
+const DN=420,dpos=new Float32Array(DN*3);
+for(let i=0;i<DN;i++){dpos[i*3]=rr(-13,13);dpos[i*3+1]=rr(0,11);dpos[i*3+2]=rr(-23,11)}
+const dGeo=new THREE.BufferGeometry();dGeo.setAttribute('position',new THREE.BufferAttribute(dpos,3));
+scene.add(new THREE.Points(dGeo,new THREE.PointsMaterial({size:.06,map:softT,color:0xbfd8ff,transparent:true,opacity:.55,blending:THREE.AdditiveBlending,depthWrite:false})));
+
+/* ---------- postava (s místy pro výbavu) ---------- */
+function makeHero(mat,look){
+  look=look||{};
+  const S=c=>mat||M({color:c,roughness:.75});
+  const m={skin:S(look.skin||0xd9a27a),tunic:S(look.shirt||0x6e2f24),cowl:S(0x263852),pants:S(0x3a3128),shin:S(0x3a3128),boot:S(0x3b2a1c),
+    leather:S(0x7d522e),hair:S(0x3a2312),eye:S(0x15110e),hand:S(look.skin||0xd9a27a),bracer:S(0x7d522e)};
+  const g=new THREE.Group(),body=new THREE.Group();g.rotation.order='YXZ';body.position.y=.95;g.add(body);
+  const a=(p,geo,mm,x=0,y=0,z=0)=>add(new THREE.Mesh(geo,mm),x,y,z,p);
+  const piv=(p,x=0,y=0,z=0)=>add(new THREE.Group(),x,y,z,p);
+  a(body,new THREE.CylinderGeometry(.17,.15,.2,14),m.pants,0,.02);
+  const torso=piv(body,0,.1);
+  a(torso,new THREE.CylinderGeometry(.205,.165,.48,14),m.tunic,0,.24);
+  a(torso,new THREE.TorusGeometry(.17,.028,6,18),m.leather,0,.03).rotation.x=Math.PI/2;
+  a(torso,new THREE.SphereGeometry(.205,14,8,0,Math.PI*2,0,Math.PI/2),m.tunic,0,.47).scale.y=.45;
+  a(torso,new THREE.TorusGeometry(.13,.06,8,16),m.cowl,0,.53).rotation.x=Math.PI/2;
+  a(torso,new THREE.CylinderGeometry(.05,.06,.1,10),m.skin,0,.59);
+  const head=piv(torso,0,.7);
+  a(head,new THREE.SphereGeometry(.125,18,14),m.skin).scale.set(1,1.12,1.04);
+  a(head,new THREE.SphereGeometry(.135,18,12,0,Math.PI*2,0,Math.PI*.52),m.hair,0,.025,-.012);
+  a(head,new THREE.SphereGeometry(.13,14,10),m.hair,0,-.02,-.035).scale.set(1,1.02,.9);
+  for(const s of[-1,1]){
+    a(head,new THREE.SphereGeometry(.018,8,6),m.eye,s*.045,.015,.118);
+    a(head,new THREE.SphereGeometry(.03,8,6),m.skin,s*.125,0,0);
+    a(head,new THREE.BoxGeometry(.045,.012,.012),m.hair,s*.045,.05,.122);
+  }
+  a(head,new THREE.ConeGeometry(.022,.05,8),m.skin,0,-.02,.135).rotation.x=Math.PI/2;
+  a(head,new THREE.BoxGeometry(.04,.008,.01),m.eye,0,-.065,.122);
+  const legs=[];
+  for(const s of[-1,1]){
+    const hip=piv(body,s*.09,-.04);
+    a(hip,new THREE.CapsuleGeometry(.078,.26,4,10),m.pants,0,-.2);
+    const knee=piv(hip,0,-.42);
+    a(knee,new THREE.CapsuleGeometry(.066,.24,4,10),m.shin,0,-.16);
+    a(knee,new THREE.CylinderGeometry(.085,.08,.2,12),m.boot,0,-.33);
+    a(knee,new THREE.BoxGeometry(.12,.08,.24),m.boot,0,-.46,.05);
+    legs.push({hip,knee});
+  }
+  const arms=[],bracers=[];
+  for(const s of[-1,1]){
+    const sp=piv(torso,s*.255,.42);sp.rotation.z=s*.1;
+    a(sp,new THREE.SphereGeometry(.078,10,8),m.tunic);
+    a(sp,new THREE.CapsuleGeometry(.058,.2,4,10),m.tunic,0,-.15);
+    const el=piv(sp,0,-.31);
+    a(el,new THREE.CapsuleGeometry(.05,.17,4,10),m.skin,0,-.12);
+    const br=a(el,new THREE.CylinderGeometry(.064,.06,.13,10),m.bracer,0,-.18);br.visible=false;bracers.push(br);
+    a(el,new THREE.SphereGeometry(.057,10,8),m.hand,0,-.29);
+    arms.push({sp,el});
+  }
+  // místa, kam se věší výbava (každé se při převlékání vyprázdní)
+  const at={head:piv(head),neck:piv(torso),chest:piv(torso),back:piv(torso,0,.27,-.2),cape:piv(torso,0,.5,-.21),
+    handR:piv(arms[1].el,0,-.3,0),front:piv(torso,-.04,.3,.32),armL:piv(arms[0].el,-.085,-.16,0),wristR:piv(arms[1].el,0,-.2,0),
+    thighL:piv(legs[0].hip),thighR:piv(legs[1].hip),kneeL:piv(legs[0].knee),kneeR:piv(legs[1].knee),bootL:piv(legs[0].knee),bootR:piv(legs[1].knee)};
+  let lantern=null;
+  if(!mat){ // lucerna visí u pasu, ruce zůstanou volné pro zbraň a štít
+    lantern=piv(body,-.25,.02,.05);
+    a(lantern,new THREE.TorusGeometry(.035,.007,6,12,Math.PI),m.eye,0,.0);
+    a(lantern,new THREE.ConeGeometry(.065,.05,4),m.eye,0,-.03).rotation.y=Math.PI/4;
+    a(lantern,new THREE.BoxGeometry(.08,.11,.08),M({color:0xffd08a,emissive:0xffa640,emissiveIntensity:2.4}),0,-.11);
+    a(lantern,new THREE.BoxGeometry(.1,.02,.1),m.eye,0,-.175);
+    lantern.add(add(new THREE.PointLight(0xffc070,1.5,9,2),0,-.1,.1));
+  }
+  return {g,body,torso,head,legs,arms,bracers,lantern,at,m,phase:0,cape:null,shield:false};
+}
+function animHero(h,sp,dt,t,air){
+  const a=Math.min(1,sp/2.6),run=clamp((sp-2.6)/2.6,0,1);
+  h.phase+=dt*sp*2.6;const ph=h.phase,amp=.55+.25*run;
+  h.legs.forEach((L,i)=>{const o=ph+i*Math.PI;
+    L.hip.rotation.x=air?(i?-.6:.2):Math.sin(o)*amp*a;
+    L.knee.rotation.x=air?(i?1:.4):.05+(.1+Math.max(0,-Math.cos(o))*(.9+run*.5))*a;});
+  h.arms.forEach((A,i)=>{const s=Math.sin(ph+i*Math.PI);
+    if(i===0&&h.shield){A.sp.rotation.x=-.5+s*.1*a;A.sp.rotation.z=-.32;A.el.rotation.x=-1.05}
+    else{A.sp.rotation.x=-s*amp*.9*a+Math.sin(t*1.6+i)*.02;A.sp.rotation.z=(i?1:-1)*.1;A.el.rotation.x=-.15-.5*a-.3*run}});
+  if(h.lantern)h.lantern.rotation.x=Math.sin(ph*2)*.25*a;
+  if(h.cape)h.cape.rotation.x=.08+.45*a+.25*run+Math.sin(t*2.3)*.03;
+  h.body.position.y=.95+Math.abs(Math.sin(ph))*.045*a-.03*run+Math.sin(t*2)*.004;
+  h.torso.rotation.set(.06*a+.12*run,Math.sin(ph)*.1*a,0);h.head.rotation.x=-.05*a-.08*run;
+}
+// 3 navazující seky: 1. zprava doleva, 2. zleva doprava, 3. shora dolů s výpadem
+const COMBO=[{dur:.36,imp:.42,mul:1,reach:2.2,kb:.35},{dur:.36,imp:.42,mul:1.2,reach:2.2,kb:.45},{dur:.56,imp:.5,mul:1.8,reach:2.6,kb:1}];
+function atkPose(h,i,k){
+  const A=h.arms[1],T=h.torso,sm=x=>x*x*(3-2*x),p=sm(clamp((k-.18)/.34,0,1)),w=k<.75?1:1-sm((k-.75)/.25),L=(x,y)=>x+(y-x)*p,mix=(o,v)=>o+(v-o)*w;
+  let sx,sz,ex,ty=0,tx=T.rotation.x;
+  if(i===0){sx=-1.45;sz=L(1.1,-.7);ex=-.25;ty=L(.6,-.7)}
+  else if(i===1){sx=-1.35;sz=L(-.7,1.1);ex=-.35;ty=L(-.6,.7)}
+  else{sx=L(-3,-.7);sz=.15;ex=L(-.6,-.1);tx=L(-.15,.35)}
+  A.sp.rotation.x=mix(A.sp.rotation.x,sx);A.sp.rotation.z=mix(.1,sz);A.el.rotation.x=mix(A.el.rotation.x,ex);
+  T.rotation.y=mix(T.rotation.y,ty);T.rotation.x=mix(T.rotation.x,tx);
+}
+
+/* ---------- předměty: stejná id jako na planetě ---------- */
+const RAR={common:['Základní','#9aa1ad'],uncommon:['Obyčejný','#3fbf5f'],rare:['Vzácný','#3a8dff'],epic:['Epický','#a24bff'],legend:['Legendární','#ffc300'],divine:['Božský','#ffffff']};
+const ITEMS={
+  boss_sword:{name:'Zubatý meč ze záhrobí',slot:'weapon',icon:'🗡️',rarity:'rare',dmg:2.5},
+  repair_hat:{name:'Klobouk opraváře',slot:'helmet',icon:'🧢',img:'img/klobouk-opravare.png',rarity:'rare'},
+  basic_sword:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'common',dmg:1.2},
+  basic_sword_g:{name:'Obyčejný meč',slot:'weapon',icon:'⚔️',rarity:'uncommon',dmg:1.3},
+  herb:{name:'Léčivá bylina',slot:'bag',icon:'🌿',stack:'herbs',rarity:'common'},
+  meds:{name:'Antibiotika',slot:'bag',icon:'💊',stack:'meds',rarity:'uncommon',use:'heal'},
+  grain:{name:'Obilí',slot:'bag',icon:'🌾',stack:'grain',rarity:'common'},
+  bread:{name:'Chleba',slot:'bag',icon:'🍞',stack:'bread',rarity:'common',use:'eat'},
+  earth_heart_1:{name:'Srdce země',slot:'talisman',icon:'💚',img:'img/srdce-zeme-1.png',rarity:'epic',dmgAdd:1.5},
+  earth_heart_2:{name:'Srdce země',slot:'talisman',icon:'💙',img:'img/srdce-zeme-2.png',rarity:'rare',dmgAdd:1.2},
+  earth_heart_3:{name:'Srdce země',slot:'talisman',icon:'💚',img:'img/srdce-zeme-3.png',rarity:'uncommon',dmgAdd:1},
+  founder_cape:{name:'Plášť zakladatele',slot:'banner',icon:'🧥',img:'img/plast-zakladatele.png',rarity:'legend',hp:50},
+  arena_shield:{name:'Štít podsvětí',slot:'shield',icon:'🛡️',img:'img/stit-areny.png',rarity:'epic',block:.25},
+  arena_boots:{name:'Boty podsvětí',slot:'boots',icon:'🥾',img:'img/boty-areny.png',rarity:'legend',hp:30}};
+const TIERED={ // šedá / zelená (_u) / modrá (_r)
+  wood_sword_1:['Dřevěný cvičák','weapon','🗡️','drevo-mec-1',[{dmg:1.3},{dmg:1.4},{dmg:1.6}]],
+  wood_sword_2:['Dřevěný meč s provazem','weapon','🗡️','drevo-mec-2',[{dmg:1.3,hit:.05},{dmg:1.4,hit:.08},{dmg:1.6,hit:.12}]],
+  wood_sword_3:['Zubatá dřevěná šavle','weapon','🗡️','drevo-mec-3',[{dmg:1.4,hit:-.05},{dmg:1.5,hit:-.03},{dmg:1.8}]],
+  cloth_pants_1:['Roztřepené kraťasy','pants','👖','platno-kalhoty-1',[{hp:5},{hp:8},{hp:12}]],
+  cloth_pants_2:['Záplatované kalhoty','pants','👖','platno-kalhoty-2',[{hp:7},{hp:10},{hp:15}]],
+  cloth_pants_3:['Vybledlé kalhoty s kapsou','pants','👖','platno-kalhoty-3',[{hp:5,sta:10},{hp:8,sta:15},{hp:12,sta:25}]],
+  cloth_gloves_1:['Bezprsté rukavice','gloves','🧤','platno-rukavice-1',[{hp:5},{hp:8},{hp:12}]],
+  cloth_gloves_2:['Rukavice s koženou dlaní','gloves','🧤','platno-rukavice-2',[{hp:3,atk:1},{hp:5,atk:2},{hp:8,atk:3}]],
+  cloth_gloves_3:['Pletené rukavice s přezkou','gloves','🧤','platno-rukavice-3',[{hp:5,def:.05},{hp:8,def:.08},{hp:12,def:.12}]],
+  wood_shield_1:['Štít s bílým křížem','shield','🛡️','drevo-stit-1',[{block:.10},{block:.13},{block:.17}]],
+  wood_shield_2:['Štít s bílým pruhem','shield','🛡️','drevo-stit-2',[{block:.10,hp:3},{block:.13,hp:5},{block:.17,hp:8}]],
+  wood_shield_3:['Světlý štít s kovanou puklicí','shield','🛡️','drevo-stit-3',[{block:.12,sta:-5},{block:.16,sta:-5},{block:.21,sta:-5}]],
+  wood_shield_4:['Runový štít','shield','🛡️','drevo-stit-4',[{block:.10,def:.03},{block:.13,def:.05},{block:.17,def:.08}]],
+  cloth_pack_1:['Pytel na provaze','backpack','🎒','platno-batoh-1',[{slots:2},{slots:4},{slots:7}]],
+  cloth_pack_2:['Kožený batoh s přezkami','backpack','🎒','platno-batoh-2',[{slots:3},{slots:6},{slots:10}]],
+  cloth_pack_3:['Pletený batoh','backpack','🎒','platno-batoh-3',[{slots:2,hp:5},{slots:5,hp:8},{slots:8,hp:12}]]};
+for(const [k,[name,slot,icon,img,t]] of Object.entries(TIERED))t.forEach((u,n)=>{ITEMS[k+['','_u','_r'][n]]={name,slot,icon,img:'img/'+img+'.png',rarity:['common','uncommon','rare'][n],...u}});
+const tierOf=id=>/_r$/.test(id||'')?2:/_u$/.test(id||'')?1:0,baseOf=id=>String(id||'').replace(/_[ur]$/,'');
+const statTxt=it=>[it.slot==='weapon'?`Útok ${Math.round(it.dmg*10)}`:'',it.dmgAdd?`+${String(it.dmgAdd).replace('.',',')} útok`:'',it.hit?`${it.hit>0?'+':'−'}${Math.round(Math.abs(it.hit)*100)} % zásah`:'',
+  it.block?`${Math.round(it.block*100)} % blok`:'',it.slots?`+${it.slots} políček`:'',it.hp?`+${it.hp} HP`:'',it.atk?`+${it.atk} útok`:'',it.def?`nepřítel trefí o ${Math.round(it.def*100)} % méně`:'',
+  it.use==='eat'?'+20 HP':'',it.use==='heal'?'vyléčí všechny životy':''].filter(Boolean).join(' · ')||'bez bonusu';
+const SLOTS=[['talisman','Talisman','🧿'],['helmet','Helma','⛑️'],['necklace','Náhrdelník','📿'],['weapon','Zbraň','🗡️'],['armor','Brnění / vesta','🦺'],['shield','Štít','🛡️'],
+  ['gloves','Rukavice','🧤'],['pants','Kalhoty','👖'],['bracelet','Náramek','⌚'],['backpack','Batoh','🎒'],['boots','Boty','🥾'],['banner','Banner','🚩']];
+const BAG=Array.from({length:20},(_,i)=>'bag'+(i+1));
+
+/* ---------- výbava vidět na postavě ---------- */
+const rcol=id=>RAR[(ITEMS[id]||{}).rarity||'common'][1];
+function makeWeapon(id){
+  const g=new THREE.Group(),b=baseOf(id),t=tierOf(id),rc=rcol(id),A=(geo,mm,x=0,y=0,z=0)=>add(new THREE.Mesh(geo,mm),x,y,z,g);
+  const steel=M({color:0xc9ced6,metalness:.85,roughness:.25}),wood=M({color:0x8b5a2b,roughness:.8}),grip=M({color:0x3b2414,roughness:.9});
+  A(new THREE.CylinderGeometry(.022,.022,.16,8),grip);
+  if(b==='boss_sword'){
+    const bl=M({color:0x2a2233,metalness:.6,roughness:.4,emissive:0x5a0f1f,emissiveIntensity:.9});
+    A(new THREE.BoxGeometry(.15,.025,.035),M({color:0x1a1a1a,metalness:.7}),0,.09);A(new THREE.BoxGeometry(.075,.9,.018),bl,0,.55);
+    for(let i=0;i<6;i++)A(new THREE.ConeGeometry(.025,.08,4),bl,.05,.2+i*.13).rotation.z=-1.2;
+    A(new THREE.ConeGeometry(.038,.13,4),bl,0,1.06);
+  }else if(b==='basic_sword'){
+    A(new THREE.BoxGeometry(.16,.025,.04),steel,0,.09);A(new THREE.BoxGeometry(.055,.75,.014),steel,0,.48);A(new THREE.ConeGeometry(.028,.09,4),steel,0,.9);
+    A(new THREE.SphereGeometry(.03,8,6),steel,0,-.09);
+    if(id==='basic_sword_g'){A(new THREE.SphereGeometry(.026,10,8),M({color:0x3fbf5f,emissive:0x2a9a45,emissiveIntensity:1.5}),0,.09,.02);grip.color.set(0x1f5a2c)}
+  }else if(b==='wood_sword_3'){
+    const dw=M({color:0x6a4122,roughness:.85});grip.color.set(0x5a3418);
+    A(new THREE.BoxGeometry(.12,.03,.04),dw,0,.09);
+    for(let i=0;i<4;i++){const s=A(new THREE.BoxGeometry(.075,.2,.025),dw,.012*i*i,.2+i*.18);s.rotation.z=-.08*i;}
+  }else{ // dřevěné meče 1 a 2
+    A(new THREE.BoxGeometry(.11,.03,.04),wood,0,.09);A(new THREE.BoxGeometry(.07,.62,.03),wood,0,.41).rotation.z=.02;A(new THREE.ConeGeometry(.035,.08,4),wood,0,.76);
+    if(b==='wood_sword_2')for(let i=0;i<4;i++)A(new THREE.TorusGeometry(.026,.007,5,10),M({color:0xc9b48a}),0,-.06+i*.04).rotation.x=Math.PI/2;
+  }
+  if(t||b==='boss_sword')A(new THREE.BoxGeometry(.014,.42,.03),M({color:rc,emissive:rc,emissiveIntensity:1.4}),0,.45); // runa podle rarity
+  g.rotation.x=Math.PI/2;return g;
+}
+function makeShield(id){
+  const g=new THREE.Group(),f=add(new THREE.Group(),0,0,0,g),b=baseOf(id),t=tierOf(id),rc=rcol(id),A=(geo,mm,x=0,y=0,z=0)=>add(new THREE.Mesh(geo,mm),x,y,z,f);
+  f.rotation.z=Math.PI/2; // čelo štítu míří ven z ruky
+  if(id==='arena_shield'){
+    A(new THREE.CylinderGeometry(.34,.34,.05,20),M({color:0x2a0d10,metalness:.6,roughness:.45}));
+    A(new THREE.TorusGeometry(.34,.025,6,24),M({color:rc,metalness:.7,roughness:.3}),0,.01).rotation.x=Math.PI/2;
+    A(new THREE.SphereGeometry(.08,12,8),M({color:0xff3030,emissive:0xd01010,emissiveIntensity:1.6}),0,.04);
+    for(let i=0;i<6;i++){const a=i/6*Math.PI*2;A(new THREE.ConeGeometry(.03,.1,5),M({color:0x111111,metalness:.8}),Math.cos(a)*.25,.06,Math.sin(a)*.25)}
+  }else{
+    A(new THREE.CylinderGeometry(.29,.29,.045,18),M({color:b==='wood_shield_3'?0xb08a5a:0x6b4422,roughness:.85}));
+    A(new THREE.TorusGeometry(.29,.02,6,24),t?M({color:rc,metalness:.5,roughness:.35}):ironM,0,.01).rotation.x=Math.PI/2;
+    const wh=M({color:0xeeeae0,roughness:.8});
+    if(b==='wood_shield_1'){A(new THREE.BoxGeometry(.46,.012,.08),wh,0,.03);A(new THREE.BoxGeometry(.08,.012,.46),wh,0,.03)}
+    if(b==='wood_shield_2')A(new THREE.BoxGeometry(.1,.012,.54),wh,0,.03);
+    if(b==='wood_shield_3')A(new THREE.SphereGeometry(.08,12,8,0,Math.PI*2,0,Math.PI/2),M({color:0x9aa0a8,metalness:.85,roughness:.3}),0,.02);
+    if(b==='wood_shield_4')for(let i=0;i<4;i++){const a=i/4*Math.PI*2+.4;A(new THREE.BoxGeometry(.05,.012,.09),M({color:0x7ff2dc,emissive:0x3fd8c0,emissiveIntensity:1.5}),Math.cos(a)*.17,.03,Math.sin(a)*.17).rotation.y=a}
+  }
+  return g;
+}
+function makePack(id){
+  const g=new THREE.Group(),b=baseOf(id),t=tierOf(id),A=(geo,mm,x=0,y=0,z=0)=>add(new THREE.Mesh(geo,mm),x,y,z,g);
+  if(b==='cloth_pack_1'){A(new THREE.SphereGeometry(.2,12,10),M({color:0xa08c62,roughness:.95}),0,-.02,-.04).scale.set(.95,1.15,.7);A(new THREE.TorusGeometry(.06,.014,6,12),M({color:0xc9b48a}),0,.2,-.04).rotation.x=Math.PI/2}
+  else if(b==='cloth_pack_3'){const w=M({color:0x9c7b48,roughness:.95});A(new THREE.BoxGeometry(.3,.34,.17),w);for(const y of[-.1,0,.1])A(new THREE.BoxGeometry(.31,.015,.175),M({color:0x5e4526}),0,y)}
+  else{A(new THREE.BoxGeometry(.32,.36,.17),M({color:0x6e4526,roughness:.8}));for(const x of[-.08,.08])A(new THREE.BoxGeometry(.04,.05,.02),M({color:0xb9bec6,metalness:.8,roughness:.3}),x,.02,-.09);
+    A(new THREE.CylinderGeometry(.085,.085,.4,12),M({color:0x8f7d5a}),0,.23,0).rotation.z=Math.PI/2}
+  if(t)A(new THREE.BoxGeometry(.32,.05,.02),M({color:rcol(id),emissive:rcol(id),emissiveIntensity:.5}),0,.12,-.095);
+  return g;
+}
+function dressHero(h,gear){
+  for(const a of Object.values(h.at))a.clear();
+  h.cape=null;h.shield=!!gear.shield;h.armShield=null;h.blockShield=null;
+  const A=(p,geo,mm,x=0,y=0,z=0)=>add(new THREE.Mesh(geo,mm),x,y,z,p);
+  const tint=id=>M({color:rcol(id),emissive:rcol(id),emissiveIntensity:.35,roughness:.5});
+  // kalhoty
+  const pb=baseOf(gear.pants);
+  h.m.pants.color.set({cloth_pants_1:0x8a7b62,cloth_pants_2:0x56677a,cloth_pants_3:0x9b9585}[pb]||0x3a3128);
+  h.m.shin.color.copy(pb==='cloth_pants_1'?h.m.skin.color:h.m.pants.color);
+  if(gear.pants){
+    for(const th of[h.at.thighL,h.at.thighR])A(th,new THREE.TorusGeometry(.082,.012,5,14),tint(gear.pants),0,-.06).rotation.x=Math.PI/2;
+    if(pb==='cloth_pants_2')A(h.at.kneeL,new THREE.BoxGeometry(.1,.1,.02),M({color:0x8a5a3a}),0,-.02,.07);
+    if(pb==='cloth_pants_3')A(h.at.thighR,new THREE.BoxGeometry(.02,.11,.1),M({color:0x7b7566}),.08,-.2,0);
+  }
+  // rukavice
+  const gb=baseOf(gear.gloves);
+  h.m.hand.color.set({cloth_gloves_2:0x6a4528,cloth_gloves_3:0x7d6a8c}[gb]||h.m.skin.color.getHex());
+  h.m.bracer.color.set({cloth_gloves_1:0x8a7b62,cloth_gloves_2:0x6a4528,cloth_gloves_3:0x7d6a8c}[gb]||0x7d522e);
+  h.bracers.forEach(b=>b.visible=!!gear.gloves);
+  if(gb==='cloth_gloves_3')A(h.at.wristR,new THREE.BoxGeometry(.03,.03,.02),M({color:0xb9bec6,metalness:.8}),0,.02,.065);
+  // boty
+  h.m.boot.color.set(gear.boots==='arena_boots'?0x1b1424:gear.boots?0x5a3b22:0x3b2a1c);
+  if(gear.boots==='arena_boots')for(const b of[h.at.bootL,h.at.bootR]){A(b,new THREE.TorusGeometry(.088,.014,5,14),M({color:0xffc300,emissive:0xc77d00,emissiveIntensity:1.2}),0,-.24).rotation.x=Math.PI/2;
+    A(b,new THREE.ConeGeometry(.02,.07,5),M({color:0x111111,metalness:.8}),0,-.3,-.09).rotation.x=-Math.PI/2}
+  // hlava
+  if(gear.helmet==='repair_hat'){const o=M({color:0xe08a1e,roughness:.7});A(h.at.head,new THREE.SphereGeometry(.148,16,8,0,Math.PI*2,0,Math.PI/2),o,0,.04);A(h.at.head,new THREE.BoxGeometry(.2,.018,.13),o,0,.045,.13);
+    A(h.at.head,new THREE.BoxGeometry(.06,.035,.01),M({color:0xffffff}),0,.1,.14)}
+  else if(gear.helmet){A(h.at.head,new THREE.SphereGeometry(.152,16,10,0,Math.PI*2,0,Math.PI*.55),M({color:0x9aa0a8,metalness:.85,roughness:.3}),0,.03);A(h.at.head,new THREE.TorusGeometry(.15,.012,5,18),tint(gear.helmet),0,.03).rotation.x=Math.PI/2}
+  // krk a hruď
+  if(gear.talisman){A(h.at.neck,new THREE.TorusGeometry(.13,.006,5,18),M({color:0x3b2a1c}),0,.5,.03).rotation.x=Math.PI/2+.5;
+    const hm=M({color:rcol(gear.talisman),emissive:rcol(gear.talisman),emissiveIntensity:1.1});
+    for(const s of[-1,1])A(h.at.neck,new THREE.SphereGeometry(.024,10,8),hm,s*.018,.4,.2);A(h.at.neck,new THREE.ConeGeometry(.034,.05,10),hm,0,.37,.2).rotation.z=Math.PI}
+  if(gear.necklace)A(h.at.neck,new THREE.TorusGeometry(.12,.016,6,18),tint(gear.necklace),0,.52,.02).rotation.x=Math.PI/2+.35;
+  if(gear.armor)A(h.at.chest,new THREE.CylinderGeometry(.215,.18,.4,14),M({color:0x9aa0a8,metalness:.75,roughness:.35,emissive:rcol(gear.armor),emissiveIntensity:.15}),0,.28);
+  if(gear.bracelet)A(h.at.wristR,new THREE.TorusGeometry(.065,.014,6,14),tint(gear.bracelet),0,.04).rotation.x=Math.PI/2;
+  // zbraň, štít, batoh, plášť
+  if(gear.weapon)h.at.handR.add(makeWeapon(gear.weapon));
+  if(gear.shield){h.armShield=makeShield(gear.shield);h.at.armL.add(h.armShield);h.blockShield=makeShield(gear.shield);h.blockShield.rotation.y=Math.PI/2;h.blockShield.visible=false;h.at.front.add(h.blockShield)}
+  if(gear.backpack)h.at.back.add(makePack(gear.backpack));
+  if(gear.banner){const c=add(new THREE.Group(),0,0,gear.backpack?-.13:0,h.at.cape);
+    const gm=M({color:0xd4a12a,metalness:.55,roughness:.35,emissive:0x5a3c00,emissiveIntensity:.4,side:THREE.DoubleSide});
+    A(c,new THREE.BoxGeometry(.5,.95,.02),gm,0,-.47);A(c,new THREE.BoxGeometry(.5,.04,.03),M({color:0xfff1b8,emissive:0xffd25a,emissiveIntensity:.6}),0,-.93);h.cape=c}
+}
+
+/* ---------- stav hráče a databáze (stejná jako hra na planetě) ---------- */
+const LIVE_DB='https://planetafolloweru-default-rtdb.europe-west1.firebasedatabase.app';
+const FB_API_KEY='AIzaSyALYbgJBfpRJSw2UHdCbFxwz5hHkiIiS_E';
+const SESSION_MS=60*60*1000,LOGIN_AT='planeta-login-at',H_MS=3600000,REVIVE_MS=2*H_MS;
+const liveKey=id=>id.replace(/\./g,'-');
+const DUNGEON_FROM=Date.UTC(2026,11,4,11),ADMIN='lubikosuch'; // pátek 4. 12. 2026 12:00 Praha; do té doby jen admin
+const qs=new URLSearchParams(location.search);
+const ONSITE=/zemefolloweru\.cz$/.test(location.hostname);
+const st={user:null,nick:'',demo:true,items:{},equip:null,buys:{},gifts:{},sold:{},fightF:1,heart:null,money:0,dia:0,
+  counts:{herbs:0,meds:0,grain:0,bread:0},health:null,hp:100,hpMax:100,gear:{},dead:false,deadT:0,kills:0};
+let skew=0;const now=()=>Date.now()+skew;
+function hlEff(h,t){ // stejný výpočet jako ve hře
+  if(!h)return {hp:st.hpMax,sick:false,dead:false,dAt:0,imm:0,tk:t};
+  const imm=+h.imm||0;
+  if(h.dead){if(t-(+h.dAt||0)>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:t};return {hp:0,sick:false,dead:true,dAt:+h.dAt||t,imm,tk:t}}
+  if(h.sick){const tk=+h.tk||t,n=Math.max(0,Math.floor((t-tk)/H_MS)),v=(+h.hp||0)-10*n;
+    if(v<=0){const dAt=tk+Math.ceil((+h.hp||0)/10)*H_MS;if(t-dAt>=REVIVE_MS)return {hp:100,sick:false,dead:false,dAt:0,imm,tk:t};return {hp:0,sick:false,dead:true,dAt,imm,tk:t}}
+    return {hp:v,sick:true,dead:false,dAt:0,imm,tk:tk+n*H_MS}}
+  return {hp:Math.max(0,Math.min(250,+h.hp||100)),sick:false,dead:false,dAt:0,imm,tk:t};
+}
+async function api(method,path,body){
+  if(!st.user)return null;
+  try{const tok=await st.user.getIdToken();
+    const r=await fetch(`${LIVE_DB}/${path}.json?auth=${encodeURIComponent(tok)}`,{method,cache:'no-store',keepalive:method!=='GET',body:body===undefined?undefined:JSON.stringify(body)});
+    const d=r.headers.get('Date');if(d){const s=Date.parse(d)-Date.now();if(Math.abs(s)>5000)skew=s}
+    return r.ok?(method==='GET'?await r.json():true):null}catch(_){return null}
+}
+let hpTimer=0,hpSaved=null,hpSaving=Promise.resolve();
+function saveHp(force){ // skutečné HP ve hře (sdílené s planetou)
+  if(st.demo||!st.user||!st.health)return Promise.resolve();
+  clearTimeout(hpTimer);
+  const go=()=>{const dead=st.dead,v=dead?0:Math.round(st.hp);if(v===hpSaved&&!dead&&!force)return hpSaving;hpSaved=v;const h=st.health;
+    const body={hp:v,sick:dead?false:!!h.sick,tk:dead?{'.sv':'timestamp'}:(h.tk||now()),dead:!!dead,dAt:dead?{'.sv':'timestamp'}:0,imm:+h.imm||0,t:{'.sv':'timestamp'}};
+    return hpSaving=hpSaving.then(()=>api('PUT','health/'+liveKey(st.nick),body))};
+  if(force)return go();hpTimer=setTimeout(go,1500);return hpSaving;
+}
+function owned(){
+  const o=new Set(Object.keys(st.items||{}).filter(k=>ITEMS[k]));
+  for(const b of Object.keys(st.buys||{}))if(ITEMS[b])o.add(b);
+  if(st.gifts.launch)o.add('basic_sword_g');if(st.gifts.hat)o.add('repair_hat');
+  if(st.nick==='___1kelly1___')o.add('boss_sword');if(st.heart)o.add(st.heart);
+  if(st.fightF>10)o.add('arena_shield');if(st.fightF>50)o.add('arena_boots');
+  for(const [k,c] of [['herb','herbs'],['meds','meds'],['grain','grain'],['bread','bread']])if(st.counts[c]>0)o.add(k);
+  return [...o].filter(k=>!(st.sold[k]&&ITEMS[k].slot!=='bag'));
+}
+const packOf=()=>{const own=owned(),sv=st.equip;if(sv)return sv.backpack&&own.includes(sv.backpack)?sv.backpack:null;return own.find(k=>ITEMS[k].slot==='backpack')||null};
+const bagN=()=>10+((ITEMS[packOf()]||{}).slots||0);
+function invState(){ // stejné rozložení jako inventář na planetě
+  const own=owned(),sv=st.equip,s={},used=new Set();
+  if(sv)for(const [sl,it] of Object.entries(sv))if(own.includes(it)&&!used.has(it)&&(BAG.includes(sl)||ITEMS[it].slot===sl)){s[sl]=it;used.add(it)}
+  for(const it of own){if(used.has(it))continue;const sl=ITEMS[it].slot;
+    const fr=!sv&&sl!=='bag'&&!s[sl]?sl:BAG.slice(0,bagN()).find(b=>!s[b]);if(fr){s[fr]=it;used.add(it)}}
+  return s;
+}
+const worn=()=>{const s=invState(),g={};for(const [k] of SLOTS)if(s[k])g[k]=s[k];return g};
+const hpMaxOf=g=>clamp(100+Object.values(g).reduce((a,k)=>a+(ITEMS[k].hp||0),0),1,250);
+const dmgOf=g=>Math.round(10*((ITEMS[g.weapon]||{}).dmg||1)+((ITEMS[g.talisman]||{}).dmgAdd||0)+((ITEMS[g.gloves]||{}).atk||0));
+function refreshGear(){st.gear=worn();st.hpMax=hpMaxOf(st.gear);st.hp=Math.min(st.hp,st.hpMax);dressHero(hero,st.gear);hud()}
+
+/* ---------- hráč ---------- */
+const hero=makeHero(null,{shirt:qs.get('s')||null,skin:qs.get('k')||null});scene.add(hero.g);
+const START=new THREE.Vector3(-3,0,8);hero.g.position.copy(START);hero.g.rotation.y=Math.PI;
+const blob=add(new THREE.Mesh(new THREE.PlaneGeometry(1.1,1.1),new THREE.MeshBasicMaterial({map:softT,color:0,transparent:true,opacity:.55,depthWrite:false})),0,.02,0);
+blob.rotation.x=-Math.PI/2;
+
+/* ---------- HUD ---------- */
+const toastEl=$('toast');let toastT;
+function toast(s){toastEl.textContent=s;toastEl.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>toastEl.classList.remove('on'),2800)}
+function hud(){const v=Math.max(0,Math.round(st.hp));$('hpBar').style.width=clamp(v/st.hpMax*100,0,100)+'%';$('hpTxt').textContent=`${v} / ${st.hpMax} HP`+(st.health&&st.health.sick?' · 🤒':'');
+  $('kills').textContent='Poražení kostlivci: '+st.kills}
+const pops=[];
+function pop(pos,text,color){const el=document.createElement('div');el.className='pop';el.textContent=text;el.style.color=color;$('pops').append(el);pops.push({el,p:pos.clone(),t:0})}
+let hurtT=0,shake=0;
+
+/* ---------- inventář ---------- */
+const invEl=$('inv'),gateEl=$('gate');
+const paused=()=>!invEl.hidden||!gateEl.hidden;
+function cell(k,label,emptyIcon,item){
+  const b=document.createElement('button');b.className='cell';b.type='button';
+  if(item){const it=ITEMS[item];b.style.borderColor=RAR[it.rarity][1];b.title=it.name;b.setAttribute('aria-label',it.name);
+    if(it.img){const im=new Image();im.alt='';im.onerror=()=>im.replaceWith(it.icon);im.src=it.img;b.append(im)}else b.append(it.icon);
+    if(it.stack){const n=document.createElement('small');n.textContent=st.counts[it.stack];b.append(n)}}
+  else{b.classList.add('empty');b.textContent=emptyIcon;b.title=label;b.setAttribute('aria-label',label+': prázdné')}
+  b.onclick=()=>invClick(k);return b;
+}
+function renderInv(){
+  const s=invState();
+  $('doll').replaceChildren(...SLOTS.map(([k,l,i])=>cell(k,l,i,s[k])));
+  $('bag').replaceChildren(...BAG.filter((k,n)=>n<bagN()||s[k]).map((k,n)=>cell(k,'Políčko '+(n+1),'',s[k])));
+  const g=st.gear,bl=(ITEMS[g.shield]||{}).block||0;
+  $('invStats').textContent=`❤️ ${Math.round(st.hp)}/${st.hpMax} HP · ⚔️ útok ${dmgOf(g)}`+(bl?` · 🛡️ blok ${Math.round(bl*100)} %`:'');
+  $('money').textContent=`🪙 ${Math.floor(st.money/100)} zlatých · ${st.money%100} stříbrných · 💎 ${st.dia}`;
+  $('invWho').textContent=st.demo?'zkušební postava':'@'+st.nick;
+}
+async function useItem(id){
+  const d=$('invDet'),k=liveKey(st.nick||'x');
+  if(id==='bread'){
+    if(st.hp>=st.hpMax){d.textContent='🍞 Máš plné životy, chleba teď nepotřebuješ.';return}
+    const c=st.counts.bread;if(c<1)return;
+    if(!st.demo&&!await api('PUT','bread/'+k,{c:c-1,t:{'.sv':'timestamp'}})){d.textContent='Nepodařilo se sníst chleba. Zkus to znovu.';return}
+    st.counts.bread=c-1;const add_=Math.min(20,st.hpMax-st.hp);st.hp+=add_;saveHp(true);d.textContent=`🍞 Mňam! +${Math.round(add_)} HP.`;
+  }else if(id==='meds'){
+    const sick=!!(st.health&&st.health.sick);
+    if(st.hp>=st.hpMax&&!sick){d.textContent='💊 Jsi zdravý, antibiotika teď nepotřebuješ.';return}
+    const c=st.counts.meds;if(c<1)return;
+    if(!st.demo&&!await api('PUT','meds/'+k,{c:c-1,t:{'.sv':'timestamp'}})){d.textContent='Nepodařilo se použít lék. Zkus to znovu.';return}
+    st.counts.meds=c-1;const healed=st.hpMax-st.hp;st.hp=st.hpMax;
+    if(st.health){st.health.sick=false;st.health.imm=now()+H_MS;st.health.tk=now()}
+    saveHp(true);d.textContent=(sick?'💊 Nemoc je pryč! ':'💊 ')+`Vyléčeno +${Math.round(healed)} HP.`;
+  }
+  refreshGear();renderInv();
+}
+async function invClick(key){
+  const s=invState(),item=s[key],d=$('invDet');
+  if(!item){d.textContent=BAG.includes(key)?'Volné políčko v batohu.':`${(SLOTS.find(x=>x[0]===key)||[0,'Slot'])[1]}: prázdné. Věc sem dáš klepnutím na ni v batohu.`;return}
+  const it=ITEMS[item],next={...s};
+  if(it.slot==='bag'){if(it.use){useItem(item);return}d.textContent=`${it.name} ×${st.counts[it.stack]} · surovina, zpracuješ ji na planetě.`;return}
+  const nAfter=p=>10+((ITEMS[p]||{}).slots||0);
+  if(BAG.includes(key)){const was=next[it.slot];next[it.slot]=item;if(was)next[key]=was;else delete next[key]}
+  else{const lim=it.slot==='backpack'?10:bagN(),fr=BAG.slice(0,lim).find(b=>!next[b]);if(!fr){d.textContent='Batoh je plný.';return}next[fr]=item;delete next[key]}
+  if(BAG.slice(nAfter(next.backpack)).some(b=>next[b])){d.textContent='🎒 Nejdřív vyndej věci z políček navíc, jinak by se do menšího batohu nevešly.';return}
+  const prev=st.equip;st.equip=next;refreshGear();renderInv();
+  d.textContent=`${it.name} · ${RAR[it.rarity][0]} · ${statTxt(it)}`+(st.gear[it.slot]===item?' · máš na sobě':' · v batohu');
+  if(!st.demo&&!await api('PUT','equip/'+liveKey(st.nick),next)){st.equip=prev;refreshGear();renderInv();d.textContent='Nepodařilo se uložit. Zkus to znovu.'}
+}
+function openInv(){if(!gateEl.hidden)return;relock=locked();unlockMouse();for(const k in keys)keys[k]=false;renderInv();invEl.hidden=false;$('invX').focus()}
+function closeInv(byKey){invEl.hidden=true;cv.focus();if(byKey&&relock)lockMouse();relock=false}
+$('invBtn').onclick=()=>invEl.hidden?openInv():closeInv();$('invX').onclick=()=>closeInv();
+invEl.addEventListener('click',e=>{if(e.target===invEl)closeInv()});
+
+/* ---------- brána: přihlášení, smrt ---------- */
+function gate(title,text,btns){
+  $('gT').textContent=title;$('gP').innerHTML=text;
+  $('gRow').replaceChildren(...btns.map(([label,fn])=>{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent=label;b.onclick=fn;return b}));
+  unlockMouse();gateEl.hidden=false;
+}
+async function goPlanet(){
+  if(!ONSITE){toast('Ve hře tě tohle vrátí na planetu.');return}
+  $('fade').style.opacity=1;await saveHp(true);location.href='./';
+}
+$('homeBtn').onclick=goPlanet;
+addEventListener('pagehide',()=>{saveHp(true)});
+function startDemo(){
+  st.demo=true;st.user=null;st.nick='zkouška';
+  const g=(qs.get('g')||'wood_sword_2_u,wood_shield_1,cloth_pants_2,cloth_gloves_3,cloth_pack_2,repair_hat,earth_heart_1,founder_cape,arena_boots,basic_sword_g,boss_sword,wood_sword_3_r,arena_shield,wood_shield_4_r,cloth_pants_1_u,cloth_pack_1').split(',');
+  st.items=Object.fromEntries(g.filter(k=>ITEMS[k]).map(k=>[k,true]));st.equip=null;st.counts={herbs:3,meds:1,grain:5,bread:2};st.money=245;st.dia=0;
+  st.hp=999;refreshGear();st.hp=st.hpMax;st.dead=false;$('demo').hidden=false;$('who').textContent='zkušební postava';gateEl.hidden=true;hud();
+}
+const loadJs=src=>new Promise((ok,bad)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.append(s)});
+async function boot(){
+  refreshGear();
+  if(qs.has('demo')||!ONSITE){startDemo();return}
+  const need=()=>gate('Nejdřív se přihlas','Do krypty můžou jen přihlášení hráči, protože se tu ukládají životy a inventář. Přihlas se na planetě přes Google a vrať se sem.',[['Přihlásit se na planetě',()=>location.href='./'],['Hrát na zkoušku',startDemo]]);
+  let at=0;try{at=+localStorage.getItem(LOGIN_AT)||0}catch(_){}
+  if(!at||Date.now()-at>SESSION_MS){need();return}
+  gate('Načítám tvou postavu…','Chvilku strpení.',[]);
+  try{
+    const B='https://www.gstatic.com/firebasejs/10.12.2/';
+    await loadJs(B+'firebase-app-compat.js');await loadJs(B+'firebase-auth-compat.js');
+    if(!firebase.apps.length)firebase.initializeApp({apiKey:FB_API_KEY,authDomain:'planetafolloweru.firebaseapp.com',databaseURL:LIVE_DB,projectId:'planetafolloweru'});
+    const u=await new Promise(ok=>{const off=firebase.auth().onAuthStateChanged(x=>{off();ok(x)})});
+    if(!u){need();return}
+    st.user=u;const a=await api('GET','accounts/'+u.uid);
+    if(!a||!a.nick){st.user=null;gate('Vyber si postavu','Na planetě si nejdřív vyber svou postavu (nick). Pak můžeš do krypty.',[['Na planetu',()=>location.href='./']]);return}
+    if(now()<DUNGEON_FROM&&a.nick!==ADMIN){st.user=null;gate('Krypta je zatím zavřená','Otevře se <b>v pátek 4. 12. ve 12:00</b>. Do té doby si ji můžeš projít nanečisto.',[['Na planetu',()=>location.href='./'],['Hrát na zkoušku',startDemo]]);return}
+    st.nick=a.nick;st.demo=false;$('who').textContent='@'+a.nick;
+    const k=liveKey(a.nick),P=['items','equip','fight','health','buys','gifts','sold','money','diamonds','herbs','meds','grain','bread'].map(p=>p+'/'+k);P.push('dig');
+    const [items,equip,fight,health,buys,gifts,sold,money,dia,herbs,meds,grain,bread,dig]=await Promise.all(P.map(p=>api('GET',p)));
+    st.items=items||{};st.equip=equip&&typeof equip==='object'?equip:null;st.fightF=Math.max(1,+(fight&&fight.f)||1);
+    st.buys={...(buys||{})};delete st.buys.last;st.gifts=gifts||{};st.sold={...(sold||{})};delete st.sold.last;
+    st.money=Math.max(0,Math.floor(+money||0));st.dia=Math.max(0,Math.floor(+dia||0));
+    st.counts={herbs:+(herbs&&herbs.c)||0,meds:+(meds&&meds.c)||0,grain:+(grain&&grain.c)||0,bread:+(bread&&bread.c)||0};
+    if(dig&&now()>1795388399000){const top=Object.entries(dig).filter(([,v])=>v&&+v.c>0).sort((x,y)=>(+y[1].c-+x[1].c)||((+x[1].t||0)-(+y[1].t||0))).slice(0,3).map(([n])=>n),i=top.indexOf(k);if(i>=0)st.heart='earth_heart_'+(i+1)}
+    st.hp=999;refreshGear();st.health=hlEff(health,now());
+    if(st.health.dead){const left=Math.max(1,Math.ceil((st.health.dAt+REVIVE_MS-now())/60000));
+      gate('Jsi mrtvý 💀',`Tvoje postava leží u hrobu. Oživí tě jiný hráč, nebo se sám probudíš asi za <b>${left>=60?Math.floor(left/60)+' h '+left%60+' min':left+' min'}</b>.`,[['Na planetu',()=>location.href='./']]);return}
+    st.hp=Math.min(st.hpMax,Math.max(1,st.health.hp));hpSaved=Math.round(st.hp);gateEl.hidden=true;hud();
+    if(st.health.sick)toast('🤒 Jsi nemocný. Antibiotika najdeš v inventáři (I).');
+  }catch(e){console.warn(e);gate('Něco se pokazilo','Nepodařilo se načíst tvou postavu. Zkus to znovu z planety.',[['Na planetu',()=>location.href='./'],['Hrát na zkoušku',startDemo]])}
+}
+
+/* ---------- boj ---------- */
+const atk={i:-1,t:0,queued:false,hit:false,last:-1,lastEnd:-9};
+const trail=add(new THREE.Group());
+const trailMesh=add(new THREE.Mesh(new THREE.RingGeometry(.9,1.45,28,1,0,2.2),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide})),0,0,0,trail);
+let trailT=1;
+let clockT=0;
+function attack(){
+  if(st.dead||paused()||st.block)return;
+  if(atk.i>=0){if(atk.t/COMBO[atk.i].dur>.3)atk.queued=true;return}
+  startHit(atk.last>=0&&atk.last<2&&clockT-atk.lastEnd<.3?atk.last+1:0);
+}
+function startHit(i){
+  atk.i=i;atk.t=0;atk.queued=false;atk.hit=false;
+  // namíř na nejbližšího nepřítele před sebou
+  const p=hero.g.position;let best=null,bd=9;
+  for(const e of enemies){if(e.dead)continue;const dx=e.g.position.x-p.x,dz=e.g.position.z-p.z,d=dx*dx+dz*dz;if(d<bd){bd=d;best=e}}
+  if(best)hero.g.rotation.y=Math.atan2(best.g.position.x-p.x,best.g.position.z-p.z);
+  trail.position.set(p.x,p.y+(i===2?1.2:1.15),p.z);trail.rotation.y=hero.g.rotation.y;
+  trailMesh.rotation.set(i===2?0:-Math.PI/2,i===2?Math.PI/2:0,i===2?1.26:(i===0?-Math.PI/2-1.1:-Math.PI/2-1.1));
+  trailMesh.scale.set(i===1?-1:1,1,1);
+  trailMesh.material.color.set(st.gear.weapon?rcol(st.gear.weapon):'#ffffff');trailT=0;
+}
+function doHits(c){
+  const p=hero.g.position,fx=Math.sin(hero.g.rotation.y),fz=Math.cos(hero.g.rotation.y),base=dmgOf(st.gear);let any=false;
+  for(const e of enemies){
+    if(e.dead)continue;const dx=e.g.position.x-p.x,dz=e.g.position.z-p.z,d=Math.hypot(dx,dz);
+    if(d>c.reach||(d>.9&&(dx*fx+dz*fz)/d<.3))continue;
+    const n=Math.max(1,Math.round(base*c.mul*(.9+Math.random()*.2)));
+    e.hp-=n;e.flash=.18;any=true;
+    if(e.state!=='wind'){e.stag=.35;const kx=e.g.position.x+dx/(d||1)*c.kb,kz=e.g.position.z+dz/(d||1)*c.kb;if(free(kx,kz))e.g.position.set(kx,0,kz)}
+    pop(e.g.position.clone().setY(2),'-'+n,atk.i===2?'#ffd34d':'#ffffff');drawBar(e);
+    if(e.hp<=0){e.dead=.001;st.kills++;hud();toast('💀 '+e.d.name+' padl!')}
+  }
+  if(any)shake=Math.max(shake,atk.i===2?.35:.15);
+}
+let blockAmt=0;
+function hurtPlayer(n,e){
+  if(st.dead||paused())return;
+  const g=st.gear,bl=(ITEMS[g.shield]||{}).block||0,def=(ITEMS[g.gloves]||{}).def||0,ps=hero.g.position.clone().setY(2);
+  if(blockAmt>.5&&e){ // pravé tlačítko: krytí funguje proti úderům zepředu
+    const dx=e.g.position.x-hero.g.position.x,dz=e.g.position.z-hero.g.position.z,l=Math.hypot(dx,dz)||1;
+    if((dx*Math.sin(hero.g.rotation.y)+dz*Math.cos(hero.g.rotation.y))/l>.34){
+      if(g.shield){pop(ps,'🛡️ Zablokováno!','#7fc8ff');shake=Math.max(shake,.12);e.cd+=.5;return}
+      n=Math.ceil(n/2);pop(ps.clone().setY(2.4),'Kryješ se zbraní','#cfd6e0');
+    }
+  }
+  if(Math.random()<def){pop(ps,'Vedle!','#9fd8ff');return}
+  if(blockAmt<=.5&&Math.random()<bl){pop(ps,'🛡️ Blok!','#7fc8ff');shake=Math.max(shake,.1);return}
+  st.hp=Math.max(0,st.hp-n);hurtT=.6;shake=Math.max(shake,.25);pop(ps,'-'+n,'#ff5a4a');hud();
+  if(st.hp<=0)die();else saveHp();
+}
+function die(){
+  st.dead=true;st.deadT=0;atk.i=-1;saveHp(true);
+  setTimeout(()=>{
+    if(st.demo)gate('Padl jsi 💀','Ve hře by tvoje postava teď ležela u hrobu na planetě. Oživí ji jiný hráč, nebo se sama probudí za 2 hodiny.',[['Zkusit znovu',()=>{st.dead=false;st.hp=st.hpMax;hero.g.position.copy(START);hero.g.rotation.x=0;gateEl.hidden=true;hud()}]]);
+    else gate('Padl jsi 💀','Tvoje postava leží u hrobu na planetě. Oživí tě jiný hráč, nebo se sám probudíš za 2 hodiny.',[['Na planetu',()=>location.href='./']]);
+  },1400);
+}
+
+/* ---------- příšery (data v monsters.js) ---------- */
+const MON=window.MONSTERS||{};
+const SPAWNS=[{m:'skeleton',x:-3,z:-12},{m:'skeleton',x:-11.5,z:-3},{m:'skeleton',x:-6,z:-19},{m:'skeleton_guard',x:8.6,z:-19.5},{m:'skeleton',x:9,z:6}];
+const enemies=[];
+function drawBar(e){const c=e.barC.getContext('2d');c.clearRect(0,0,64,10);c.fillStyle='rgba(0,0,0,.7)';c.fillRect(0,0,64,10);c.fillStyle='#e2483d';c.fillRect(1,1,62*Math.max(0,e.hp)/e.max,8);e.barT.needsUpdate=true;e.bar.visible=e.hp<e.max&&!e.dead}
+function spawnEnemy(type,x,z){
+  const d=MON[type];if(!d)return;const L=d.look||{};
+  const mat=M({color:L.color||0xd8cfb6,roughness:.8,emissive:0xff2020,emissiveIntensity:0});
+  const h=makeHero(mat);h.g.scale.setScalar(d.scale||1);
+  for(const s of[-1,1])add(new THREE.Mesh(new THREE.SphereGeometry(.026,8,6),new THREE.MeshBasicMaterial({color:L.eyes||0xff3030})),s*.045,.015,.122,h.head);
+  if(L.ribs)for(let i=0;i<3;i++)add(new THREE.Mesh(new THREE.TorusGeometry(.19-i*.012,.012,4,16,Math.PI),new THREE.MeshBasicMaterial({color:0x2a2218})),0,.36-i*.08,0,h.torso).rotation.y=-Math.PI/2;
+  if(L.weapon&&ITEMS[L.weapon]){const w=makeWeapon(L.weapon);if(L.weaponColor)w.traverse(o=>{if(o.material)o.material=M({color:L.weaponColor,metalness:.5,roughness:.8})});h.at.handR.add(w)}
+  if(L.shield&&ITEMS[L.shield]){h.at.armL.add(makeShield(L.shield));h.shield=true}
+  const barC=canv(64,10,()=>{}),barT=new THREE.CanvasTexture(barC),bar=new THREE.Sprite(new THREE.SpriteMaterial({map:barT,depthTest:false}));
+  bar.scale.set(.9,.14,1);bar.position.y=2.05;h.g.add(bar);
+  h.g.position.set(x,0,z);scene.add(h.g);
+  const e={d,type,h,g:h.g,mat,home:{x,z},hp:d.hp,max:d.hp,state:'idle',t:0,cd:0,stag:0,flash:0,dead:0,wx:x,wz:z,wt:0,spd:0,barC,barT,bar};
+  drawBar(e);enemies.push(e);
+}
+SPAWNS.forEach(s=>spawnEnemy(s.m,s.x,s.z));
+function enemyStep(e,dt,t){
+  const g=e.g,d=e.d,p=hero.g.position;
+  e.flash=Math.max(0,e.flash-dt);e.mat.emissiveIntensity=e.flash>0?1.2:0;
+  if(e.dead){e.dead+=dt;g.rotation.x=-Math.min(1.45,e.dead*4);g.position.y=e.dead>2?-(e.dead-2)*.6:0;
+    if(e.dead>3)g.visible=false;
+    if(e.dead>(d.respawn||30)&&Math.hypot(p.x-e.home.x,p.z-e.home.z)>8){e.dead=0;e.hp=e.max;g.visible=true;g.rotation.x=0;g.position.set(e.home.x,0,e.home.z);e.state='idle';drawBar(e)}
+    return}
+  const dx=p.x-g.position.x,dz=p.z-g.position.z,dist_=Math.hypot(dx,dz),fromHome=Math.hypot(g.position.x-e.home.x,g.position.z-e.home.z);
+  e.cd-=dt;let want=0,tx=null,tz=null;
+  if(e.state==='wind'){ // rozběhnutý útok se vždy dokončí, zásah hráče ho nepřeruší
+    e.t+=dt;if(e.t<d.windup)g.rotation.y=lerpA(g.rotation.y,Math.atan2(dx,dz),dt*6);
+    if(e.t>=d.windup&&!e.struck){e.struck=true;if(dist_<(d.reach||1.9)*(d.scale||1))hurtPlayer(d.dmg,e)}
+    if(e.t>=d.atkDur){e.state='chase';e.cd=d.cooldown}
+  }else if(e.stag>0){e.stag-=dt}
+  else if(!st.dead&&dist_<d.aggro&&fromHome<d.leash){
+    e.state='chase';
+    if(dist_>(d.range||1.45)*(d.scale||1)){want=d.speed;tx=p.x;tz=p.z}
+    else if(e.cd<=0){e.state='wind';e.t=0;e.struck=false}
+    else g.rotation.y=lerpA(g.rotation.y,Math.atan2(dx,dz),dt*6);
+  }else{
+    e.state='idle';e.wt-=dt;
+    if(fromHome>10||e.wt<=0){e.wx=e.home.x+rr(-2.5,2.5);e.wz=e.home.z+rr(-2.5,2.5);e.wt=rr(3,6)}
+    if(Math.hypot(e.wx-g.position.x,e.wz-g.position.z)>.4){want=fromHome>10?d.speed*.8:d.walk;tx=e.wx;tz=e.wz}
+  }
+  e.spd+=(want-e.spd)*Math.min(1,dt*8);
+  if(tx!==null&&e.spd>.05){const vx=tx-g.position.x,vz=tz-g.position.z,l=Math.hypot(vx,vz)||1,s=e.spd*dt;
+    g.rotation.y=lerpA(g.rotation.y,Math.atan2(vx,vz),dt*8);
+    const nx=g.position.x+vx/l*s,nz=g.position.z+vz/l*s;
+    if(free(nx,nz)){g.position.x=nx;g.position.z=nz}else if(free(nx,g.position.z))g.position.x=nx;else if(free(g.position.x,nz))g.position.z=nz;else e.wt=0;}
+  animHero(e.h,e.spd,dt,t,false);
+  if(e.state==='wind')atkPose(e.h,2,e.t<d.windup?.45*e.t/d.windup:.45+.55*(e.t-d.windup)/Math.max(.01,d.atkDur-d.windup));
+}
+
+/* ---------- interakce ---------- */
+let busy=false;
+const spots=[
+  {x:PX,z:-22.4,txt:'Portál zpět na planetu',act(){if(ONSITE&&!st.demo){goPlanet();return}
+    if(busy)return;busy=true;$('fade').style.opacity=1;
+    setTimeout(()=>{toast('Ve hře tě portál vrátí na planetu.');hero.g.position.copy(START);hero.g.rotation.y=Math.PI;yaw=0;$('fade').style.opacity=0;busy=false},900)}},
+  {x:-11.1,z:-18.5,txt:'Otevřít truhlu',act(){if(chestOpen)toast('Truhla je prázdná.');else{chestOpen=true;gold.visible=true;toast('Truhla je zatím jen na ozdobu. Odměny přidáme v dalším updatu.')}}},
+  {x:-13,z:-6,txt:'Prozkoumat mříž',act(){toast('Mříž je zamčená. Chce to klíč.')}},
+  {x:-13,z:-14,txt:'Prozkoumat mříž',act(){toast('Ve tmě za mříží něco zachrastilo…')}},
+  {x:-8,z:-22,txt:'Prohlédnout sochu',act(){toast('Na podstavci: „Strážce krypty“.')}},
+];
+let near=null;const promptEl=$('prompt');
+promptEl.onclick=()=>{near&&near.act();cv.focus()};
+
+/* ---------- ovládání ---------- */
+const keys={};
+let yaw=0,pitch=.38,dist=5.5,drag=null,relock=false;
+// Q: zamčená myš – kurzor zmizí, kamera i postava se otáčí pohybem myši bez klikání; levé tlačítko útočí
+const locked=()=>document.pointerLockElement===cv;
+const modeUi=()=>{$('modeBtn').textContent=locked()?'🔒 Myš zamčená (Q)':'🖱️ Zamknout myš (Q)';$('cross').hidden=!locked()};
+function lockMouse(){if(locked()||touch||paused())return;try{const r=cv.requestPointerLock();if(r&&r.catch)r.catch(()=>toast('Klikni do hry a zkus Q znovu.'))}catch(_){toast('Zamknutí myši tady nejde.')}}
+function unlockMouse(){if(locked())document.exitPointerLock()}
+function toggleMode(){locked()?unlockMouse():lockMouse()}
+$('modeBtn').onclick=toggleMode;
+document.addEventListener('pointerlockchange',()=>{modeUi();if(locked())toast('Myš zamčená: otáčíš pohybem myši. Q nebo Esc ji uvolní.')});
+document.addEventListener('pointerlockerror',()=>toast('Zamknutí myši se nepovedlo. Klikni do hry a stiskni Q.'));
+document.addEventListener('mousemove',e=>{if(!locked()||paused())return;yaw-=e.movementX*.0026;pitch=clamp(pitch+e.movementY*.002,.08,1.25)});
+addEventListener('keydown',e=>{
+  if(!invEl.hidden){if(e.code==='Escape'||e.code==='KeyI'){e.preventDefault();closeInv(e.code==='KeyI')}return}
+  if(!gateEl.hidden)return;
+  keys[e.code]=true;
+  if(!e.repeat){if(e.code==='KeyF'&&near)near.act();if(e.code==='KeyQ')toggleMode();if(e.code==='KeyI'){e.preventDefault();openInv()}}
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
+});
+addEventListener('keyup',e=>{keys[e.code]=false});
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false;st.block=false});
+const cv=renderer.domElement;cv.tabIndex=0;modeUi();
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('mousedown',e=>{if(e.button===2){e.preventDefault();st.block=true}});
+addEventListener('mouseup',e=>{if(e.button===2)st.block=false});
+cv.addEventListener('pointerdown',e=>{if(e.button===2)return;if(locked()){if(e.button===0)attack();return}drag={id:e.pointerId,x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,moved:false,btn:e.button,type:e.pointerType};cv.setPointerCapture(e.pointerId);cv.focus()});
+cv.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;
+  if(!drag.moved&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)>6)drag.moved=true;
+  if(drag.moved){yaw-=(e.clientX-drag.x)*.006;pitch=clamp(pitch+(e.clientY-drag.y)*.004,.08,1.25)}
+  drag.x=e.clientX;drag.y=e.clientY});
+const endDrag=e=>{if(!drag||e.pointerId!==drag.id)return;if(!drag.moved&&drag.btn===0&&drag.type!=='touch')attack();drag=null};
+cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',e=>{if(drag&&e.pointerId===drag.id)drag=null});
+cv.addEventListener('wheel',e=>{e.preventDefault();dist=clamp(dist+e.deltaY*.005,2.5,10)},{passive:false});
+const joy={x:0,y:0,id:null},joyEl=$('joy'),knob=joyEl.firstElementChild;
+if(touch){
+  joyEl.hidden=false;$('touchBtns').hidden=false;
+  $('help').textContent='Joystick – chůze (až na okraj = běh) · táhni prstem – kamera · ⚔️ útok (3× za sebou) · 🛡️ drž = krytí · 🎒 inventář';
+  const upd=e=>{const r=joyEl.getBoundingClientRect();let dx=e.clientX-r.left-65,dy=e.clientY-r.top-65;const l=Math.hypot(dx,dy);if(l>55){dx*=55/l;dy*=55/l}joy.x=dx/55;joy.y=-dy/55;knob.style.transform=`translate(${dx}px,${dy}px)`};
+  joyEl.addEventListener('pointerdown',e=>{joy.id=e.pointerId;joyEl.setPointerCapture(e.pointerId);upd(e)});
+  joyEl.addEventListener('pointermove',e=>{if(e.pointerId===joy.id)upd(e)});
+  const end=e=>{if(e.pointerId!==joy.id)return;joy.id=null;joy.x=joy.y=0;knob.style.transform=''};
+  joyEl.addEventListener('pointerup',end);joyEl.addEventListener('pointercancel',end);
+  $('atkBtn').addEventListener('pointerdown',e=>{e.preventDefault();attack()});
+  const sb=$('shieldBtn');sb.addEventListener('pointerdown',e=>{e.preventDefault();sb.setPointerCapture(e.pointerId);st.block=true});
+  for(const ev of['pointerup','pointercancel'])sb.addEventListener(ev,()=>{st.block=false});
+  $('jumpBtn').addEventListener('pointerdown',e=>{e.preventDefault();keys.Space=true;setTimeout(()=>keys.Space=false,120)});
+}
+addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+
+/* ---------- smyčka ---------- */
+const clock=new THREE.Clock(),mv=new THREE.Vector2(),tg=new THREE.Vector3(),pv=new THREE.Vector3();
+let speed=0,vy=0;
+const lerpA=(a,b,k)=>{const d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;return a+d*Math.min(1,k)};
+function loop(){
+  const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime,p=hero.g.position,pz=paused();clockT=t;
+  let ix=0,iz=0;
+  if(!pz&&!st.dead&&!busy){
+    ix=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joy.x;
+    iz=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+joy.y;
+  }
+  const len=Math.hypot(ix,iz);if(len>1){ix/=len;iz/=len}
+  const run=keys.ShiftLeft||keys.ShiftRight||Math.hypot(joy.x,joy.y)>.92;
+  const want=(run?5.2:2.6)*Math.min(1,len)*(atk.i>=0?.35:1)*(blockAmt>.3?.4:1);
+  speed+=(want-speed)*Math.min(1,dt*10);
+  if(len>.08)mv.set(-Math.sin(yaw)*iz+Math.cos(yaw)*ix,-Math.cos(yaw)*iz-Math.sin(yaw)*ix).normalize();
+  if(!st.dead&&atk.i<0){
+    if(locked())hero.g.rotation.y=lerpA(hero.g.rotation.y,yaw+Math.PI,dt*20);
+    else if(st.block){let b=null,bd=25;for(const e of enemies){if(e.dead)continue;const q=(e.g.position.x-p.x)**2+(e.g.position.z-p.z)**2;if(q<bd){bd=q;b=e}}
+      if(b)hero.g.rotation.y=lerpA(hero.g.rotation.y,Math.atan2(b.g.position.x-p.x,b.g.position.z-p.z),dt*12);else if(len>.08)hero.g.rotation.y=lerpA(hero.g.rotation.y,Math.atan2(mv.x,mv.y),dt*12)}
+    else if(len>.08)hero.g.rotation.y=lerpA(hero.g.rotation.y,Math.atan2(mv.x,mv.y),dt*12);
+  }
+  const stp=speed*dt;
+  if(stp>.0001){const nx=p.x+mv.x*stp,nz=p.z+mv.y*stp;
+    if(free(nx,nz)){p.x=nx;p.z=nz}else if(free(nx,p.z))p.x=nx;else if(free(p.x,nz))p.z=nz;}
+  if(keys.Space&&p.y===0&&!pz&&!st.dead)vy=4.2;
+  vy-=12*dt;p.y=Math.max(0,p.y+vy*dt);if(p.y===0)vy=0;
+  // útoky
+  if(atk.i>=0&&!pz){
+    const c=COMBO[atk.i];atk.t+=dt;const k=atk.t/c.dur;
+    if(!atk.hit&&k>=c.imp){atk.hit=true;doHits(c)}
+    if(atk.i===2&&k>.25&&k<.5){const fx=Math.sin(hero.g.rotation.y)*3*dt,fz=Math.cos(hero.g.rotation.y)*3*dt;if(free(p.x+fx,p.z+fz)){p.x+=fx;p.z+=fz}}
+    if(k>=1){if(atk.queued&&atk.i<2)startHit(atk.i+1);else{atk.last=atk.i;atk.lastEnd=t;atk.i=-1}}
+  }
+  animHero(hero,speed,dt,t,p.y>.02);
+  if(atk.i>=0)atkPose(hero,atk.i,atk.t/COMBO[atk.i].dur);
+  blockAmt+=((st.block&&atk.i<0&&!st.dead&&!pz?1:0)-blockAmt)*Math.min(1,dt*14);
+  if(blockAmt>.01){const A=hero.arms[0],W=hero.arms[1],k=blockAmt,mx=(o,v)=>o+(v-o)*k;
+    A.sp.rotation.x=mx(A.sp.rotation.x,-1.25);A.sp.rotation.z=mx(A.sp.rotation.z,.35);A.el.rotation.x=mx(A.el.rotation.x,-1.3);
+    if(!st.gear.shield){W.sp.rotation.x=mx(W.sp.rotation.x,-1.3);W.sp.rotation.z=mx(W.sp.rotation.z,-.5);W.el.rotation.x=mx(W.el.rotation.x,-.8)}}
+  if(hero.blockShield){hero.blockShield.visible=blockAmt>.5;hero.armShield.visible=blockAmt<=.5}
+  if(st.dead){st.deadT+=dt;hero.g.rotation.x=-Math.min(1.45,st.deadT*3)}
+  trailT+=dt;trailMesh.material.opacity=Math.max(0,.75-trailT*3.4);const ts=1+trailT*.6;trailMesh.scale.set(trailMesh.scale.x<0?-ts:ts,ts,ts);
+  if(!pz)for(const e of enemies)enemyStep(e,dt,t);
+  blob.position.set(p.x,.02,p.z);blob.scale.setScalar(1-p.y*.3);
+  // kamera
+  tg.set(p.x,p.y+1.45,p.z);
+  cam.position.set(tg.x+Math.sin(yaw)*Math.cos(pitch)*dist,tg.y+Math.sin(pitch)*dist,tg.z+Math.cos(yaw)*Math.cos(pitch)*dist);
+  cam.position.x=clamp(cam.position.x,-13.6,13.6);cam.position.z=clamp(cam.position.z,-23.6,11.6);cam.position.y=clamp(cam.position.y,.5,12.5);
+  cam.lookAt(tg);
+  if(shake>0){shake=Math.max(0,shake-dt*1.8);cam.position.x+=(Math.random()-.5)*shake*.4;cam.position.y+=(Math.random()-.5)*shake*.3}
+  hurtT=Math.max(0,hurtT-dt);$('hurt').style.opacity=hurtT;
+  for(const f of torches){const k=.85+.15*Math.sin(t*13+f.ph)*Math.sin(t*7.3+f.ph*2);f.l.intensity=1.7*k;f.s.scale.set(.55*k,.8*k,1)}
+  portalMat.uniforms.uT.value=t;waterMat.uniforms.uT.value=t;
+  for(const b of banners)b.p.rotation.x=Math.sin(t*.8+b.ph)*.04;
+  for(let i=0;i<DN;i++){dpos[i*3+1]+=dt*.08;dpos[i*3]+=Math.sin(t*.5+i)*dt*.05;if(dpos[i*3+1]>11)dpos[i*3+1]=0}
+  dGeo.attributes.position.needsUpdate=true;
+  lidA+=((chestOpen?-1.25:0)-lidA)*Math.min(1,dt*5);lidP.rotation.x=lidA;
+  for(let i=pops.length-1;i>=0;i--){const o=pops[i];o.t+=dt;pv.copy(o.p).project(cam);
+    o.el.style.left=((pv.x+1)/2*innerWidth)+'px';o.el.style.top=((1-pv.y)/2*innerHeight-o.t*50)+'px';o.el.style.opacity=Math.max(0,1-o.t/.9);
+    if(o.t>.9||pv.z>1){o.el.remove();pops.splice(i,1)}}
+  let best=null,bd=4.4;
+  if(!st.dead)for(const s of spots){const d=(p.x-s.x)**2+(p.z-s.z)**2;if(d<bd){bd=d;best=s}}
+  if(best!==near){near=best;promptEl.hidden=!near;if(near)promptEl.textContent=(touch?'':'F – ')+near.txt}
+  renderer.render(scene,cam);
+  requestAnimationFrame(loop);
+}
+boot();
+loop();
+const ld=$('load');ld.style.opacity=0;setTimeout(()=>ld.remove(),700);
+}
+</script>
+</body>
+</html>

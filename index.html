@@ -614,6 +614,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <button id="meBtn" type="button" hidden>Moje postava</button>
   <button id="invBtn" type="button" hidden>Inventář 🎒</button>
   <button id="arenaBtn" type="button" hidden>Aréna ⚔️</button>
+  <button id="dungeonBtn" type="button" hidden>Krypta 💀</button>
   <button id="games" type="button">Minihry</button>
   <button id="openList" type="button">Obyvatelé</button>
   <button id="whole" type="button">Celá planeta</button>
@@ -627,7 +628,7 @@ body.playing:has(#joy:not([hidden])) .chat{bottom:calc(env(safe-area-inset-botto
   <div class="abduct-flash" id="abductFlash" aria-hidden="true"></div>
   <div class="joy" id="joy" hidden aria-label="Joystick pro chůzi"><i id="joyKnob"></i></div>
   <button class="jump-btn" id="jumpBtn" type="button" hidden>Skok</button>
-  <div class="play-bar"><button type="button" id="playInv">Inventář 🎒</button><button type="button" id="playArena" hidden>Aréna ⚔️</button></div>
+  <div class="play-bar"><button type="button" id="playInv">Inventář 🎒</button><button type="button" id="playArena" hidden>Aréna ⚔️</button><button type="button" id="playDungeon" hidden>Krypta 💀</button></div>
   <button class="water-btn" id="waterBtn" type="button" hidden>💧 Zalít kytky</button>
   <button class="water-btn quest-btn" id="questBtn" type="button" hidden>🌱 Mluvit se zahradnicí</button>
   <button class="water-btn shop-btn" id="shopBtn" type="button" hidden>🛒 Otevřít obchod</button>
@@ -1395,7 +1396,15 @@ function arenaGo(){
   if(hp.dead){toast('🪦 Jsi mrtvý. Do arény můžeš, až tě někdo oživí.');return}
   location.href='arena.html'+digLook();
 }
-function arenaVis(){const o=arenaOpen();portal.visible=o;const b=document.getElementById('arenaBtn');if(b)b.hidden=!(meId&&o);const pb=document.getElementById('playArena');if(pb)pb.hidden=!(meId&&o)}
+const DUNGEON_FROM=Date.UTC(2026,11,4,11); // 3D dungeon Krypta pod planetou: pátek 4. 12. 2026 12:00 Praha, admin dřív
+const dungeonOpen=()=>Date.now()>=DUNGEON_FROM||meId==='lubikosuch';
+function dungeonGo(){
+  if(!meId){toast('💀 Do krypty se dostaneš po přihlášení přes Google.');return}
+  if(!dungeonOpen()){toast('💀 Krypta se otevírá v pátek 4. 12. ve 12:00.');return}
+  if(hp.dead){toast('🪦 Jsi mrtvý. Do krypty můžeš, až tě někdo oživí.');return}
+  location.href='dungeon.html'+digLook();
+}
+function arenaVis(){const d=dungeonOpen();for(const id of['dungeonBtn','playDungeon']){const b=document.getElementById(id);if(b)b.hidden=!(meId&&d)}const o=arenaOpen();portal.visible=o;const b=document.getElementById('arenaBtn');if(b)b.hidden=!(meId&&o);const pb=document.getElementById('playArena');if(pb)pb.hidden=!(meId&&o)}
 setInterval(arenaVis,30000);
 function drawBossTag(u,dead,hp){
   const c=u.cv.getContext('2d'),W=u.cv.width,H=u.cv.height;
@@ -4586,6 +4595,8 @@ document.getElementById('invBtn').onclick=openInv;
 document.getElementById('arenaBtn').onclick=arenaGo;
 document.getElementById('playInv').onclick=openInv;
 document.getElementById('playArena').onclick=arenaGo;
+document.getElementById('dungeonBtn').onclick=dungeonGo;
+document.getElementById('playDungeon').onclick=dungeonGo;
 document.getElementById('invClose').onclick=()=>{document.getElementById('inv').hidden=true};
 document.getElementById('inv').addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('inv').hidden=true;e.stopPropagation()});
 document.getElementById('inv').addEventListener('click',e=>{if(e.target.id==='inv')e.target.hidden=true});
