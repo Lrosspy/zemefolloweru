@@ -412,7 +412,7 @@ function makeHero(mat,look){
   }
   // místa, kam se věší výbava (každé se při převlékání vyprázdní)
   const at={head:piv(head),neck:piv(torso),chest:piv(torso),back:piv(torso,0,.27,-.2),cape:piv(torso,0,.5,-.21),
-    handR:piv(arms[1].el,0,-.3,0),front:piv(torso,-.04,.3,.32),armL:piv(arms[0].el,-.085,-.16,0),wristR:piv(arms[1].el,0,-.2,0),
+    handR:piv(arms[1].el,0,-.3,0),front:piv(torso,-.12,.3,.54),armL:piv(arms[0].el,-.085,-.16,0),wristR:piv(arms[1].el,0,-.2,0),
     thighL:piv(legs[0].hip),thighR:piv(legs[1].hip),kneeL:piv(legs[0].knee),kneeR:piv(legs[1].knee),bootL:piv(legs[0].knee),bootR:piv(legs[1].knee)};
   let lantern=null;
   if(!mat){ // lucerna visí u pasu, ruce zůstanou volné pro zbraň a štít
@@ -988,7 +988,8 @@ function loop(){
   blockAmt+=((st.block&&atk.i<0&&!st.dead&&!pz?1:0)-blockAmt)*Math.min(1,dt*14);
   if(blockAmt>.01){const A=hero.arms[0],W=hero.arms[1],k=blockAmt,mx=(o,v)=>o+(v-o)*k;
     A.sp.rotation.x=mx(A.sp.rotation.x,-1.25);A.sp.rotation.z=mx(A.sp.rotation.z,.35);A.el.rotation.x=mx(A.el.rotation.x,-1.3);
-    if(!st.gear.shield){W.sp.rotation.x=mx(W.sp.rotation.x,-1.3);W.sp.rotation.z=mx(W.sp.rotation.z,-.5);W.el.rotation.x=mx(W.el.rotation.x,-.8)}}
+    if(!st.gear.shield){W.sp.rotation.x=mx(W.sp.rotation.x,-1.3);W.sp.rotation.z=mx(W.sp.rotation.z,-.5);W.el.rotation.x=mx(W.el.rotation.x,-.8)}
+    else{W.sp.rotation.x=mx(W.sp.rotation.x,.15);W.sp.rotation.z=mx(W.sp.rotation.z,.45);W.el.rotation.x=mx(W.el.rotation.x,-.35)}}
   if(hero.blockShield){hero.blockShield.visible=blockAmt>.5;hero.armShield.visible=blockAmt<=.5}
   if(st.dead){st.deadT+=dt;hero.g.rotation.x=-Math.min(1.45,st.deadT*3)}
   trailT+=dt;trailMesh.material.opacity=Math.max(0,.75-trailT*3.4);const ts=1+trailT*.6;trailMesh.scale.set(trailMesh.scale.x<0?-ts:ts,ts,ts);
