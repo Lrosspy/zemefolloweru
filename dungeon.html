@@ -916,7 +916,9 @@ $('modeBtn').onclick=toggleMode;
 document.addEventListener('pointerlockchange',()=>{if(!document.pointerLockElement&&ml&&lockedReal)unlockMouse();lockedReal=document.pointerLockElement===cv});
 let lockedReal=false;
 document.addEventListener('pointerlockerror',()=>{}); // bez zamčení (např. v náhledu) to jede dál, jen kurzor může narazit na okraj
-document.addEventListener('mousemove',e=>{if(!locked()||paused())return;yaw-=e.movementX*.0026;pitch=clamp(pitch+e.movementY*.002,.08,1.25)});
+let mouseX=-1;
+document.addEventListener('mouseleave',()=>{mouseX=-1});
+document.addEventListener('mousemove',e=>{mouseX=e.clientX;if(!locked()||paused())return;yaw-=e.movementX*.0026;pitch=clamp(pitch+e.movementY*.002,.08,1.25)});
 addEventListener('keydown',e=>{
   if(e.code==='Escape'&&ml){unlockMouse();return}
   if(!invEl.hidden){if(e.code==='Escape'||e.code==='KeyI'){e.preventDefault();closeInv(e.code==='KeyI')}return}
@@ -1002,6 +1004,8 @@ function loop(){
   if(!pz)for(const e of enemies)enemyStep(e,dt,t);
   blob.position.set(p.x,.02,p.z);blob.scale.setScalar(1-p.y*.3);
   // kamera
+  if(ml&&!lockedReal&&!pz&&mouseX>=0){const ed=innerWidth*.12;
+    if(mouseX<ed)yaw+=dt*3.2*(1-mouseX/ed);else if(mouseX>innerWidth-ed)yaw-=dt*3.2*(1-(innerWidth-mouseX)/ed);}
   tg.set(p.x,p.y+1.45,p.z);
   cam.position.set(tg.x+Math.sin(yaw)*Math.cos(pitch)*dist,tg.y+Math.sin(pitch)*dist,tg.z+Math.cos(yaw)*Math.cos(pitch)*dist);
   cam.position.x=clamp(cam.position.x,-13.6,13.6);cam.position.z=clamp(cam.position.z,-23.6,11.6);cam.position.y=clamp(cam.position.y,.5,12.5);
