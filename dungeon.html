@@ -81,6 +81,7 @@ body.locked canvas,body.locked .hud,body.locked .tools,body.locked #help{visibil
   <div class="hpw" role="meter" aria-label="Životy"><i id="hpBar"></i><em id="hpTxt"></em></div>
   <span class="kills" id="kills">Poražení kostlivci: 0</span></header>
 <nav class="tools">
+  <button id="flyBtn" type="button" hidden>✈️ Létání (V)</button>
   <button id="edBtn" type="button" hidden>🔨 Stavění (B)</button>
   <button id="invBtn" type="button">🎒 Inventář (I)</button>
   <button id="modeBtn" type="button"></button>
@@ -848,7 +849,7 @@ function startDemo(){
   st.demo=true;st.user=null;st.nick='zkouška';
   const g=(qs.get('g')||'wood_sword_2_u,wood_shield_1,cloth_pants_2,cloth_gloves_3,cloth_pack_2,repair_hat,earth_heart_1,founder_cape,arena_boots,basic_sword_g,boss_sword,wood_sword_3_r,arena_shield,wood_shield_4_r,cloth_pants_1_u,cloth_pack_1').split(',');
   st.items=Object.fromEntries(g.filter(k=>ITEMS[k]).map(k=>[k,true]));st.equip=null;st.counts={herbs:3,meds:1,grain:5,bread:2};st.money=245;st.dia=0;
-  st.hp=999;refreshGear();st.hp=st.hpMax;st.dead=false;$('demo').hidden=false;$('edBtn').hidden=!canEdit();$('who').textContent='zkušební postava';gateEl.hidden=true;hud();
+  st.hp=999;refreshGear();st.hp=st.hpMax;st.dead=false;$('demo').hidden=false;$('edBtn').hidden=!canEdit();$('flyBtn').hidden=!canEdit();$('who').textContent='zkušební postava';gateEl.hidden=true;hud();
 }
 const loadJs=src=>new Promise((ok,bad)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.append(s)});
 const preRelease=()=>ONSITE&&now()<DUNGEON_FROM; // do pátku 4. 12. 12:00 na webu jen admin, žádná zkušební hra
@@ -881,7 +882,7 @@ async function boot(){
     st.hp=999;refreshGear();st.health=hlEff(health,now());
     if(st.health.dead){const left=Math.max(1,Math.ceil((st.health.dAt+REVIVE_MS-now())/60000));
       gate('Jsi mrtvý 💀',`Tvoje postava leží u hrobu. Oživí tě jiný hráč, nebo se sám probudíš asi za <b>${left>=60?Math.floor(left/60)+' h '+left%60+' min':left+' min'}</b>.`,[['Na planetu',()=>location.href='./']]);return}
-    st.hp=Math.min(st.hpMax,Math.max(1,st.health.hp));hpSaved=Math.round(st.hp);gateEl.hidden=true;document.body.classList.remove('locked');hud();$('edBtn').hidden=!canEdit();mapBoot();
+    st.hp=Math.min(st.hpMax,Math.max(1,st.health.hp));hpSaved=Math.round(st.hp);gateEl.hidden=true;document.body.classList.remove('locked');hud();$('edBtn').hidden=!canEdit();$('flyBtn').hidden=!canEdit();mapBoot();
     if(st.health.sick)toast('🤒 Jsi nemocný. Antibiotika najdeš v inventáři (I).');
   }catch(e){console.warn(e);gate('Něco se pokazilo','Nepodařilo se načíst tvou postavu. Zkus to znovu z planety.',[['Na planetu',()=>location.href='./'],...demoBtn()])}
 }
@@ -923,7 +924,7 @@ function doHits(c){
 }
 let blockAmt=0;
 function hurtPlayer(n,e){
-  if(st.dead||paused()||ed.on)return;
+  if(st.dead||paused()||ed.on||st.fly)return;
   const g=st.gear,bl=(ITEMS[g.shield]||{}).block||0,def=(ITEMS[g.gloves]||{}).def||0,ps=hero.g.position.clone().setY(2);
   if(blockAmt>.5&&e){ // pravé tlačítko: krytí funguje proti úderům zepředu
     const dx=e.g.position.x-hero.g.position.x,dz=e.g.position.z-hero.g.position.z,l=Math.hypot(dx,dz)||1;
@@ -1225,6 +1226,14 @@ const spots=[
   {x:-8,z:-22,txt:'Prohlédnout sochu',act(){toast('Na podstavci: „Strážce krypty“.')}},
 ];
 for(const L of LOCKS)spots.push({x:L.gx,z:L.z+1.7,L,get txt(){return st.keys.has(L.room)?'Odemknout dveře klíčem 🗝️':'Zamčené dveře 🔒'},act(){unlockDoor(L)}});
+function toggleFly(){
+  if(!canEdit())return;st.fly=!st.fly;$('flyBtn').classList.toggle('on',st.fly);vy=0;
+  if(st.fly){toast('✈️ Létání: Mezerník nahoru, C dolů, Shift rychleji. Procházíš zdmi a nic tě nezraní.');return}
+  const p=hero.g.position; // po přistání zpátky na nejbližší podlahu
+  if(!free(p.x,p.z)){let best=null,bd=1e9;for(const a of AREAS){const x=clamp(p.x,a.x0+.2,a.x1-.2),z=clamp(p.z,a.z0+.2,a.z1-.2),d=(x-p.x)**2+(z-p.z)**2;if(d<bd&&free(x,z)){bd=d;best=[x,z]}}if(best){p.x=best[0];p.z=best[1]}}
+  toast('🚶 Létání vypnuto.');
+}
+$('flyBtn').onclick=toggleFly;
 let near=null;const promptEl=$('prompt');
 promptEl.onclick=()=>{near&&near.act();cv.focus()};
 
@@ -1249,6 +1258,7 @@ document.addEventListener('mouseleave',()=>{mouseX=-1});
 document.addEventListener('mousemove',e=>{mouseX=e.clientX;if(!locked()||paused())return;yaw-=e.movementX*.0026;pitch=clamp(pitch+e.movementY*.002,.08,1.25)});
 addEventListener('keydown',e=>{
   if(e.code==='Escape'&&ml){unlockMouse();return}
+  if(e.code==='KeyV'&&!e.repeat&&invEl.hidden&&gateEl.hidden&&canEdit()){toggleFly();return}
   if(e.code==='KeyB'&&!e.repeat&&invEl.hidden&&gateEl.hidden&&canEdit()){edToggle();return}
   if(ed.on){
     if(e.code==='KeyR'){ed.rot+=(e.shiftKey?-1:1)*Math.PI/4;edHint();return}
@@ -1306,7 +1316,7 @@ function loop(){
   }
   const len=Math.hypot(ix,iz);if(len>1){ix/=len;iz/=len}
   const run=keys.ShiftLeft||keys.ShiftRight||Math.hypot(joy.x,joy.y)>.92;
-  const want=(run?5.2:2.6)*Math.min(1,len)*(atk.i>=0?.35:1)*(blockAmt>.3?.4:1);
+  const want=st.fly?(run?16:8)*Math.min(1,len):(run?5.2:2.6)*Math.min(1,len)*(atk.i>=0?.35:1)*(blockAmt>.3?.4:1);
   speed+=(want-speed)*Math.min(1,dt*10);
   if(len>.08)mv.set(-Math.sin(yaw)*iz+Math.cos(yaw)*ix,-Math.cos(yaw)*iz-Math.sin(yaw)*ix).normalize();
   if(!st.dead&&atk.i<0){
@@ -1318,10 +1328,11 @@ function loop(){
   const stp=speed*dt;
   if(stp>.0001){const nx=p.x+mv.x*stp,nz=p.z+mv.y*stp;
     const ok=(x,z)=>free(x,z)&&groundAt(x,z)-p.y<=.45&&!enemies.some(e=>{if(e.dead)return false;const r=(e.rad||.4)+.25,ex=e.g.position.x,ez=e.g.position.z,nd=Math.hypot(x-ex,z-ez);return nd<r&&nd<Math.hypot(p.x-ex,p.z-ez)});
-    if(ok(nx,nz)){p.x=nx;p.z=nz}else if(ok(nx,p.z))p.x=nx;else if(ok(p.x,nz))p.z=nz;}
-  const gy=groundAt(p.x,p.z);
-  if(keys.Space&&p.y<=gy+.001&&!pz&&!st.dead)vy=4.2;
-  vy-=12*dt;p.y=Math.max(gy,p.y+vy*dt);if(p.y<=gy){p.y=gy;vy=0}
+    if(st.fly){p.x=clamp(nx,-60,60);p.z=clamp(nz,-220,60)}else if(ok(nx,nz)){p.x=nx;p.z=nz}else if(ok(nx,p.z))p.x=nx;else if(ok(p.x,nz))p.z=nz;}
+  const gy=st.fly?-99:groundAt(p.x,p.z);
+  if(st.fly){if(!pz){const up=(keys.Space?1:0)-(keys.KeyC?1:0);p.y=clamp(p.y+up*(run?10:5)*dt,-2,40)}vy=0}
+  else{if(keys.Space&&p.y<=gy+.001&&!pz&&!st.dead)vy=4.2;
+  vy-=12*dt;p.y=Math.max(gy,p.y+vy*dt);if(p.y<=gy){p.y=gy;vy=0}}
   // útoky
   if(atk.i>=0&&!pz){
     const c=COMBO[atk.i];atk.t+=dt;const k=atk.t/c.dur;
@@ -1349,7 +1360,7 @@ function loop(){
     if(mouseX<ed)yaw+=dt*3.2*(1-mouseX/ed);else if(mouseX>innerWidth-ed)yaw-=dt*3.2*(1-(innerWidth-mouseX)/ed);}
   tg.set(p.x,p.y+1.45,p.z);
   {const cx=Math.sin(yaw)*Math.cos(pitch),cy=Math.sin(pitch),cz=Math.cos(yaw)*Math.cos(pitch);let dd=.6;
-    for(let s_=.6;s_<=dist+.001;s_+=.2){const x=tg.x+cx*s_,y=tg.y+cy*s_,z=tg.z+cz*s_;if(!AREAS.some(a=>x>=a.x0-.3&&x<=a.x1+.3&&z>=a.z0-.3&&z<=a.z1+.3&&y<a.h-.3))break;dd=s_}
+    if(st.fly)dd=dist;else for(let s_=.6;s_<=dist+.001;s_+=.2){const x=tg.x+cx*s_,y=tg.y+cy*s_,z=tg.z+cz*s_;if(!AREAS.some(a=>x>=a.x0-.3&&x<=a.x1+.3&&z>=a.z0-.3&&z<=a.z1+.3&&y<a.h-.3))break;dd=s_}
     camD=dd<camD?dd:camD+(dd-camD)*Math.min(1,dt*4);
     cam.position.set(tg.x+cx*camD,Math.max(.4,tg.y+cy*camD),tg.z+cz*camD);}
   cam.lookAt(tg);
