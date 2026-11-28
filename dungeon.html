@@ -209,6 +209,8 @@ const flameT=T(flameC),softT=T(softC),webT=T(webC);
 const CH={x0:3.2,z0:-15,z1:-4},BR={x:8.3,w:1.7};
 const circles=[],rects=[];
 const AREAS=[{x0:-13.5,x1:13.5,z0:-23.3,z1:11.5,h:12.5}]; // podlahy, kde se dá chodit (místnosti, chodby, dveře)
+const GROUND=[]; // vyvýšená místa (stupně), kam se dá vyjít
+const groundAt=(x,z)=>{let y=0;for(const g of GROUND)if(x>=g.x0&&x<=g.x1&&z>=g.z0&&z<=g.z1&&g.y>y)y=g.y;return y};
 function free(x,z){
   if(!AREAS.some(a=>x>=a.x0&&x<=a.x1&&z>=a.z0&&z<=a.z1))return false;
   if(typeof solidHit==='function'&&solidHit(x,z))return false;
@@ -297,16 +299,32 @@ for(let i=0;i<8;i++){const b=cyl(.03,.03,rr(.3,.5),boneM,rr(5,12),.03,rr(-50,-36
 // chodba 2
 room(1.7,4.3,-61,-53,5,null,null);
 torch(4.25,2.6,-57,-Math.PI/2);
-// 3. Trůnní sál
-room(-12,14,-88,-62,12,[3],[]);
-for(const x of[-4,10])for(const z of[-67,-73,-79])pillarAt(x,z,12,.7);
-box(3,.03,24,M({color:0x6a1018,roughness:.9}),3,.015,-74);
-box(9,.4,4.5,stone(2,1),3,.2,-85.6);box(6.5,.4,3,stone(1.5,.8),3,.6,-86.2);rects.push({x:3,z:-85.6,w:4.8,d:2.5});
+// 3. Dlouhá síň
+room(-3,9,-101,-62,9,[3],[3]);
+for(const x of[0,6])for(const z of[-68,-75,-82,-89,-96])pillarAt(x,z,9,.5);
+torch(-2.95,3,-71,Math.PI/2);torch(8.95,3,-78,-Math.PI/2);torch(-2.95,3,-85,Math.PI/2);torch(8.95,3,-92,-Math.PI/2);
+// chodba 3
+room(1.7,4.3,-110,-102,5,null,null);
+torch(1.75,2.6,-106,Math.PI/2);
+// 4. Strážnice
+room(-6,12,-128,-111,8,[3],[9]);
+for(const [x,z] of[[-1,-115.5],[7,-115.5],[-1,-123.5],[7,-123.5]])pillarAt(x,z,8,.5);
+torch(-5.95,3,-115,Math.PI/2);torch(-5.95,3,-124,Math.PI/2);torch(11.95,3,-115,-Math.PI/2);torch(11.95,3,-124,-Math.PI/2);
+// chodba 4
+room(7.7,10.3,-137,-129,5,null,null);
+torch(10.25,2.6,-133,-Math.PI/2);
+// 5. Trůnní sál (na stupně k trůnu se dá vyjít)
+room(-10,16,-164,-138,12,[9],[]);
+for(const x of[-4,10])for(const z of[-143,-149,-155])pillarAt(x,z,12,.7);
+box(3,.03,24,M({color:0x6a1018,roughness:.9}),3,.015,-150);
+box(9,.4,4.5,stone(2,1),3,.2,-161.6);box(6.5,.4,3,stone(1.5,.8),3,.6,-162.2);
+GROUND.push({x0:-1.5,x1:7.5,z0:-163.85,z1:-159.35,y:.4},{x0:-.25,x1:6.25,z0:-163.7,z1:-160.7,y:.8});
+rects.push({x:3,z:-162.65,w:.85,d:.5}); // trůn
 {const gm=M({color:0x3a2a1c,roughness:.7}),au=M({color:0xd4a12a,metalness:.7,roughness:.3,emissive:0x5a3c00,emissiveIntensity:.5});
-  box(1.6,.5,1.3,gm,3,1.05,-86.3);box(1.6,2.6,.25,gm,3,2.3,-86.95);for(const s of[-1,1])box(.2,.5,1.2,gm,3+s*.8,1.45,-86.3);
-  box(1.75,.12,.3,au,3,3.65,-86.95);add(new THREE.Mesh(new THREE.SphereGeometry(.18,12,8),boneM),3,3.9,-86.95);}
-for(const [x,z] of[[-1,-81],[7,-81],[-1,-65],[7,-65]])brazier(x,z);
-torch(-11.95,3.5,-70,Math.PI/2);torch(-11.95,3.5,-80,Math.PI/2);torch(13.95,3.5,-70,-Math.PI/2);torch(13.95,3.5,-80,-Math.PI/2);
+  box(1.6,.5,1.3,gm,3,1.05,-162.3);box(1.6,2.6,.25,gm,3,2.3,-162.95);for(const s of[-1,1])box(.2,.5,1.2,gm,3+s*.8,1.45,-162.3);
+  box(1.75,.12,.3,au,3,3.65,-162.95);add(new THREE.Mesh(new THREE.SphereGeometry(.18,12,8),boneM),3,3.9,-162.95);}
+for(const [x,z] of[[-1,-157],[7,-157],[-1,-141],[7,-141]])brazier(x,z);
+torch(-9.95,3.5,-146,Math.PI/2);torch(-9.95,3.5,-156,Math.PI/2);torch(15.95,3.5,-146,-Math.PI/2);torch(15.95,3.5,-156,-Math.PI/2);
 
 
 /* ---------- portál s houbami ---------- */
@@ -951,6 +969,7 @@ function enemyStep(e,dt,t){
     g.rotation.y=lerpA(g.rotation.y,Math.atan2(vx,vz),dt*8);
     const nx=g.position.x+vx/l*s,nz=g.position.z+vz/l*s;
     if(free(nx,nz)){g.position.x=nx;g.position.z=nz}else if(free(nx,g.position.z))g.position.x=nx;else if(free(g.position.x,nz))g.position.z=nz;else e.wt=0;}
+  g.position.y=groundAt(g.position.x,g.position.z);
   animHero(e.h,e.spd,dt,t,false);
   if(e.state==='wind')atkPose(e.h,2,e.t<d.windup?.45*e.t/d.windup:.45+.55*(e.t-d.windup)/Math.max(.01,d.atkDur-d.windup));
 }
@@ -986,8 +1005,8 @@ function propFire(it,P,g){ // oheň z rekvizity se přidá mezi pochodně (svít
   it.torch={s,p,ph:R()*9,big:fs>1?1:0,size:fs};torches.push(it.torch);
 }
 function placeItem(it){
-  if(it.t.startsWith('m:')){const e=spawnEnemy(it.t.slice(2),it.x,it.z);if(!e)return null;e.g.rotation.y=it.r;e.g.traverse(o=>{o.userData.pid=it});it.enemy=e}
-  else{const P=PROPS[it.t];if(!P)return null;const g=add(new THREE.Group(),it.x,0,it.z);g.rotation.y=it.r;g.scale.setScalar(it.s);P.build(g);
+  if(it.t.startsWith('m:')){const e=spawnEnemy(it.t.slice(2),it.x,it.z);if(!e)return null;e.g.position.y=groundAt(it.x,it.z);e.g.rotation.y=it.r;e.g.traverse(o=>{o.userData.pid=it});it.enemy=e}
+  else{const P=PROPS[it.t];if(!P)return null;const g=add(new THREE.Group(),it.x,groundAt(it.x,it.z),it.z);g.rotation.y=it.r;g.scale.setScalar(it.s);P.build(g);
     if(P.fire)propFire(it,P,g);g.traverse(o=>{o.userData.pid=it});it.obj=g;if(P.hb)it.hb=[P.hb[0]*it.s,P.hb[1]*it.s]}
   mapItems.push(it);return it;
 }
@@ -1005,9 +1024,13 @@ function loadMap(m){
 }
 const mapData=()=>({v:1,items:mapItems.map(i=>({t:i.t,x:+i.x.toFixed(2),z:+i.z.toFixed(2),r:+i.r.toFixed(3),s:+i.s.toFixed(2)}))});
 const DEFAULT_MAP={v:1,items:[
-  ['skeleton',-3,-12],['skeleton',-11.5,-3],['skeleton',-6,-19],['skeleton_guard',8.6,-19.5],['skeleton',9,6],
+  ...[['skeleton',-3,-12],['skeleton',-11.5,-3],['skeleton',-6,-19],['skeleton_guard',8.6,-19.5],['skeleton',9,6],
   ['skeleton',5,-43],['skeleton',12,-43],['skeleton',8.5,-50],
-  ['skeleton_guard',0,-76],['skeleton_guard',6,-76],['skeleton',-8,-70],['skeleton',12,-70]].map(([m,x,z])=>({t:'m:'+m,x,z,r:0,s:1}))};
+  ['skeleton',3,-72],['skeleton',2,-88],['skeleton',5,-96],
+  ['skeleton_guard',3,-120],['skeleton',9,-116],['skeleton',-3,-125],
+  ['skeleton_guard',1,-150],['skeleton_guard',5,-150],['skeleton',-6,-146],['skeleton',12,-146]].map(([m,x,z])=>({t:'m:'+m,x,z,r:0,s:1})),
+  ...[['table',-3,-118,0],['barrel',10.6,-126.6,0],['barrel',10.6,-125.6,0],['crates',-4.4,-126.4,.4],['crate',11,-112.5,.2],['bones',4,-80,0],['web',-2.4,-99.5,.8]]
+    .map(([t,x,z,r])=>({t,x,z,r,s:1}))]};
 function solidHit(x,z){ // kolize s položenými věcmi (otočený obdélník)
   for(const it of mapItems){if(!it.hb)continue;const dx=x-it.x,dz=z-it.z,c=Math.cos(it.r),s=Math.sin(it.r);
     const lx=dx*c-dz*s,lz=dx*s+dz*c;if(Math.abs(lx)<it.hb[0]+.3&&Math.abs(lz)<it.hb[1]+.3)return true}
@@ -1048,7 +1071,7 @@ function edPoint(){if(ed.mx<0)return null;ndc.set(ed.mx/innerWidth*2-1,-(ed.my/i
 function edUpdate(){
   if(!ed.on)return;const q=edPoint(),ok=q&&inArea(q.x,q.z);
   if(ed.ring){ed.ring.visible=!!q;if(q){ed.ring.position.set(q.x,.04,q.z);ed.ring.material.color.set(ok?0x7ff2dc:0xff5a4a)}}
-  if(ed.ghost){ed.ghost.visible=!!q;if(q){ed.ghost.position.set(q.x,0,q.z);ed.ghost.rotation.y=ed.rot;ed.ghost.scale.setScalar(ed.sel.startsWith('m:')?1:ed.scale)}}
+  if(ed.ghost){ed.ghost.visible=!!q;if(q){ed.ghost.position.set(q.x,groundAt(q.x,q.z),q.z);ed.ghost.rotation.y=ed.rot;ed.ghost.scale.setScalar(ed.sel.startsWith('m:')?1:ed.scale)}}
 }
 function edClick(){
   const q=edPoint();if(!ed.sel||!q)return;
@@ -1165,7 +1188,7 @@ addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProje
 
 /* ---------- smyčka ---------- */
 const clock=new THREE.Clock(),mv=new THREE.Vector2(),tg=new THREE.Vector3(),pv=new THREE.Vector3();
-let speed=0,vy=0;
+let speed=0,vy=0,camD=5.5;
 const lerpA=(a,b,k)=>{const d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;return a+d*Math.min(1,k)};
 function loop(){
   const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime,p=hero.g.position,pz=paused();clockT=t;
@@ -1187,9 +1210,11 @@ function loop(){
   }
   const stp=speed*dt;
   if(stp>.0001){const nx=p.x+mv.x*stp,nz=p.z+mv.y*stp;
-    if(free(nx,nz)){p.x=nx;p.z=nz}else if(free(nx,p.z))p.x=nx;else if(free(p.x,nz))p.z=nz;}
-  if(keys.Space&&p.y===0&&!pz&&!st.dead)vy=4.2;
-  vy-=12*dt;p.y=Math.max(0,p.y+vy*dt);if(p.y===0)vy=0;
+    const ok=(x,z)=>free(x,z)&&groundAt(x,z)-p.y<=.45;
+    if(ok(nx,nz)){p.x=nx;p.z=nz}else if(ok(nx,p.z))p.x=nx;else if(ok(p.x,nz))p.z=nz;}
+  const gy=groundAt(p.x,p.z);
+  if(keys.Space&&p.y<=gy+.001&&!pz&&!st.dead)vy=4.2;
+  vy-=12*dt;p.y=Math.max(gy,p.y+vy*dt);if(p.y<=gy){p.y=gy;vy=0}
   // útoky
   if(atk.i>=0&&!pz){
     const c=COMBO[atk.i];atk.t+=dt;const k=atk.t/c.dur;
@@ -1197,7 +1222,7 @@ function loop(){
     if(atk.i===2&&k>.25&&k<.5){const fx=Math.sin(hero.g.rotation.y)*3*dt,fz=Math.cos(hero.g.rotation.y)*3*dt;if(free(p.x+fx,p.z+fz)){p.x+=fx;p.z+=fz}}
     if(k>=1){if(atk.queued&&atk.i<2)startHit(atk.i+1);else{atk.last=atk.i;atk.lastEnd=t;atk.i=-1}}
   }
-  animHero(hero,speed,dt,t,p.y>.02);
+  animHero(hero,speed,dt,t,p.y>gy+.05);
   if(atk.i>=0)atkPose(hero,atk.i,atk.t/COMBO[atk.i].dur);
   blockAmt+=((st.block&&atk.i<0&&!st.dead&&!pz?1:0)-blockAmt)*Math.min(1,dt*14);
   if(blockAmt>.01){const A=hero.arms[0],W=hero.arms[1],k=blockAmt,mx=(o,v)=>o+(v-o)*k;
@@ -1209,14 +1234,15 @@ function loop(){
   trailT+=dt;trailMesh.material.opacity=Math.max(0,.75-trailT*3.4);const ts=1+trailT*.6;trailMesh.scale.set(trailMesh.scale.x<0?-ts:ts,ts,ts);
   if(!pz&&!ed.on)for(const e of enemies)enemyStep(e,dt,t);
   edUpdate();
-  blob.position.set(p.x,.02,p.z);blob.scale.setScalar(1-p.y*.3);
+  blob.position.set(p.x,gy+.02,p.z);blob.scale.setScalar(Math.max(.3,1-(p.y-gy)*.3));
   // kamera
   if(ml&&!lockedReal&&!pz&&mouseX>=0){const ed=innerWidth*.12;
     if(mouseX<ed)yaw+=dt*3.2*(1-mouseX/ed);else if(mouseX>innerWidth-ed)yaw-=dt*3.2*(1-(innerWidth-mouseX)/ed);}
   tg.set(p.x,p.y+1.45,p.z);
-  cam.position.set(tg.x+Math.sin(yaw)*Math.cos(pitch)*dist,tg.y+Math.sin(pitch)*dist,tg.z+Math.cos(yaw)*Math.cos(pitch)*dist);
-  let ca=AREAS[0],cs=-1;for(const a of AREAS)if(p.x>=a.x0-.6&&p.x<=a.x1+.6&&p.z>=a.z0-.6&&p.z<=a.z1+.6){const q=(a.x1-a.x0)*(a.z1-a.z0);if(q>cs){cs=q;ca=a}}
-  cam.position.x=clamp(cam.position.x,ca.x0-.2,ca.x1+.2);cam.position.z=clamp(cam.position.z,ca.z0-.2,ca.z1+.2);cam.position.y=clamp(cam.position.y,.5,ca.h-.4);
+  {const cx=Math.sin(yaw)*Math.cos(pitch),cy=Math.sin(pitch),cz=Math.cos(yaw)*Math.cos(pitch);let dd=.6;
+    for(let s_=.6;s_<=dist+.001;s_+=.2){const x=tg.x+cx*s_,y=tg.y+cy*s_,z=tg.z+cz*s_;if(!AREAS.some(a=>x>=a.x0-.3&&x<=a.x1+.3&&z>=a.z0-.3&&z<=a.z1+.3&&y<a.h-.3))break;dd=s_}
+    camD=dd<camD?dd:camD+(dd-camD)*Math.min(1,dt*4);
+    cam.position.set(tg.x+cx*camD,Math.max(.4,tg.y+cy*camD),tg.z+cz*camD);}
   cam.lookAt(tg);
   if(shake>0){shake=Math.max(0,shake-dt*1.8);cam.position.x+=(Math.random()-.5)*shake*.4;cam.position.y+=(Math.random()-.5)*shake*.3}
   hurtT=Math.max(0,hurtT-dt);$('hurt').style.opacity=hurtT;
