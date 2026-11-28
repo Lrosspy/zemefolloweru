@@ -61,6 +61,13 @@ body.ml canvas{cursor:none}
 .cell small{position:absolute;right:4px;bottom:2px;font:800 12px 'Nunito Sans',sans-serif;text-shadow:0 1px 2px #000}
 .stats,.money{font-size:14px;margin:10px 0 0;color:#d9cfb8}
 .det{min-height:44px;margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#0d0a07;font-size:15px}
+.edp{position:fixed;left:12px;top:150px;bottom:60px;width:min(300px,46vw);display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:14px;background:rgba(14,11,7,.88);border:2px solid #e9c46a;z-index:4}
+.edp[hidden]{display:none}.edp h3{margin:0;font:700 18px Cinzel,serif;color:#e9c46a}
+.edcat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;overflow:auto;flex:1;align-content:start}
+.edb{min-height:40px;padding:6px 8px;border-radius:10px;border:1px solid #6d5a2c;background:#1d160d;color:#f4e3b5;font:700 13px 'Nunito Sans',sans-serif;text-align:left;cursor:pointer}
+.edb.on{background:#e9c46a;color:#1d160d}.edb:focus-visible{outline:3px solid #7ff2dc}
+.edinfo{margin:0;font-size:13px;color:#d9cfb8;min-height:54px}.edrow{display:flex;gap:6px;flex-wrap:wrap}.edrow .btn{min-height:40px;padding:6px 10px;font-size:13px}
+#edBtn.on{background:#e9c46a;color:#1d160d}
 @media (max-width:600px){.invg{grid-template-columns:minmax(0,1fr)}.tools{max-width:70vw}.tools button{padding:6px 10px;font-size:13px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
@@ -71,12 +78,13 @@ body.ml canvas{cursor:none}
   <div class="hpw" role="meter" aria-label="Životy"><i id="hpBar"></i><em id="hpTxt"></em></div>
   <span class="kills" id="kills">Poražení kostlivci: 0</span></header>
 <nav class="tools">
+  <button id="edBtn" type="button" hidden>🔨 Stavění (B)</button>
   <button id="invBtn" type="button">🎒 Inventář (I)</button>
   <button id="modeBtn" type="button"></button>
   <button id="homeBtn" type="button">⬅ Na planetu</button>
 </nav>
 <div id="demo" hidden>Zkušební režim · nic se neukládá</div>
-<div id="help">WASD chůze · Shift běh · Mezerník skok · táhni myší = rozhlížení · Q = zamknout myš (otáčíš bez klikání, postava se točí s kamerou) · levé tlačítko = útok (3 údery za sebou) · pravé tlačítko = štít (drž) · I inventář · F akce</div>
+<div id="help">WASD chůze · Shift běh · Mezerník skok · táhni myší = rozhlížení · Q = zamknout myš (otáčíš bez klikání, postava se točí s kamerou) · levé tlačítko = útok (3 údery za sebou) · pravé tlačítko = štít (drž) · I inventář · F akce · B stavění (admin)</div>
 <button id="prompt" hidden></button>
 <div id="toast"></div>
 <div id="fade"></div>
@@ -85,6 +93,8 @@ body.ml canvas{cursor:none}
 <div id="pops"></div>
 <div id="joy" hidden><i></i></div>
 <div id="touchBtns" hidden><button id="shieldBtn" type="button" aria-label="Štít (drž)">🛡️</button><button id="jumpBtn" type="button" aria-label="Skok">⤒</button><button id="atkBtn" type="button" aria-label="Útok">⚔️</button></div>
+<section class="edp" id="ed" hidden aria-label="Stavění krypty"><h3>🔨 Stavění krypty</h3><div class="edcat" id="edCat"></div>
+  <p class="edinfo" id="edInfo"></p><div class="edrow"><button id="edSave" type="button" class="btn">💾 Uložit</button><button id="edUndo" type="button" class="btn">↶ Zpět</button><button id="edCopy" type="button" class="btn">📋 Záloha</button></div></section>
 <section class="over" id="inv" hidden role="dialog" aria-modal="true" aria-labelledby="invT"><div class="card">
   <div class="invhead"><h2 id="invT">Inventář</h2><span id="invWho"></span><button id="invX" type="button" aria-label="Zavřít">✕</button></div>
   <div class="invg"><div><div class="doll" id="doll"></div><p class="stats" id="invStats"></p></div>
@@ -192,8 +202,10 @@ const flameT=T(flameC),softT=T(softC),webT=T(webC);
 /* ---------- kolize ---------- */
 const CH={x0:3.2,z0:-15,z1:-4},BR={x:8.3,w:1.7};
 const circles=[],rects=[];
+const AREAS=[{x0:-13.5,x1:13.5,z0:-23.3,z1:11.5,h:12.5}]; // podlahy, kde se dá chodit (místnosti, chodby, dveře)
 function free(x,z){
-  if(x<-13.5||x>13.5||z<-23.3||z>11.5)return false;
+  if(!AREAS.some(a=>x>=a.x0&&x<=a.x1&&z>=a.z0&&z<=a.z1))return false;
+  if(typeof solidHit==='function'&&solidHit(x,z))return false;
   if(x>CH.x0-.3&&z>CH.z0-.3&&z<CH.z1+.3&&Math.abs(x-BR.x)>BR.w/2-.28)return false;
   for(const c of circles)if((x-c.x)**2+(z-c.z)**2<c.r*c.r)return false;
   for(const b of rects)if(Math.abs(x-b.x)<b.w&&Math.abs(z-b.z)<b.d)return false;
@@ -208,7 +220,6 @@ box(10.8,D,9,floor(2.7,2.25),8.6,-D/2,-19.5);
 box(10.8,.2,11,M({color:0x06141a,emissive:0x0a2a30,emissiveIntensity:.6,roughness:.2,metalness:.3}),8.6,-12,-9.5);
 box(1,27,37,stone(9,7),-14.5,-.5,-6);
 box(1,27,37,stone(9,7),14.5,-.5,-6);
-box(29,27,1,stone(7,7),0,-.5,-24.5);
 box(29,27,1,stone(7,7),0,-.5,12.5);
 box(29,1,37,stone(7,9),0,13.5,-6);
 
@@ -232,11 +243,65 @@ function torch(x,y,z,ry){
   cyl(.11,.05,.14,ironM,0,.47,.29,8,g);
   const wp=new THREE.Vector3(0,.68,.31);g.localToWorld(wp);
   const s=spr(flameT,0xffaa55,.6,wp.x,wp.y,wp.z);
-  const l=add(new THREE.PointLight(0xff8a3c,1.7,12,2),wp.x,wp.y+.1,wp.z);
-  torches.push({s,l,ph:R()*9});
+  torches.push({s,p:wp.clone().setY(wp.y+.1),ph:R()*9,k:1});
 }
 [[-8.3,3.2,-12,Math.PI/2],[-8.3,3.2,4,Math.PI/2],[2.3,3.2,-20,-Math.PI/2],[2.3,3.2,-4,-Math.PI/2],[-13.95,3.2,-10,Math.PI/2],[13.95,3.2,6,-Math.PI/2],[-7,3.2,-23.95,0],[1,3.2,-23.95,0]]
   .forEach(a=>torch(...a));
+const LPOOL=Array.from({length:8},()=>add(new THREE.PointLight(0xff8a3c,0,12,2),0,-50,0));let poolT=-1;
+
+/* ---------- další místnosti za sebou ---------- */
+// Místnost 1 (vstupní síň) → chodba → 2. Pohřebnice → chodba → 3. Trůnní sál. Dveře jsou otvory 2,6 × 4 m.
+const DW=2.6,DH=4,sr=v=>Math.max(.5,Math.round(v*2)/2);
+function wallX(z,xa,xb,gaps,h){ // zeď podél osy x, v místech gaps jsou dveře
+  let x=xa;
+  for(const gx of[...gaps].sort((a,b)=>a-b)){
+    const g0=gx-DW/2,g1=gx+DW/2;
+    if(g0>x)box(g0-x,h,1,stone(sr((g0-x)/4),sr(h/4)),(x+g0)/2,h/2,z);
+    box(DW,h-DH,1,stone(sr(DW/4),sr((h-DH)/4)),gx,DH+(h-DH)/2,z);
+    box(.5,DH+.4,1.3,stone(.5,1),g0-.25,(DH+.4)/2,z);box(.5,DH+.4,1.3,stone(.5,1),g1+.25,(DH+.4)/2,z);box(DW+1,.5,1.3,stone(1,.5),gx,DH+.2,z);
+    AREAS.push({x0:g0+.4,x1:g1-.4,z0:z-1.2,z1:z+1.2,h:DH});x=g1;
+  }
+  if(xb>x)box(xb-x,h,1,stone(sr((xb-x)/4),sr(h/4)),(x+xb)/2,h/2,z);
+}
+const wallZ=(x,za,zb,h)=>box(1,h,zb-za,stone(sr((zb-za)/4),sr(h/4)),x,h/2,(za+zb)/2);
+function room(x0,x1,z0,z1,h,doorsN,doorsS){
+  const w=x1-x0,d=z1-z0,cx=(x0+x1)/2,cz=(z0+z1)/2;
+  box(w+2,1,d,floor(sr(w/4),sr(d/4)),cx,-.5,cz);box(w+2,1,d+2,stone(sr(w/4),sr(d/4)),cx,h+.5,cz);
+  if(doorsN)wallX(z1+.5,x0-1,x1+1,doorsN,h);if(doorsS)wallX(z0-.5,x0-1,x1+1,doorsS,h);
+  wallZ(x0-.5,z0-1,z1+1,h);wallZ(x1+.5,z0-1,z1+1,h);
+  AREAS.push({x0:x0+.5,x1:x1-.5,z0:z0+.5,z1:z1-.5,h});
+}
+const pillarAt=(x,z,h,r)=>{box(r*2.6,.6,r*2.6,stone(.5,.5),x,.3,z);cyl(r,r*1.1,h-1,stone(1,2),x,(h-1)/2+.6,z,14);box(r*2.6,.5,r*2.6,stone(.5,.5),x,h-.25,z);circles.push({x,z,r:r+.45})};
+function candles(x,z,n){for(let i=0;i<n;i++){const h=rr(.12,.35),cx=x+rr(-.35,.35),cz=z+rr(-.35,.35);cyl(.035,.04,h,M({color:0xefe6cf,roughness:.6}),cx,h/2,cz,8);spr(flameT,0xffc070,.16,cx,h+.06,cz)}}
+function sarcophagus(x,z){const dk=M({color:0x6f6a62,roughness:.95});box(1.1,.8,2.3,dk,x,.4,z);box(1.25,.18,2.45,stone(.5,.5),x,.89,z);
+  box(.4,.12,1.4,M({color:0x8d918c,roughness:.9}),x,1.04,z);add(new THREE.Mesh(new THREE.SphereGeometry(.17,12,8),M({color:0x8d918c,roughness:.9})),x,1.08,z-.85);rects.push({x,z,w:.85,d:1.45})}
+function brazier(x,z){cyl(.55,.35,.35,ironM,x,1.05,z,14);for(let i=0;i<3;i++){const a=i/3*Math.PI*2,l=cyl(.04,.04,1.1,ironM,x+Math.cos(a)*.3,.5,z+Math.sin(a)*.3,6);l.rotation.set(Math.sin(a)*.25,0,-Math.cos(a)*.25)}
+  const s=spr(flameT,0xff9a40,1.4,x,1.6,z);torches.push({s,p:new THREE.Vector3(x,2,z),ph:R()*9,big:1});circles.push({x,z,r:.9})}
+// místnost 1: zadní zeď s dveřmi za mostem
+wallX(-24.5,-14.5,14.5,[8.6],13);
+// chodba 1
+room(7.3,9.9,-33,-25,5,null,null);
+torch(7.35,2.6,-29,Math.PI/2);
+// 2. Pohřebnice
+room(0,17,-52,-34,8,[8.6],[3]);
+for(const [x,z] of[[4.5,-39],[12.5,-39],[4.5,-47],[12.5,-47]])pillarAt(x,z,8,.5);
+for(const z of[-38,-43,-48]){sarcophagus(1.8,z);sarcophagus(15.2,z);candles(1.8,z+1.6,3);candles(15.2,z-1.6,3)}
+torch(.05,3,-40,Math.PI/2);torch(.05,3,-47,Math.PI/2);torch(16.95,3,-40,-Math.PI/2);torch(16.95,3,-47,-Math.PI/2);
+for(let i=0;i<8;i++){const b=cyl(.03,.03,rr(.3,.5),boneM,rr(5,12),.03,rr(-50,-36),6);b.rotation.set(Math.PI/2,R()*3,0)}
+// chodba 2
+room(1.7,4.3,-61,-53,5,null,null);
+torch(4.25,2.6,-57,-Math.PI/2);
+// 3. Trůnní sál
+room(-12,14,-88,-62,12,[3],[]);
+for(const x of[-4,10])for(const z of[-67,-73,-79])pillarAt(x,z,12,.7);
+box(3,.03,24,M({color:0x6a1018,roughness:.9}),3,.015,-74);
+box(9,.4,4.5,stone(2,1),3,.2,-85.6);box(6.5,.4,3,stone(1.5,.8),3,.6,-86.2);rects.push({x:3,z:-85.6,w:4.8,d:2.5});
+{const gm=M({color:0x3a2a1c,roughness:.7}),au=M({color:0xd4a12a,metalness:.7,roughness:.3,emissive:0x5a3c00,emissiveIntensity:.5});
+  box(1.6,.5,1.3,gm,3,1.05,-86.3);box(1.6,2.6,.25,gm,3,2.3,-86.95);for(const s of[-1,1])box(.2,.5,1.2,gm,3+s*.8,1.45,-86.3);
+  box(1.75,.12,.3,au,3,3.65,-86.95);add(new THREE.Mesh(new THREE.SphereGeometry(.18,12,8),boneM),3,3.9,-86.95);}
+for(const [x,z] of[[-1,-81],[7,-81],[-1,-65],[7,-65]])brazier(x,z);
+torch(-11.95,3.5,-70,Math.PI/2);torch(-11.95,3.5,-80,Math.PI/2);torch(13.95,3.5,-70,-Math.PI/2);torch(13.95,3.5,-80,-Math.PI/2);
+
 
 /* ---------- portál s houbami ---------- */
 const PX=-3;
@@ -739,7 +804,7 @@ function startDemo(){
   st.demo=true;st.user=null;st.nick='zkouška';
   const g=(qs.get('g')||'wood_sword_2_u,wood_shield_1,cloth_pants_2,cloth_gloves_3,cloth_pack_2,repair_hat,earth_heart_1,founder_cape,arena_boots,basic_sword_g,boss_sword,wood_sword_3_r,arena_shield,wood_shield_4_r,cloth_pants_1_u,cloth_pack_1').split(',');
   st.items=Object.fromEntries(g.filter(k=>ITEMS[k]).map(k=>[k,true]));st.equip=null;st.counts={herbs:3,meds:1,grain:5,bread:2};st.money=245;st.dia=0;
-  st.hp=999;refreshGear();st.hp=st.hpMax;st.dead=false;$('demo').hidden=false;$('who').textContent='zkušební postava';gateEl.hidden=true;hud();
+  st.hp=999;refreshGear();st.hp=st.hpMax;st.dead=false;$('demo').hidden=false;$('edBtn').hidden=!canEdit();$('who').textContent='zkušební postava';gateEl.hidden=true;hud();
 }
 const loadJs=src=>new Promise((ok,bad)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.append(s)});
 async function boot(){
@@ -769,7 +834,7 @@ async function boot(){
     st.hp=999;refreshGear();st.health=hlEff(health,now());
     if(st.health.dead){const left=Math.max(1,Math.ceil((st.health.dAt+REVIVE_MS-now())/60000));
       gate('Jsi mrtvý 💀',`Tvoje postava leží u hrobu. Oživí tě jiný hráč, nebo se sám probudíš asi za <b>${left>=60?Math.floor(left/60)+' h '+left%60+' min':left+' min'}</b>.`,[['Na planetu',()=>location.href='./']]);return}
-    st.hp=Math.min(st.hpMax,Math.max(1,st.health.hp));hpSaved=Math.round(st.hp);gateEl.hidden=true;hud();
+    st.hp=Math.min(st.hpMax,Math.max(1,st.health.hp));hpSaved=Math.round(st.hp);gateEl.hidden=true;hud();$('edBtn').hidden=!canEdit();
     if(st.health.sick)toast('🤒 Jsi nemocný. Antibiotika najdeš v inventáři (I).');
   }catch(e){console.warn(e);gate('Něco se pokazilo','Nepodařilo se načíst tvou postavu. Zkus to znovu z planety.',[['Na planetu',()=>location.href='./'],['Hrát na zkoušku',startDemo]])}
 }
@@ -781,7 +846,7 @@ const trailMesh=add(new THREE.Mesh(new THREE.RingGeometry(.9,1.45,28,1,0,2.2),ne
 let trailT=1;
 let clockT=0;
 function attack(){
-  if(st.dead||paused()||st.block)return;
+  if(st.dead||paused()||st.block||ed.on)return;
   if(atk.i>=0){if(atk.t/COMBO[atk.i].dur>.3)atk.queued=true;return}
   startHit(atk.last>=0&&atk.last<2&&clockT-atk.lastEnd<.3?atk.last+1:0);
 }
@@ -811,7 +876,7 @@ function doHits(c){
 }
 let blockAmt=0;
 function hurtPlayer(n,e){
-  if(st.dead||paused())return;
+  if(st.dead||paused()||ed.on)return;
   const g=st.gear,bl=(ITEMS[g.shield]||{}).block||0,def=(ITEMS[g.gloves]||{}).def||0,ps=hero.g.position.clone().setY(2);
   if(blockAmt>.5&&e){ // pravé tlačítko: krytí funguje proti úderům zepředu
     const dx=e.g.position.x-hero.g.position.x,dz=e.g.position.z-hero.g.position.z,l=Math.hypot(dx,dz)||1;
@@ -835,11 +900,10 @@ function die(){
 
 /* ---------- příšery (data v monsters.js) ---------- */
 const MON=window.MONSTERS||{};
-const SPAWNS=[{m:'skeleton',x:-3,z:-12},{m:'skeleton',x:-11.5,z:-3},{m:'skeleton',x:-6,z:-19},{m:'skeleton_guard',x:8.6,z:-19.5},{m:'skeleton',x:9,z:6}];
 const enemies=[];
 function drawBar(e){const c=e.barC.getContext('2d');c.clearRect(0,0,64,10);c.fillStyle='rgba(0,0,0,.7)';c.fillRect(0,0,64,10);c.fillStyle='#e2483d';c.fillRect(1,1,62*Math.max(0,e.hp)/e.max,8);e.barT.needsUpdate=true;e.bar.visible=e.hp<e.max&&!e.dead}
 function spawnEnemy(type,x,z){
-  const d=MON[type];if(!d)return;const L=d.look||{};
+  const d=MON[type];if(!d)return null;const L=d.look||{};
   const mat=M({color:L.color||0xd8cfb6,roughness:.8,emissive:0xff2020,emissiveIntensity:0});
   const h=makeHero(mat);h.g.scale.setScalar(d.scale||1);
   for(const s of[-1,1])add(new THREE.Mesh(new THREE.SphereGeometry(.026,8,6),new THREE.MeshBasicMaterial({color:L.eyes||0xff3030})),s*.045,.015,.122,h.head);
@@ -850,9 +914,8 @@ function spawnEnemy(type,x,z){
   bar.scale.set(.9,.14,1);bar.position.y=2.05;h.g.add(bar);
   h.g.position.set(x,0,z);scene.add(h.g);
   const e={d,type,h,g:h.g,mat,home:{x,z},hp:d.hp,max:d.hp,state:'idle',t:0,cd:0,stag:0,flash:0,dead:0,wx:x,wz:z,wt:0,spd:0,barC,barT,bar};
-  drawBar(e);enemies.push(e);
+  drawBar(e);enemies.push(e);return e;
 }
-SPAWNS.forEach(s=>spawnEnemy(s.m,s.x,s.z));
 function enemyStep(e,dt,t){
   const g=e.g,d=e.d,p=hero.g.position;
   e.flash=Math.max(0,e.flash-dt);e.mat.emissiveIntensity=e.flash>0?1.2:0;
@@ -886,6 +949,135 @@ function enemyStep(e,dt,t){
   if(e.state==='wind')atkPose(e.h,2,e.t<d.windup?.45*e.t/d.windup:.45+.55*(e.t-d.windup)/Math.max(.01,d.atkDur-d.windup));
 }
 
+/* ---------- mapa krypty: věci a příšery, které se dají pokládat ve stavění ---------- */
+// t = typ (PROPS) nebo 'm:<id příšery z monsters.js>', x/z pozice, r otočení, s velikost.
+// Uloženo ve Firebase /dungeon/map (zapisuje jen admin, čte každý); v náhledu v prohlížeči.
+const P_=(g,geo,mm,x=0,y=0,z=0)=>add(new THREE.Mesh(geo,mm),x,y,z,g);
+const PROPS={
+  crate:{name:'Bedna',hb:[.5,.5],build(g){P_(g,new THREE.BoxGeometry(.9,.9,.9),woodM,0,.45);for(const y of[.05,.85])P_(g,new THREE.BoxGeometry(.94,.08,.94),ironM,0,y)}},
+  crates:{name:'Hromada beden',hb:[1,.6],build(g){P_(g,new THREE.BoxGeometry(.9,.9,.9),woodM,-.5,.45);P_(g,new THREE.BoxGeometry(.8,.8,.8),woodM,.45,.4,.05).rotation.y=.3;P_(g,new THREE.BoxGeometry(.7,.7,.7),woodM,-.35,1.25).rotation.y=-.2}},
+  barrel:{name:'Sud',hb:[.42,.42],build(g){P_(g,new THREE.CylinderGeometry(.4,.36,1,14),woodM,0,.5);for(const y of[.2,.8])P_(g,new THREE.CylinderGeometry(.41,.41,.06,14),ironM,0,y)}},
+  chest:{name:'Truhla',hb:[.5,.35],build(g){P_(g,new THREE.BoxGeometry(.95,.55,.6),woodM,0,.275);P_(g,new THREE.CylinderGeometry(.3,.3,.95,14,1,false,0,Math.PI),woodM,0,.55).rotation.z=Math.PI/2;for(const x of[-.35,.35])P_(g,new THREE.BoxGeometry(.06,.57,.62),ironM,x,.28)}},
+  table:{name:'Stůl',hb:[.8,.5],build(g){P_(g,new THREE.BoxGeometry(1.6,.1,1),woodM,0,.85);for(const x of[-.7,.7])for(const z of[-.4,.4])P_(g,new THREE.BoxGeometry(.1,.8,.1),woodM,x,.4,z)}},
+  sarcophagus:{name:'Sarkofág',hb:[.6,1.2],build(g){P_(g,new THREE.BoxGeometry(1.1,.8,2.3),M({color:0x6f6a62,roughness:.95}),0,.4);P_(g,new THREE.BoxGeometry(1.25,.18,2.45),stone(.5,.5),0,.89)}},
+  pillar:{name:'Sloup',hb:[.7,.7],build(g){P_(g,new THREE.BoxGeometry(1.4,.5,1.4),stone(.5,.5),0,.25);P_(g,new THREE.CylinderGeometry(.5,.55,6,14),stone(1,2),0,3.5);P_(g,new THREE.BoxGeometry(1.4,.4,1.4),stone(.5,.5),0,6.7)}},
+  wall:{name:'Kamenná zeď',hb:[1.5,.3],build(g){P_(g,new THREE.BoxGeometry(3,3,.6),stone(1,1),0,1.5)}},
+  rubble:{name:'Kamení',hb:[.7,.7],build(g){for(let i=0;i<6;i++)P_(g,new THREE.DodecahedronGeometry(rr(.15,.4)),stone(.5,.5),rr(-.6,.6),.15,rr(-.6,.6)).rotation.set(R()*3,R()*3,0)}},
+  gate:{name:'Mříž',hb:[1.6,.2],build(g){for(let i=0;i<9;i++)P_(g,new THREE.CylinderGeometry(.035,.035,3.4,6),ironM,-1.4+i*.35,1.7);for(const y of[.9,2,3.1])P_(g,new THREE.BoxGeometry(3,.07,.07),ironM,0,y);for(const x of[-1.65,1.65])P_(g,new THREE.BoxGeometry(.3,3.6,.4),stone(.2,1),x,1.8)}},
+  statue:{name:'Socha strážce',hb:[.6,.6],build(g){P_(g,new THREE.BoxGeometry(1.2,.8,1.2),stone(.3,.2),0,.4);const s=makeHero(statueM);s.g.scale.setScalar(1.3);s.g.position.y=.8;g.add(s.g);s.arms[1].sp.rotation.x=-2.7;s.arms[0].sp.rotation.x=-.9;s.arms[0].el.rotation.x=-1.3}},
+  banner:{name:'Prapor na tyči',hb:[.2,.2],build(g){P_(g,new THREE.CylinderGeometry(.05,.05,3.4,8),woodM,0,1.7);P_(g,new THREE.BoxGeometry(1.4,.08,.08),woodM,0,3.3);P_(g,new THREE.PlaneGeometry(1.3,2.6),banM,0,1.98,.06)}},
+  torch:{name:'Pochodeň na stojanu',hb:[.25,.25],fire:[0,2.25,0,.7],build(g){P_(g,new THREE.CylinderGeometry(.05,.07,2,8),woodM,0,1);P_(g,new THREE.CylinderGeometry(.14,.06,.18,8),ironM,0,2.05)}},
+  brazier:{name:'Ohniště',hb:[.6,.6],fire:[0,1.6,0,1.4],build(g){P_(g,new THREE.CylinderGeometry(.55,.35,.35,14),ironM,0,1.05);for(let i=0;i<3;i++){const a=i/3*Math.PI*2;P_(g,new THREE.CylinderGeometry(.04,.04,1.1,6),ironM,Math.cos(a)*.3,.5,Math.sin(a)*.3).rotation.set(Math.sin(a)*.25,0,-Math.cos(a)*.25)}}},
+  candles:{name:'Svíčky',build(g){for(let i=0;i<5;i++){const h=rr(.12,.35),x=rr(-.3,.3),z=rr(-.3,.3);P_(g,new THREE.CylinderGeometry(.035,.04,h,8),M({color:0xefe6cf}),x,h/2,z);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:flameT,color:0xffc070,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));s.scale.set(.16,.16,1);s.position.set(x,h+.06,z);g.add(s)}}},
+  mushrooms:{name:'Svítící houby',build(g){for(let i=0;i<7;i++){const s=rr(.15,.45),q=add(new THREE.Group(),rr(-.6,.6),0,rr(-.6,.6),g);q.scale.setScalar(s);const st_=new THREE.Mesh(stemG,stemM);st_.scale.set(.25,1,.25);st_.position.y=.5;q.add(st_);const cp=new THREE.Mesh(capG,shroomM);cp.scale.set(.45,.3,.45);cp.position.y=.95;q.add(cp)}}},
+  bones:{name:'Kosti a lebka',build(g){for(let i=0;i<5;i++)P_(g,new THREE.CylinderGeometry(.03,.03,rr(.3,.5),6),boneM,rr(-.5,.5),.03,rr(-.5,.5)).rotation.set(Math.PI/2,R()*3,0);const sk=P_(g,new THREE.SphereGeometry(.13,10,8),boneM,.1,.12,.1);for(const s of[-1,1])P_(sk,new THREE.SphereGeometry(.03,6,4),darkM,s*.045,.03,.11)}},
+  web:{name:'Pavučina',build(g){P_(g,new THREE.PlaneGeometry(2.4,2.4),webM,0,1.4)}}
+};
+const mapItems=[];
+function propFire(it,P,g){ // oheň z rekvizity se přidá mezi pochodně (svítí přes společná světla)
+  const [fx,fy,fz,fs]=P.fire;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:flameT,color:0xff9a40,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+  s.position.set(fx,fy,fz);g.add(s);g.updateMatrixWorld(true);const p=new THREE.Vector3(fx,fy+.3,fz);g.localToWorld(p);
+  it.torch={s,p,ph:R()*9,big:fs>1?1:0,size:fs};torches.push(it.torch);
+}
+function placeItem(it){
+  if(it.t.startsWith('m:')){const e=spawnEnemy(it.t.slice(2),it.x,it.z);if(!e)return null;e.g.rotation.y=it.r;e.g.traverse(o=>{o.userData.pid=it});it.enemy=e}
+  else{const P=PROPS[it.t];if(!P)return null;const g=add(new THREE.Group(),it.x,0,it.z);g.rotation.y=it.r;g.scale.setScalar(it.s);P.build(g);
+    if(P.fire)propFire(it,P,g);g.traverse(o=>{o.userData.pid=it});it.obj=g;if(P.hb)it.hb=[P.hb[0]*it.s,P.hb[1]*it.s]}
+  mapItems.push(it);return it;
+}
+function removeItem(it){
+  const i=mapItems.indexOf(it);if(i>=0)mapItems.splice(i,1);
+  if(it.obj)scene.remove(it.obj);
+  if(it.enemy){scene.remove(it.enemy.g);const k=enemies.indexOf(it.enemy);if(k>=0)enemies.splice(k,1)}
+  if(it.torch){const k=torches.indexOf(it.torch);if(k>=0)torches.splice(k,1)}
+}
+function loadMap(m){
+  while(mapItems.length)removeItem(mapItems[mapItems.length-1]);
+  const arr=m&&Array.isArray(m.items)?m.items:[];
+  for(const r of arr.slice(0,600)){if(!r)continue;const t=String(r.t||''),x=+r.x,z=+r.z;if(!isFinite(x)||!isFinite(z))continue;
+    placeItem({t,x:clamp(x,-40,40),z:clamp(z,-120,30),r:+r.r||0,s:clamp(+r.s||1,.3,4)})}
+}
+const mapData=()=>({v:1,items:mapItems.map(i=>({t:i.t,x:+i.x.toFixed(2),z:+i.z.toFixed(2),r:+i.r.toFixed(3),s:+i.s.toFixed(2)}))});
+const DEFAULT_MAP={v:1,items:[
+  ['skeleton',-3,-12],['skeleton',-11.5,-3],['skeleton',-6,-19],['skeleton_guard',8.6,-19.5],['skeleton',9,6],
+  ['skeleton',5,-43],['skeleton',12,-43],['skeleton',8.5,-50],
+  ['skeleton_guard',0,-76],['skeleton_guard',6,-76],['skeleton',-8,-70],['skeleton',12,-70]].map(([m,x,z])=>({t:'m:'+m,x,z,r:0,s:1}))};
+function solidHit(x,z){ // kolize s položenými věcmi (otočený obdélník)
+  for(const it of mapItems){if(!it.hb)continue;const dx=x-it.x,dz=z-it.z,c=Math.cos(it.r),s=Math.sin(it.r);
+    const lx=dx*c-dz*s,lz=dx*s+dz*c;if(Math.abs(lx)<it.hb[0]+.3&&Math.abs(lz)<it.hb[1]+.3)return true}
+  return false;
+}
+
+/* ---------- stavění (admin; v náhledu kdokoli, ukládá se jen do prohlížeče) ---------- */
+const ed={on:false,sel:null,rot:0,scale:1,ghost:null,ring:null,hist:[],dirty:false,mx:-1,my:-1};
+const edEl=$('ed'),edInfo=$('edInfo'),ray=new THREE.Raycaster(),gPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0),gHit=new THREE.Vector3(),ndc=new THREE.Vector2();
+const canEdit=()=>!ONSITE||(!st.demo&&st.nick===ADMIN);
+const canSaveOnline=()=>ONSITE&&!st.demo&&st.nick===ADMIN;
+const inArea=(x,z)=>AREAS.some(a=>x>=a.x0-.3&&x<=a.x1+.3&&z>=a.z0-.3&&z<=a.z1+.3);
+function edMsg(s){edInfo.textContent=s}
+function edHint(){const n=ed.sel?(ed.sel.startsWith('m:')?'👾 '+(MON[ed.sel.slice(2)]||{}).name:PROPS[ed.sel].name):null;
+  edMsg(n?`Vybráno: ${n} · otočení ${Math.round(ed.rot*180/Math.PI)}° · velikost ${ed.scale.toFixed(1)}×. Klik = položit, R = otočit, + / − = velikost, Esc = zrušit výběr.`
+    :'Vyber věc vlevo. Pravým tlačítkem na věc nebo příšeru ji smažeš. Ctrl+Z vrátí poslední krok.'+(ed.dirty?' · Máš neuložené změny.':''))}
+function edCatalog(){
+  const list=[...Object.entries(PROPS).map(([k,p])=>[k,p.name]),...Object.entries(MON).map(([k,d])=>['m:'+k,'👾 '+d.name])];
+  $('edCat').replaceChildren(...list.map(([k,n])=>{const b=document.createElement('button');b.type='button';b.textContent=n;b.className='edb'+(ed.sel===k?' on':'');b.onclick=()=>edSelect(ed.sel===k?null:k);return b}));
+}
+function edSelect(k){
+  if(ed.ghost){scene.remove(ed.ghost);ed.ghost=null}
+  ed.sel=k;
+  if(k){const g=new THREE.Group();
+    if(k.startsWith('m:')){const h=makeHero(M({color:0xff6b5a,transparent:true,opacity:.5}));h.g.scale.setScalar((MON[k.slice(2)]||{}).scale||1);g.add(h.g)}
+    else{PROPS[k].build(g);g.traverse(o=>{if(o.material){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=.55;o.material.depthWrite=false}})}
+    scene.add(g);ed.ghost=g;g.visible=false}
+  edCatalog();edHint();
+}
+function edToggle(){
+  if(!canEdit())return;
+  ed.on=!ed.on;edEl.hidden=!ed.on;$('edBtn').classList.toggle('on',ed.on);
+  if(ed.on){unlockMouse();atk.i=-1;st.block=false;edCatalog();edHint();if(!ed.ring){ed.ring=add(new THREE.Mesh(new THREE.RingGeometry(.55,.7,32),new THREE.MeshBasicMaterial({color:0x7ff2dc,transparent:true,opacity:.8,depthWrite:false})));ed.ring.rotation.x=-Math.PI/2}}
+  else{edSelect(null);if(ed.ring)ed.ring.visible=false;if(ed.dirty)toast('Pozor: změny v kryptě nejsou uložené.')}
+}
+function edPoint(){if(ed.mx<0)return null;ndc.set(ed.mx/innerWidth*2-1,-(ed.my/innerHeight)*2+1);ray.setFromCamera(ndc,cam);
+  if(!ray.ray.intersectPlane(gPlane,gHit))return null;return {x:Math.round(gHit.x*4)/4,z:Math.round(gHit.z*4)/4}}
+function edUpdate(){
+  if(!ed.on)return;const q=edPoint(),ok=q&&inArea(q.x,q.z);
+  if(ed.ring){ed.ring.visible=!!q;if(q){ed.ring.position.set(q.x,.04,q.z);ed.ring.material.color.set(ok?0x7ff2dc:0xff5a4a)}}
+  if(ed.ghost){ed.ghost.visible=!!q;if(q){ed.ghost.position.set(q.x,0,q.z);ed.ghost.rotation.y=ed.rot;ed.ghost.scale.setScalar(ed.sel.startsWith('m:')?1:ed.scale)}}
+}
+function edClick(){
+  const q=edPoint();if(!ed.sel||!q)return;
+  if(!inArea(q.x,q.z)){edMsg('Sem nejde nic položit (mimo podlahu krypty).');return}
+  if(mapItems.length>=600){edMsg('Krypta je plná (max. 600 věcí).');return}
+  const it=placeItem({t:ed.sel,x:q.x,z:q.z,r:ed.rot,s:ed.sel.startsWith('m:')?1:ed.scale});
+  if(it){ed.hist.push(['add',it]);ed.dirty=true;edHint()}
+}
+function edDelete(){
+  if(ed.mx<0)return;ndc.set(ed.mx/innerWidth*2-1,-(ed.my/innerHeight)*2+1);ray.setFromCamera(ndc,cam);
+  const objs=mapItems.map(i=>i.obj||(i.enemy&&i.enemy.g)).filter(Boolean);
+  const hit=ray.intersectObjects(objs,true).find(h=>h.object.userData.pid);
+  if(!hit){edMsg('Tady není nic k smazání.');return}
+  const it=hit.object.userData.pid;removeItem(it);ed.hist.push(['del',{t:it.t,x:it.x,z:it.z,r:it.r,s:it.s}]);ed.dirty=true;edHint();
+}
+function edUndo(){const h=ed.hist.pop();if(!h){edMsg('Není co vrátit.');return}
+  if(h[0]==='add')removeItem(h[1]);else placeItem({...h[1]});ed.dirty=true;edHint()}
+async function edSave(){
+  const data=mapData();try{localStorage.setItem('krypta-mapa',JSON.stringify(data))}catch(_){}
+  if(!canSaveOnline()){ed.dirty=false;edMsg('💾 Uloženo v tomto prohlížeči (náhled). Ve hře ukládá admin pro všechny.');return}
+  edMsg('Ukládám…');
+  const ok=await api('PUT','dungeon/map',{...data,t:{'.sv':'timestamp'}});
+  if(ok){ed.dirty=false;edMsg(`✅ Uloženo pro všechny hráče (${data.items.length} věcí a příšer).`)}
+  else edMsg('❌ Na server se uložit nepovedlo. Záloha zůstala v tomto prohlížeči, zkus to znovu.');
+}
+$('edBtn').onclick=edToggle;$('edSave').onclick=edSave;$('edUndo').onclick=edUndo;
+$('edCopy').onclick=()=>{const s=JSON.stringify(mapData());try{navigator.clipboard.writeText(s).then(()=>edMsg('📋 Záloha krypty je ve schránce.'),()=>edMsg('Kopírování tady nejde.'))}catch(_){edMsg('Kopírování tady nejde.')}};
+async function mapBoot(){ // načte uloženou kryptu (veřejné čtení), jinak výchozí rozmístění
+  let m=null;
+  try{const r=await fetch(`${LIVE_DB}/dungeon/map.json`,{cache:'no-store'});if(r.ok)m=await r.json()}catch(_){}
+  if(!(m&&Array.isArray(m.items))&&!ONSITE){try{m=JSON.parse(localStorage.getItem('krypta-mapa')||'null')}catch(_){m=null}}
+  if(m&&Array.isArray(m.items))loadMap(m);
+}
+loadMap(DEFAULT_MAP);mapBoot();
+
 /* ---------- interakce ---------- */
 let busy=false;
 const spots=[
@@ -907,7 +1099,7 @@ let yaw=0,pitch=.38,dist=5.5,drag=null,relock=false;
 let ml=false; // Q: otáčení pohybem myši; kde to prohlížeč dovolí, myš se navíc úplně zamkne (pointer lock)
 const locked=()=>ml;
 const modeUi=()=>{$('modeBtn').textContent=locked()?'🔒 Myš zamčená (Q)':'🖱️ Zamknout myš (Q)';$('cross').hidden=!locked()};
-function lockMouse(){if(ml||touch||paused())return;ml=true;document.body.classList.add('ml');modeUi();
+function lockMouse(){if(ml||touch||paused()||ed.on)return;ml=true;document.body.classList.add('ml');modeUi();
   toast('Otáčíš pohybem myši, levé tlačítko útočí. Q nebo Esc to vypne.');
   try{const r=cv.requestPointerLock();if(r&&r.catch)r.catch(()=>{})}catch(_){}}
 function unlockMouse(){if(!ml)return;ml=false;document.body.classList.remove('ml');if(document.pointerLockElement)document.exitPointerLock();modeUi()}
@@ -921,6 +1113,14 @@ document.addEventListener('mouseleave',()=>{mouseX=-1});
 document.addEventListener('mousemove',e=>{mouseX=e.clientX;if(!locked()||paused())return;yaw-=e.movementX*.0026;pitch=clamp(pitch+e.movementY*.002,.08,1.25)});
 addEventListener('keydown',e=>{
   if(e.code==='Escape'&&ml){unlockMouse();return}
+  if(e.code==='KeyB'&&!e.repeat&&invEl.hidden&&gateEl.hidden&&canEdit()){edToggle();return}
+  if(ed.on){
+    if(e.code==='KeyR'){ed.rot+=(e.shiftKey?-1:1)*Math.PI/4;edHint();return}
+    if(e.code==='Equal'||e.code==='NumpadAdd'){ed.scale=Math.min(3,+(ed.scale+.1).toFixed(1));edHint();return}
+    if(e.code==='Minus'||e.code==='NumpadSubtract'){ed.scale=Math.max(.4,+(ed.scale-.1).toFixed(1));edHint();return}
+    if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){e.preventDefault();edUndo();return}
+    if(e.code==='Escape'){if(ed.sel)edSelect(null);else edToggle();return}
+  }
   if(!invEl.hidden){if(e.code==='Escape'||e.code==='KeyI'){e.preventDefault();closeInv(e.code==='KeyI')}return}
   if(!gateEl.hidden)return;
   keys[e.code]=true;
@@ -931,14 +1131,14 @@ addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;st.block=false});
 const cv=renderer.domElement;cv.tabIndex=0;modeUi();
 cv.addEventListener('contextmenu',e=>e.preventDefault());
-cv.addEventListener('mousedown',e=>{if(e.button===2){e.preventDefault();st.block=true}});
+cv.addEventListener('mousedown',e=>{if(e.button===2){e.preventDefault();if(ed.on)edDelete();else st.block=true}});
 addEventListener('mouseup',e=>{if(e.button===2)st.block=false});
 cv.addEventListener('pointerdown',e=>{if(e.button===2)return;if(locked()){if(e.button===0)attack();return}drag={id:e.pointerId,x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,moved:false,btn:e.button,type:e.pointerType};cv.setPointerCapture(e.pointerId);cv.focus()});
-cv.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;
+cv.addEventListener('pointermove',e=>{ed.mx=e.clientX;ed.my=e.clientY;if(!drag||e.pointerId!==drag.id)return;
   if(!drag.moved&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)>6)drag.moved=true;
   if(drag.moved){yaw-=(e.clientX-drag.x)*.006;pitch=clamp(pitch+(e.clientY-drag.y)*.004,.08,1.25)}
   drag.x=e.clientX;drag.y=e.clientY});
-const endDrag=e=>{if(!drag||e.pointerId!==drag.id)return;if(!drag.moved&&drag.btn===0&&drag.type!=='touch')attack();drag=null};
+const endDrag=e=>{if(!drag||e.pointerId!==drag.id)return;if(!drag.moved&&drag.btn===0&&drag.type!=='touch'){if(ed.on)edClick();else attack()}drag=null};
 cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',e=>{if(drag&&e.pointerId===drag.id)drag=null});
 cv.addEventListener('wheel',e=>{e.preventDefault();dist=clamp(dist+e.deltaY*.005,2.5,10)},{passive:false});
 const joy={x:0,y:0,id:null},joyEl=$('joy'),knob=joyEl.firstElementChild;
@@ -1001,18 +1201,22 @@ function loop(){
   if(hero.blockShield){hero.blockShield.visible=blockAmt>.5;hero.armShield.visible=blockAmt<=.5}
   if(st.dead){st.deadT+=dt;hero.g.rotation.x=-Math.min(1.45,st.deadT*3)}
   trailT+=dt;trailMesh.material.opacity=Math.max(0,.75-trailT*3.4);const ts=1+trailT*.6;trailMesh.scale.set(trailMesh.scale.x<0?-ts:ts,ts,ts);
-  if(!pz)for(const e of enemies)enemyStep(e,dt,t);
+  if(!pz&&!ed.on)for(const e of enemies)enemyStep(e,dt,t);
+  edUpdate();
   blob.position.set(p.x,.02,p.z);blob.scale.setScalar(1-p.y*.3);
   // kamera
   if(ml&&!lockedReal&&!pz&&mouseX>=0){const ed=innerWidth*.12;
     if(mouseX<ed)yaw+=dt*3.2*(1-mouseX/ed);else if(mouseX>innerWidth-ed)yaw-=dt*3.2*(1-(innerWidth-mouseX)/ed);}
   tg.set(p.x,p.y+1.45,p.z);
   cam.position.set(tg.x+Math.sin(yaw)*Math.cos(pitch)*dist,tg.y+Math.sin(pitch)*dist,tg.z+Math.cos(yaw)*Math.cos(pitch)*dist);
-  cam.position.x=clamp(cam.position.x,-13.6,13.6);cam.position.z=clamp(cam.position.z,-23.6,11.6);cam.position.y=clamp(cam.position.y,.5,12.5);
+  let ca=AREAS[0],cs=-1;for(const a of AREAS)if(p.x>=a.x0-.6&&p.x<=a.x1+.6&&p.z>=a.z0-.6&&p.z<=a.z1+.6){const q=(a.x1-a.x0)*(a.z1-a.z0);if(q>cs){cs=q;ca=a}}
+  cam.position.x=clamp(cam.position.x,ca.x0-.2,ca.x1+.2);cam.position.z=clamp(cam.position.z,ca.z0-.2,ca.z1+.2);cam.position.y=clamp(cam.position.y,.5,ca.h-.4);
   cam.lookAt(tg);
   if(shake>0){shake=Math.max(0,shake-dt*1.8);cam.position.x+=(Math.random()-.5)*shake*.4;cam.position.y+=(Math.random()-.5)*shake*.3}
   hurtT=Math.max(0,hurtT-dt);$('hurt').style.opacity=hurtT;
-  for(const f of torches){const k=.85+.15*Math.sin(t*13+f.ph)*Math.sin(t*7.3+f.ph*2);f.l.intensity=1.7*k;f.s.scale.set(.55*k,.8*k,1)}
+  if(t-poolT>.25){poolT=t;torches.sort((a,b)=>a.p.distanceToSquared(p)-b.p.distanceToSquared(p))}
+  for(const f of torches){f.k=.85+.15*Math.sin(t*13+f.ph)*Math.sin(t*7.3+f.ph*2);const z_=f.size||(f.big?1.4:.6);f.s.scale.set(z_*.92*f.k,z_*1.33*f.k,1)}
+  LPOOL.forEach((l,i)=>{const f=torches[i];if(!f){l.intensity=0;return}l.position.copy(f.p);l.intensity=(f.big?2.6:1.7)*f.k});
   portalMat.uniforms.uT.value=t;waterMat.uniforms.uT.value=t;
   for(const b of banners)b.p.rotation.x=Math.sin(t*.8+b.ph)*.04;
   for(let i=0;i<DN;i++){dpos[i*3+1]+=dt*.08;dpos[i*3]+=Math.sin(t*.5+i)*dt*.05;if(dpos[i*3+1]>11)dpos[i*3+1]=0}
