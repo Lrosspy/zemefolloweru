@@ -777,7 +777,7 @@ blob.rotation.x=-Math.PI/2;
 const toastEl=$('toast');let toastT;
 function toast(s){toastEl.textContent=s;toastEl.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>toastEl.classList.remove('on'),2800)}
 function hud(){const v=Math.max(0,Math.round(st.hp));$('hpBar').style.width=clamp(v/st.hpMax*100,0,100)+'%';$('hpTxt').textContent=`${v} / ${st.hpMax} HP`+(st.health&&st.health.sick?' · 🤒':'');
-  $('kills').textContent='Poražení kostlivci: '+st.kills+(st.keys.size?` · 🗝️ klíč ×${st.keys.size}`:'')}
+  $('kills').textContent='Poražení kostlivci: '+st.kills+` · výpravy dnes ${st.runs||0}/5`+(st.keys.size?` · 🗝️ klíč ×${st.keys.size}`:'')}
 const pops=[];
 function pop(pos,text,color){const el=document.createElement('div');el.className='pop';el.textContent=text;el.style.color=color;$('pops').append(el);pops.push({el,p:pos.clone(),t:0})}
 let hurtT=0,shake=0;
@@ -884,8 +884,10 @@ async function boot(){
     st.isAdmin=adminMail(u)||String(a.nick).toLowerCase()===ADMIN;
     if(now()<DUNGEON_FROM&&!st.isAdmin){st.user=null;gate('Krypta je zatím zavřená','Otevře se <b>v pátek 4. 12. ve 12:00</b>.',[['Na planetu',()=>location.href='./']]);return}
     st.nick=a.nick;st.demo=false;$('who').textContent='@'+a.nick;
-    const k=liveKey(a.nick),P=['items','equip','fight','health','buys','gifts','sold','money','diamonds','herbs','meds','grain','bread','dungeonwin'].map(p=>p+'/'+k);P.push('dig');
-    const [items,equip,fight,health,buys,gifts,sold,money,dia,herbs,meds,grain,bread,dwin,dig]=await Promise.all(P.map(p=>api('GET',p)));st.dwin=!!dwin;
+    const k=liveKey(a.nick),P=['items','equip','fight','health','buys','gifts','sold','money','diamonds','herbs','meds','grain','bread','dungeonwin','dungeonday'].map(p=>p+'/'+k);P.push('dig');
+    const [items,equip,fight,health,buys,gifts,sold,money,dia,herbs,meds,grain,bread,dwin,dday,dig]=await Promise.all(P.map(p=>api('GET',p)));st.dwin=!!dwin;
+    st.runs=dday&&+dday.d===runDay()?Math.max(0,+dday.n||0):0;
+    if(st.runs>=RUNS_MAX&&!st.isAdmin){st.user=null;gate('Odpočiň si do zítra 😴',`Dnes máš za sebou ${RUNS_MAX} výprav do krypty. Nové se otevřou ráno v 6:00.`,[['Na planetu',()=>location.href='./']]);return}
     st.items=items||{};st.equip=equip&&typeof equip==='object'?equip:null;st.fightF=Math.max(1,+(fight&&fight.f)||1);
     st.buys={...(buys||{})};delete st.buys.last;st.gifts=gifts||{};st.sold={...(sold||{})};delete st.sold.last;
     st.money=Math.max(0,Math.floor(+money||0));st.dia=Math.max(0,Math.floor(+dia||0));
@@ -1248,6 +1250,7 @@ function toggleFly(){
 }
 $('flyBtn').onclick=toggleFly;
 // truhla z poraženého bosse: poprvé Lávová golemová vesta + 100 stříbrných (/dungeonwin/<nick>, zapisuje se jednou)
+const RUNS_MAX=5,runDay=()=>Math.floor((now()-18000000)/86400000);
 let bChest=null;
 function bossChest(x,z){
   if(bChest){scene.remove(bChest.g);const k=torches.indexOf(bChest.lt);if(k>=0)torches.splice(k,1);const j=spots.indexOf(bChest.spot);if(j>=0)spots.splice(j,1)}
@@ -1261,15 +1264,19 @@ function bossChest(x,z){
 }
 async function openBossChest(){
   const c=bChest;if(!c||c.opened)return;c.opened=true;c.lid.rotation.x=-1.25;
-  if(st.dwin){toast('Truhla je prázdná. Lávovou golemovou vestu už máš.');return}
+  const runs=st.runs||0,first=!st.dwin;
+  if(runs>=RUNS_MAX){toast(`Dnes už máš ${RUNS_MAX} odměn z krypty. Odpočiň si do zítra, nové ráno v 6:00.`);return}
   if(!st.demo&&st.user){
-    const k=liveKey(st.nick),m=await api('GET','money/'+k),cur=Math.max(0,Math.floor(+m||0));
-    const ok=await api('PATCH','',{['dungeonwin/'+k]:{t:{'.sv':'timestamp'}},['money/'+k]:cur+100});
-    if(!ok){c.opened=false;c.lid.rotation.x=0;toast('Truhlu se nepovedlo otevřít. Zkus to znovu.');return}
+    const k=liveKey(st.nick),m=await api('GET','money/'+k),cur=Math.max(0,Math.floor(+m||0)),day=runDay();
+    const body={['dungeonday/'+k]:{d:day,n:runs+1,t:{'.sv':'timestamp'}},['money/'+k]:cur+100};if(first)body['dungeonwin/'+k]={t:{'.sv':'timestamp'}};
+    const ok=await api('PATCH','',body);
+    if(!ok){c.opened=false;c.lid.rotation.x=0;toast('Truhlu se nepovedlo otevřít. Zkus to znovu za chvíli.');return}
     st.money=cur+100;
   }else st.money+=100;
+  st.runs=runs+1;hud();const rest=st.runs>=RUNS_MAX?'<br><br>To byla dnešní 5. výprava. <b>Odpočiň si do zítra</b>, nové výpravy ráno v 6:00.':`<br><br>Výprava ${st.runs}/${RUNS_MAX} dnes.`;
+  if(!first){gate('🎁 Truhla golema','<b>+100 stříbrných</b>'+rest,[['Super!',()=>{gateEl.hidden=true;cv.focus()}]]);return}
   st.dwin=true;refreshGear();
-  gate('⭐ Lávová golemová vesta','<img src="img/lavova-vesta.png" alt="" style="width:150px;display:block;margin:6px auto" onerror="this.remove()"><b style="color:#ffc300">Legendární</b> · +100 HP · +20 % šance na kritický zásah · +10 % šance na úhyb<br>a k tomu <b>+100 stříbrných</b>.<br>Vestu najdeš v inventáři (I). V obchodě se koupit nedá.',[['Super!',()=>{gateEl.hidden=true;cv.focus()}]]);
+  gate('⭐ Lávová golemová vesta','<img src="img/lavova-vesta.png" alt="" style="width:150px;display:block;margin:6px auto" onerror="this.remove()"><b style="color:#ffc300">Legendární</b> · +100 HP · +20 % šance na kritický zásah · +10 % šance na úhyb<br>a k tomu <b>+100 stříbrných</b>.<br>Vestu najdeš v inventáři (I). V obchodě se koupit nedá.'+rest,[['Super!',()=>{gateEl.hidden=true;cv.focus()}]]);
 }
 let near=null;const promptEl=$('prompt');
 promptEl.onclick=()=>{near&&near.act();cv.focus()};
