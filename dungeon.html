@@ -34,6 +34,8 @@ canvas{display:block;touch-action:none;outline:none}
 .hud .hpw i{position:absolute;inset:0 auto 0 0;background:linear-gradient(#e2483d,#9c1f1a);transition:width .25s}
 .hud .hpw em{position:relative;display:block;text-align:center;font:700 11px/16px 'Nunito Sans',sans-serif;font-style:normal;color:#fff}
 .hud .kills{display:block;margin-top:4px;font-size:13px;opacity:.85}
+#boss{position:fixed;top:64px;left:50%;transform:translateX(-50%);width:min(520px,80vw);text-align:center;z-index:3;pointer-events:none}#boss b{font:700 18px Cinzel,serif;color:#ffb070;text-shadow:0 2px 6px #000}
+#boss .bb{height:14px;margin-top:4px;border-radius:8px;background:rgba(0,0,0,.7);border:1px solid #8a3a10;overflow:hidden}#boss .bb i{display:block;height:100%;background:linear-gradient(#ff8a2a,#b8360a);transition:width .2s}
 #demo{position:fixed;top:12px;left:50%;transform:translateX(-50%);padding:4px 12px;border-radius:8px;background:#3a2a06;border:1px solid #e9c46a;color:#f4e3b5;font-size:13px}
 .tools{position:fixed;top:12px;right:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:60vw}
 .tools button,.btn{min-height:44px;padding:8px 14px;border-radius:12px;border:2px solid #e9c46a;background:rgba(12,10,6,.8);color:#f4e3b5;font:700 14px 'Nunito Sans',sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
@@ -84,6 +86,7 @@ body.locked canvas,body.locked .hud,body.locked .tools,body.locked #help{visibil
   <button id="modeBtn" type="button"></button>
   <button id="homeBtn" type="button">⬅ Na planetu</button>
 </nav>
+<div id="boss" hidden><b id="bossN"></b><div class="bb"><i id="bossBar"></i></div></div>
 <div id="demo" hidden>Zkušební režim · nic se neukládá</div>
 <div id="help">WASD chůze · Shift běh · Mezerník skok · táhni myší = rozhlížení · Q = zamknout myš (otáčíš bez klikání, postava se točí s kamerou) · levé tlačítko = útok (3 údery za sebou) · pravé tlačítko = štít (drž) · I inventář · F akce · B stavění (admin)</div>
 <button id="prompt" hidden></button>
@@ -95,7 +98,7 @@ body.locked canvas,body.locked .hud,body.locked .tools,body.locked #help{visibil
 <div id="joy" hidden><i></i></div>
 <div id="touchBtns" hidden><button id="shieldBtn" type="button" aria-label="Štít (drž)">🛡️</button><button id="jumpBtn" type="button" aria-label="Skok">⤒</button><button id="atkBtn" type="button" aria-label="Útok">⚔️</button></div>
 <section class="edp" id="ed" hidden aria-label="Stavění krypty"><h3>🔨 Stavění krypty</h3><div class="edcat" id="edCat"></div>
-  <p class="edinfo" id="edInfo"></p><div class="edrow"><button id="edSave" type="button" class="btn">💾 Uložit</button><button id="edUndo" type="button" class="btn">↶ Zpět</button><button id="edCopy" type="button" class="btn">📋 Záloha</button></div></section>
+  <p class="edinfo" id="edInfo"></p><div class="edrow"><button id="edSave" type="button" class="btn">💾 Uložit</button><button id="edUndo" type="button" class="btn">↶ Zpět</button><button id="edCopy" type="button" class="btn">📋 Záloha</button><button id="edDoors" type="button" class="btn">🚪 Otevřít všechny dveře</button></div></section>
 <section class="over" id="inv" hidden role="dialog" aria-modal="true" aria-labelledby="invT"><div class="card">
   <div class="invhead"><h2 id="invT">Inventář</h2><span id="invWho"></span><button id="invX" type="button" aria-label="Zavřít">✕</button></div>
   <div class="invg"><div><div class="doll" id="doll"></div><p class="stats" id="invStats"></p></div>
@@ -909,12 +912,12 @@ function doHits(c){
   const p=hero.g.position,fx=Math.sin(hero.g.rotation.y),fz=Math.cos(hero.g.rotation.y),base=dmgOf(st.gear);let any=false;
   for(const e of enemies){
     if(e.dead)continue;const dx=e.g.position.x-p.x,dz=e.g.position.z-p.z,d=Math.hypot(dx,dz);
-    if(d>c.reach||(d>.9&&(dx*fx+dz*fz)/d<.3))continue;
+    if(d-(e.rad||.4)+.4>c.reach||(d>.9+(e.rad||.4)&&(dx*fx+dz*fz)/d<.3))continue;
     const n=Math.max(1,Math.round(base*c.mul*(.9+Math.random()*.2)));
     e.hp-=n;e.flash=.18;any=true;
     if(e.state!=='wind'){e.stag=.35;const kx=e.g.position.x+dx/(d||1)*c.kb,kz=e.g.position.z+dz/(d||1)*c.kb;if(free(kx,kz))e.g.position.set(kx,0,kz)}
     pop(e.g.position.clone().setY(2),'-'+n,atk.i===2?'#ffd34d':'#ffffff');drawBar(e);
-    if(e.hp<=0){e.dead=.001;st.kills++;hud();toast('💀 '+e.d.name+' padl!');roomKey(e)}
+    if(e.hp<=0){e.dead=.001;if(e.d.boss){shake=.8;toast('👑 '+e.d.name+' je poražen!')}st.kills++;hud();toast('💀 '+e.d.name+' padl!');roomKey(e)}
   }
   if(any)shake=Math.max(shake,atk.i===2?.35:.15);
 }
@@ -945,33 +948,83 @@ function die(){
 /* ---------- příšery (data v monsters.js) ---------- */
 const MON=window.MONSTERS||{};
 const enemies=[];
-function drawBar(e){const c=e.barC.getContext('2d');c.clearRect(0,0,64,10);c.fillStyle='rgba(0,0,0,.7)';c.fillRect(0,0,64,10);c.fillStyle='#e2483d';c.fillRect(1,1,62*Math.max(0,e.hp)/e.max,8);e.barT.needsUpdate=true;e.bar.visible=e.hp<e.max&&!e.dead}
+function drawBar(e){if(e.d.boss){e.bar.visible=false;return}const c=e.barC.getContext('2d');c.clearRect(0,0,64,10);c.fillStyle='rgba(0,0,0,.7)';c.fillRect(0,0,64,10);c.fillStyle='#e2483d';c.fillRect(1,1,62*Math.max(0,e.hp)/e.max,8);e.barT.needsUpdate=true;e.bar.visible=e.hp<e.max&&!e.dead}
+function makeGolem(L){ // kostra jako u postavy (chůze a útok sdílí animace), tělo z balvanů a lávy
+  const rock=M({color:L.color||0x2e2826,roughness:.95,flatShading:true,emissive:0xff2020,emissiveIntensity:0});
+  const lava=M({color:L.lava||0xff6a10,emissive:L.lava||0xff5a00,emissiveIntensity:2.4});
+  const g=new THREE.Group();g.rotation.order='YXZ';const body=add(new THREE.Group(),0,.95,0,g);
+  const B=(p,r,x,y,z,sx=1,sy=1,sz=1)=>{const m=add(new THREE.Mesh(new THREE.DodecahedronGeometry(r,0),rock),x,y,z,p);m.scale.set(sx,sy,sz);m.rotation.set(R()*3,R()*3,R()*3);return m};
+  const Lv=(p,r,x,y,z)=>add(new THREE.Mesh(new THREE.IcosahedronGeometry(r,0),lava),x,y,z,p);
+  const torso=add(new THREE.Group(),0,.1,0,body);
+  Lv(torso,.27,0,.32,0);B(torso,.22,0,.1,.02,1.4,.8,1.1);
+  B(torso,.19,-.14,.4,.1);B(torso,.19,.15,.43,.09);B(torso,.22,0,.4,-.13,1.4,1.1,.9);B(torso,.15,0,.22,.17,1.2,.8,.8);
+  B(torso,.18,-.28,.56,0,1.3,.9,1.1);B(torso,.18,.28,.56,0,1.3,.9,1.1);
+  const head=add(new THREE.Group(),0,.74,.06,torso);B(head,.12,0,0,0,1.4,1,1.2);
+  for(const s_ of[-1,1])Lv(head,.028,s_*.045,.01,.11);
+  const legs=[],arms=[];
+  for(const s_ of[-1,1]){
+    const hip=add(new THREE.Group(),s_*.13,-.04,0,body);B(hip,.13,0,-.2,0,1,1.6,1);Lv(hip,.055,0,-.42,0);
+    const knee=add(new THREE.Group(),0,-.42,0,hip);B(knee,.12,0,-.2,0,1,1.7,1);B(knee,.13,0,-.45,.04,1.4,.6,1.6);
+    legs.push({hip,knee});
+    const sp=add(new THREE.Group(),s_*.32,.52,0,torso);sp.rotation.z=s_*.15;Lv(sp,.055,0,0,0);B(sp,.12,0,-.16,0,1,1.6,1);
+    const el=add(new THREE.Group(),0,-.33,0,sp);Lv(el,.05,0,0,0);B(el,.12,0,-.17,0,1.1,1.6,1.1);B(el,.16,0,-.37,0,1.3,1.1,1.3);
+    arms.push({sp,el});
+  }
+  const at={handR:add(new THREE.Group(),0,-.37,0,arms[1].el),armL:add(new THREE.Group(),0,-.2,0,arms[0].el)};
+  return {g,body,torso,head,legs,arms,bracers:[],lantern:null,at,m:{},phase:0,cape:null,shield:false,mat:rock,lavaCol:L.lava||0xff6a10};
+}
+function makeSlime(L){ // poloprůhledná kostka (deformovaný osmistěn), uvnitř kosti a starý meč
+  const g=new THREE.Group();g.rotation.order='YXZ';const body=add(new THREE.Group(),0,0,0,g);
+  const geo=new THREE.OctahedronGeometry(.7,1),q=geo.attributes.position;
+  for(let i=0;i<q.count;i++){const x=q.getX(i),y=q.getY(i),z=q.getZ(i),k=1+Math.sin(x*7+z*5)*.08+Math.cos(y*6)*.05;q.setXYZ(i,x*k*1.1,y*k*.85,z*k)}
+  geo.computeVertexNormals();
+  const mat=M({color:L.color||0x7be04a,emissive:L.glow||0x2f8a18,emissiveIntensity:.5,transparent:true,opacity:.5,roughness:.1,metalness:.1,flatShading:true,depthWrite:false});
+  const shell=add(new THREE.Mesh(geo,mat),0,.6,0,body);shell.renderOrder=2;
+  const inner=add(new THREE.Group(),0,.6,0,body);
+  const sk=add(new THREE.Mesh(new THREE.SphereGeometry(.14,10,8),boneM),.12,-.05,.08,inner);for(const s_ of[-1,1])add(new THREE.Mesh(new THREE.SphereGeometry(.03,6,4),darkM),s_*.05,.03,.12,sk);sk.rotation.set(.4,.6,0);
+  for(let i=0;i<3;i++)add(new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.42,6),boneM),rr(-.25,.15),rr(-.25,.15),rr(-.2,.2),inner).rotation.set(R()*3,R()*3,R()*3);
+  const w=makeWeapon('basic_sword');w.traverse(o=>{if(o.material)o.material=M({color:0x6b4a32,metalness:.5,roughness:.8})});w.scale.setScalar(.75);w.position.set(-.15,-.25,-.2);w.rotation.set(.9,.4,.3);inner.add(w);
+  return {g,body,shell,inner,mat,slime:true,phase:0};
+}
+function slimeAnim(e,dt,t){ // poskakování, při útoku se přikrčí a vymrští dopředu
+  const h=e.h,d=e.d;h.phase+=dt*(2.5+e.spd*3);const mv=e.spd>.1?1:.25;
+  let sy=1+Math.sin(h.phase)*.08*mv,sx=1/Math.sqrt(sy),sz=sx,py=Math.max(0,Math.sin(h.phase))*.28*mv,pz=0;
+  if(e.state==='wind'){const k=e.t/d.atkDur,w=d.windup/d.atkDur;if(k<w){const a=k/w;sy=1-.3*a;sx=sz=1+.2*a}else{const a=Math.sin(Math.min(1,(k-w)/(1-w))*Math.PI);sy=1+.1*a;sx=1-.1*a;sz=1+.35*a;pz=.6*a}}
+  if(e.flash>0){sx*=1.08;sz*=1.08}
+  h.shell.scale.set(sx,sy,sz);h.inner.scale.set(sx,sy,sz);h.body.position.set(0,py,pz);h.inner.rotation.y+=dt*.3;
+}
 function spawnEnemy(type,x,z){
-  const d=MON[type];if(!d)return null;const L=d.look||{};
-  const mat=M({color:L.color||0xd8cfb6,roughness:.8,emissive:0xff2020,emissiveIntensity:0});
-  const h=makeHero(mat);h.g.scale.setScalar(d.scale||1);
+  const d=MON[type];if(!d)return null;const L=d.look||{},kind=L.body||'humanoid',sc=d.scale||1;
+  let mat=M({color:L.color||0xd8cfb6,roughness:.8,emissive:0xff2020,emissiveIntensity:0});
+  const h=kind==='golem'?makeGolem(L):kind==='slime'?makeSlime(L):makeHero(mat);if(h.mat)mat=h.mat;h.g.scale.setScalar(sc);
+  if(kind==='humanoid'){
   for(const s of[-1,1])add(new THREE.Mesh(new THREE.SphereGeometry(.026,8,6),new THREE.MeshBasicMaterial({color:L.eyes||0xff3030})),s*.045,.015,.122,h.head);
   if(L.ribs)for(let i=0;i<3;i++)add(new THREE.Mesh(new THREE.TorusGeometry(.19-i*.012,.012,4,16,Math.PI),new THREE.MeshBasicMaterial({color:0x2a2218})),0,.36-i*.08,0,h.torso).rotation.y=-Math.PI/2;
   if(L.weapon&&ITEMS[L.weapon]){const w=makeWeapon(L.weapon);if(L.weaponColor)w.traverse(o=>{if(o.material)o.material=M({color:L.weaponColor,metalness:.5,roughness:.8})});h.at.handR.add(w)}
   if(L.shield&&ITEMS[L.shield]){h.at.armL.add(makeShield(L.shield));h.shield=true}
+  }
   const barC=canv(64,10,()=>{}),barT=new THREE.CanvasTexture(barC),bar=new THREE.Sprite(new THREE.SpriteMaterial({map:barT,depthTest:false}));
-  bar.scale.set(.9,.14,1);bar.position.y=2.05;h.g.add(bar);
+  bar.scale.set(.9/sc,.14/sc,1);bar.position.y=L.barY||(kind==='humanoid'?2.05:2.1);h.g.add(bar);
   h.g.position.set(x,0,z);scene.add(h.g);
-  const e={d,type,h,g:h.g,mat,home:{x,z},hp:d.hp,max:d.hp,state:'idle',t:0,cd:0,stag:0,flash:0,dead:0,wx:x,wz:z,wt:0,spd:0,barC,barT,bar};
-  e.room=roomOf(x,z);drawBar(e);enemies.push(e);return e;
+  const e={d,type,h,g:h.g,mat,base:mat.emissiveIntensity,rad:(d.radius||.4)*sc,home:{x,z},hp:d.hp,max:d.hp,state:'idle',t:0,cd:0,stag:0,flash:0,dead:0,wx:x,wz:z,wt:0,spd:0,barC,barT,bar};
+  if(L.light){const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:softT,color:h.lavaCol,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false}));glow.scale.set(.9,.9,1);glow.position.y=1.35;h.g.add(glow);
+    e.lt={s:glow,p:new THREE.Vector3(x,4,z),ph:0,k:1,nof:1,col:h.lavaCol,big:1};torches.push(e.lt)}
+  if(d.boss)bar.visible=false;
+  e.room=roomOf(x,z);drawBar(e);if(d.boss)bar.visible=false;enemies.push(e);return e;
 }
 function enemyStep(e,dt,t){
   const g=e.g,d=e.d,p=hero.g.position;
-  e.flash=Math.max(0,e.flash-dt);e.mat.emissiveIntensity=e.flash>0?1.2:0;
-  if(e.dead){e.dead+=dt;g.rotation.x=-Math.min(1.45,e.dead*4);g.position.y=e.dead>2?-(e.dead-2)*.6:0;
+  e.flash=Math.max(0,e.flash-dt);e.mat.emissiveIntensity=e.flash>0?1.2:e.base;
+  if(e.lt)e.lt.p.set(g.position.x,g.position.y+1.4*(d.scale||1),g.position.z);
+  if(e.dead){e.dead+=dt;if(e.h.slime)g.scale.setScalar((d.scale||1)*Math.max(.05,1-e.dead*1.5));else g.rotation.x=-Math.min(1.45,e.dead*(d.boss?1.5:4));g.position.y=e.dead>2?-(e.dead-2)*.6:0;
     if(e.dead>3)g.visible=false;
-    if(e.dead>(d.respawn||30)&&roomCleared(e.room)&&Math.hypot(p.x-e.home.x,p.z-e.home.z)>8){e.dead=0;e.hp=e.max;g.visible=true;g.rotation.x=0;g.position.set(e.home.x,0,e.home.z);e.state='idle';drawBar(e)}
+    if(e.dead>(d.respawn||30)&&roomCleared(e.room)&&Math.hypot(p.x-e.home.x,p.z-e.home.z)>8){e.dead=0;e.hp=e.max;g.visible=true;g.rotation.x=0;g.scale.setScalar(d.scale||1);g.position.set(e.home.x,0,e.home.z);e.state='idle';drawBar(e)}
     return}
   const dx=p.x-g.position.x,dz=p.z-g.position.z,dist_=Math.hypot(dx,dz),fromHome=Math.hypot(g.position.x-e.home.x,g.position.z-e.home.z);
   e.cd-=dt;let want=0,tx=null,tz=null;
   if(e.state==='wind'){ // rozběhnutý útok se vždy dokončí, zásah hráče ho nepřeruší
     e.t+=dt;if(e.t<d.windup)g.rotation.y=lerpA(g.rotation.y,Math.atan2(dx,dz),dt*6);
-    if(e.t>=d.windup&&!e.struck){e.struck=true;if(dist_<(d.reach||1.9)*(d.scale||1))hurtPlayer(d.dmg,e)}
+    if(e.t>=d.windup&&!e.struck){e.struck=true;if(d.boss)shake=Math.max(shake,.5);if(dist_<(d.reach||1.9)*(d.scale||1))hurtPlayer(d.dmg,e)}
     if(e.t>=d.atkDur){e.state='chase';e.cd=d.cooldown}
   }else if(e.stag>0){e.stag-=dt}
   else if(!st.dead&&dist_<d.aggro&&fromHome<d.leash){
@@ -990,6 +1043,7 @@ function enemyStep(e,dt,t){
     const nx=g.position.x+vx/l*s,nz=g.position.z+vz/l*s;
     if(free(nx,nz)){g.position.x=nx;g.position.z=nz}else if(free(nx,g.position.z))g.position.x=nx;else if(free(g.position.x,nz))g.position.z=nz;else e.wt=0;}
   g.position.y=groundAt(g.position.x,g.position.z);
+  if(e.h.slime){slimeAnim(e,dt,t);return}
   animHero(e.h,e.spd,dt,t,false);
   if(e.state==='wind')atkPose(e.h,2,e.t<d.windup?.45*e.t/d.windup:.45+.55*(e.t-d.windup)/Math.max(.01,d.atkDur-d.windup));
 }
@@ -1033,6 +1087,7 @@ function placeItem(it){
 function removeItem(it){
   const i=mapItems.indexOf(it);if(i>=0)mapItems.splice(i,1);
   if(it.obj)scene.remove(it.obj);
+  if(it.enemy&&it.enemy.lt){const k=torches.indexOf(it.enemy.lt);if(k>=0)torches.splice(k,1)}
   if(it.enemy){scene.remove(it.enemy.g);const k=enemies.indexOf(it.enemy);if(k>=0)enemies.splice(k,1)}
   if(it.torch){const k=torches.indexOf(it.torch);if(k>=0)torches.splice(k,1)}
 }
@@ -1074,6 +1129,7 @@ const DEFAULT_MAP={v:1,items:[
   ['skeleton',5,-43],['skeleton',12,-43],['skeleton',8.5,-50],
   ['skeleton',3,-72],['skeleton',2,-88],['skeleton',5,-96],
   ['skeleton_guard',3,-120],['skeleton',9,-116],['skeleton',-3,-125],
+  ['acid_slime',8.5,-38],['acid_slime',6,-80],['magma_golem',3,-155],
   ['skeleton_guard',1,-150],['skeleton_guard',5,-150],['skeleton',-6,-146],['skeleton',12,-146]].map(([m,x,z])=>({t:'m:'+m,x,z,r:0,s:1})),
   ...[['table',-3,-118,0],['barrel',10.6,-126.6,0],['barrel',10.6,-125.6,0],['crates',-4.4,-126.4,.4],['crate',11,-112.5,.2],['bones',4,-80,0],['web',-2.4,-99.5,.8]]
     .map(([t,x,z,r])=>({t,x,z,r,s:1}))]};
@@ -1143,6 +1199,9 @@ async function edSave(){
   if(ok){ed.dirty=false;edMsg(`✅ Uloženo pro všechny hráče (${data.items.length} věcí a příšer).`)}
   else edMsg('❌ Na server se uložit nepovedlo. Záloha zůstala v tomto prohlížeči, zkus to znovu.');
 }
+$('edDoors').onclick=()=>{const any=LOCKS.some(L=>L.locked);
+  for(const L of LOCKS){L.locked=!any;L.dropped=!any}
+  $('edDoors').textContent=any?'🔒 Zamknout dveře zpět':'🚪 Otevřít všechny dveře';edMsg(any?'Všechny dveře jsou otevřené (jen do obnovení stránky).':'Dveře jsou zase zamčené.')};
 $('edBtn').onclick=edToggle;$('edSave').onclick=edSave;$('edUndo').onclick=edUndo;
 $('edCopy').onclick=()=>{const s=JSON.stringify(mapData());try{navigator.clipboard.writeText(s).then(()=>edMsg('📋 Záloha krypty je ve schránce.'),()=>edMsg('Kopírování tady nejde.'))}catch(_){edMsg('Kopírování tady nejde.')}};
 async function mapBoot(){ // načte uloženou kryptu (veřejné čtení), jinak výchozí rozmístění
@@ -1257,7 +1316,7 @@ function loop(){
   }
   const stp=speed*dt;
   if(stp>.0001){const nx=p.x+mv.x*stp,nz=p.z+mv.y*stp;
-    const ok=(x,z)=>free(x,z)&&groundAt(x,z)-p.y<=.45;
+    const ok=(x,z)=>free(x,z)&&groundAt(x,z)-p.y<=.45&&!enemies.some(e=>!e.dead&&Math.hypot(x-e.g.position.x,z-e.g.position.z)<(e.rad||.4)+.25);
     if(ok(nx,nz)){p.x=nx;p.z=nz}else if(ok(nx,p.z))p.x=nx;else if(ok(p.x,nz))p.z=nz;}
   const gy=groundAt(p.x,p.z);
   if(keys.Space&&p.y<=gy+.001&&!pz&&!st.dead)vy=4.2;
@@ -1281,6 +1340,8 @@ function loop(){
   trailT+=dt;trailMesh.material.opacity=Math.max(0,.75-trailT*3.4);const ts=1+trailT*.6;trailMesh.scale.set(trailMesh.scale.x<0?-ts:ts,ts,ts);
   if(!pz&&!ed.on)for(const e of enemies)enemyStep(e,dt,t);
   edUpdate();
+  {const b=enemies.find(e=>e.d.boss&&!e.dead&&e.state!=='idle'&&Math.hypot(p.x-e.g.position.x,p.z-e.g.position.z)<e.d.aggro+4);$('boss').hidden=!b;
+    if(b){$('bossN').textContent=b.d.name;$('bossBar').style.width=Math.max(0,b.hp/b.max*100)+'%'}}
   blob.position.set(p.x,gy+.02,p.z);blob.scale.setScalar(Math.max(.3,1-(p.y-gy)*.3));
   // kamera
   if(ml&&!lockedReal&&!pz&&mouseX>=0){const ed=innerWidth*.12;
