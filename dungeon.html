@@ -184,8 +184,14 @@ const bannerC=canv(128,256,(x,w,h)=>{
 /* ---------- materiály a pomocníci ---------- */
 const M=o=>new THREE.MeshStandardMaterial(o);
 const cache={};
-const stone=(rx,ry)=>cache['s'+rx+ry]||(cache['s'+rx+ry]=(()=>{const t=T(brickC,rx,ry);return M({map:t,bumpMap:t,bumpScale:.05,roughness:.95,color:0xbdb5a8})})());
-const floor=(rx,ry)=>{const t=T(cobC,rx,ry);return M({map:t,bumpMap:t,bumpScale:.07,roughness:.9})};
+const stone=(rx,ry)=>cache['s'+rx+ry]||(cache['s'+rx+ry]=(()=>{const t=T(brickC,rx,ry),m=M({map:t,bumpMap:t,bumpScale:.05,roughness:.95,color:0xbdb5a8});m.userData.kind='stone';return m})());
+const floor=(rx,ry)=>{const t=T(cobC,rx,ry),m=M({map:t,bumpMap:t,bumpScale:.07,roughness:.9});m.userData.kind='floor';return m};
+// kvádry z kamene a dlažby: textura podle skutečné velikosti a polohy (1 opakování = 4 m), takže cihly na sebe navazují a nejsou natažené
+const WORLDM={stone:(()=>{const t=T(brickC);return M({map:t,bumpMap:t,bumpScale:.05,roughness:.95,color:0xbdb5a8})})(),floor:(()=>{const t=T(cobC);return M({map:t,bumpMap:t,bumpScale:.07,roughness:.9})})()};
+function worldUV(geo,ox,oy,oz,S){const p=geo.attributes.position,n=geo.attributes.normal,uv=geo.attributes.uv;
+  for(let i=0;i<p.count;i++){const x=p.getX(i)+ox,y=p.getY(i)+oy,z=p.getZ(i)+oz,ax=Math.abs(n.getX(i)),ay=Math.abs(n.getY(i));
+    if(ax>.5)uv.setXY(i,z/S,y/S);else if(ay>.5)uv.setXY(i,x/S,z/S);else uv.setXY(i,x/S,y/S)}
+  uv.needsUpdate=true}
 const woodM=M({map:T(woodC),roughness:.85});
 const ironM=M({color:0x2d2b29,metalness:.8,roughness:.5});
 const darkM=M({color:0x030303,roughness:1});
@@ -194,7 +200,7 @@ const boneM=M({color:0xd8cfb6,roughness:.8});
 const shroomM=M({color:0x2ad6c0,emissive:0x1fcab0,emissiveIntensity:1.6});
 const stemM=M({color:0xcfe8df,roughness:.7});
 const add=(o,x=0,y=0,z=0,p=scene)=>{o.position.set(x,y,z);p.add(o);return o};
-const box=(w,h,d,m,x,y,z,p)=>add(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m),x,y,z,p);
+const box=(w,h,d,m,x,y,z,p)=>{const geo=new THREE.BoxGeometry(w,h,d),k=m&&m.userData&&m.userData.kind;if(k){worldUV(geo,p?0:x,p?0:y,p?0:z,4);m=WORLDM[k]}return add(new THREE.Mesh(geo,m),x,y,z,p)};
 const cyl=(rt,rb,h,m,x,y,z,seg=12,p)=>add(new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),m),x,y,z,p);
 const spr=(map,color,s,x,y,z,op=1)=>{const m=new THREE.Sprite(new THREE.SpriteMaterial({map,color,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false}));m.scale.set(s,s,1);return add(m,x,y,z)};
 const flameT=T(flameC),softT=T(softC),webT=T(webC);
@@ -258,15 +264,15 @@ function wallX(z,xa,xb,gaps,h){ // zeď podél osy x, v místech gaps jsou dveř
     const g0=gx-DW/2,g1=gx+DW/2;
     if(g0>x)box(g0-x,h,1,stone(sr((g0-x)/4),sr(h/4)),(x+g0)/2,h/2,z);
     box(DW,h-DH,1,stone(sr(DW/4),sr((h-DH)/4)),gx,DH+(h-DH)/2,z);
-    box(.5,DH+.4,1.3,stone(.5,1),g0-.25,(DH+.4)/2,z);box(.5,DH+.4,1.3,stone(.5,1),g1+.25,(DH+.4)/2,z);box(DW+1,.5,1.3,stone(1,.5),gx,DH+.2,z);
+    box(.5,DH+.4,1.3,stone(.5,1),g0-.2,(DH+.4)/2,z);box(.5,DH+.4,1.3,stone(.5,1),g1+.2,(DH+.4)/2,z);box(DW+1.1,.5,1.32,stone(1,.5),gx,DH+.18,z);
     AREAS.push({x0:g0+.4,x1:g1-.4,z0:z-1.2,z1:z+1.2,h:DH});x=g1;
   }
   if(xb>x)box(xb-x,h,1,stone(sr((xb-x)/4),sr(h/4)),(x+xb)/2,h/2,z);
 }
-const wallZ=(x,za,zb,h)=>box(1,h,zb-za,stone(sr((zb-za)/4),sr(h/4)),x,h/2,(za+zb)/2);
+const wallZ=(x,za,zb,h)=>box(1,h-.02,zb-za-.1,stone(sr((zb-za)/4),sr(h/4)),x,h/2-.01,(za+zb)/2);
 function room(x0,x1,z0,z1,h,doorsN,doorsS){
   const w=x1-x0,d=z1-z0,cx=(x0+x1)/2,cz=(z0+z1)/2;
-  box(w+2,1,d,floor(sr(w/4),sr(d/4)),cx,-.5,cz);box(w+2,1,d+2,stone(sr(w/4),sr(d/4)),cx,h+.5,cz);
+  box(w+2,1,doorsN?d:d+2,floor(sr(w/4),sr(d/4)),cx,-.5,cz);box(w+2,1,d+2,stone(sr(w/4),sr(d/4)),cx,h+.5,cz);
   if(doorsN)wallX(z1+.5,x0-1,x1+1,doorsN,h);if(doorsS)wallX(z0-.5,x0-1,x1+1,doorsS,h);
   wallZ(x0-.5,z0-1,z1+1,h);wallZ(x1+.5,z0-1,z1+1,h);
   AREAS.push({x0:x0+.5,x1:x1-.5,z0:z0+.5,z1:z1-.5,h});
