@@ -1041,7 +1041,8 @@ function enemyStep(e,dt,t){
   if(tx!==null&&e.spd>.05){const vx=tx-g.position.x,vz=tz-g.position.z,l=Math.hypot(vx,vz)||1,s=e.spd*dt;
     g.rotation.y=lerpA(g.rotation.y,Math.atan2(vx,vz),dt*8);
     const nx=g.position.x+vx/l*s,nz=g.position.z+vz/l*s;
-    if(free(nx,nz)){g.position.x=nx;g.position.z=nz}else if(free(nx,g.position.z))g.position.x=nx;else if(free(g.position.x,nz))g.position.z=nz;else e.wt=0;}
+    const okE=(x,z)=>free(x,z)&&Math.hypot(x-p.x,z-p.z)>=Math.min((e.rad||.4)+.3,Math.hypot(g.position.x-p.x,g.position.z-p.z));
+    if(okE(nx,nz)){g.position.x=nx;g.position.z=nz}else if(okE(nx,g.position.z))g.position.x=nx;else if(okE(g.position.x,nz))g.position.z=nz;else e.wt=0;}
   g.position.y=groundAt(g.position.x,g.position.z);
   if(e.h.slime){slimeAnim(e,dt,t);return}
   animHero(e.h,e.spd,dt,t,false);
@@ -1129,8 +1130,8 @@ const DEFAULT_MAP={v:1,items:[
   ['skeleton',5,-43],['skeleton',12,-43],['skeleton',8.5,-50],
   ['skeleton',3,-72],['skeleton',2,-88],['skeleton',5,-96],
   ['skeleton_guard',3,-120],['skeleton',9,-116],['skeleton',-3,-125],
-  ['acid_slime',8.5,-38],['acid_slime',6,-80],['magma_golem',3,-155],
-  ['skeleton_guard',1,-150],['skeleton_guard',5,-150],['skeleton',-6,-146],['skeleton',12,-146]].map(([m,x,z])=>({t:'m:'+m,x,z,r:0,s:1})),
+  ['acid_slime',8.5,-38],['acid_slime',6,-80],['magma_golem',3,-150],
+  ['skeleton_guard',-2,-147],['skeleton_guard',8,-147],['skeleton',-6,-146],['skeleton',12,-146]].map(([m,x,z])=>({t:'m:'+m,x,z,r:0,s:1})),
   ...[['table',-3,-118,0],['barrel',10.6,-126.6,0],['barrel',10.6,-125.6,0],['crates',-4.4,-126.4,.4],['crate',11,-112.5,.2],['bones',4,-80,0],['web',-2.4,-99.5,.8]]
     .map(([t,x,z,r])=>({t,x,z,r,s:1}))]};
 function solidHit(x,z){ // kolize s položenými věcmi (otočený obdélník)
@@ -1316,7 +1317,7 @@ function loop(){
   }
   const stp=speed*dt;
   if(stp>.0001){const nx=p.x+mv.x*stp,nz=p.z+mv.y*stp;
-    const ok=(x,z)=>free(x,z)&&groundAt(x,z)-p.y<=.45&&!enemies.some(e=>!e.dead&&Math.hypot(x-e.g.position.x,z-e.g.position.z)<(e.rad||.4)+.25);
+    const ok=(x,z)=>free(x,z)&&groundAt(x,z)-p.y<=.45&&!enemies.some(e=>{if(e.dead)return false;const r=(e.rad||.4)+.25,ex=e.g.position.x,ez=e.g.position.z,nd=Math.hypot(x-ex,z-ez);return nd<r&&nd<Math.hypot(p.x-ex,p.z-ez)});
     if(ok(nx,nz)){p.x=nx;p.z=nz}else if(ok(nx,p.z))p.x=nx;else if(ok(p.x,nz))p.z=nz;}
   const gy=groundAt(p.x,p.z);
   if(keys.Space&&p.y<=gy+.001&&!pz&&!st.dead)vy=4.2;
