@@ -39,6 +39,7 @@ canvas{display:block;touch-action:none;outline:none}
 .tools button,.btn{min-height:44px;padding:8px 14px;border-radius:12px;border:2px solid #e9c46a;background:rgba(12,10,6,.8);color:#f4e3b5;font:700 14px 'Nunito Sans',sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
 .tools button:focus-visible,.btn:focus-visible,.cell:focus-visible{outline:3px solid #7ff2dc}
 body.ml canvas{cursor:none}
+body.locked canvas,body.locked .hud,body.locked .tools,body.locked #help{visibility:hidden}body.locked .over{background:#05080a}
 #cross{position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#f4e3b5;box-shadow:0 0 0 2px rgba(0,0,0,.6);pointer-events:none}
 #hurt{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,transparent 45%,rgba(200,0,0,.55));opacity:0}
 .pop{position:fixed;pointer-events:none;font:800 20px 'Nunito Sans',sans-serif;text-shadow:0 2px 4px #000;transform:translate(-50%,-50%);white-space:nowrap}
@@ -825,16 +826,20 @@ async function goPlanet(){
 $('homeBtn').onclick=goPlanet;
 addEventListener('pagehide',()=>{saveHp(true)});
 function startDemo(){
+  if(preRelease())return;document.body.classList.remove('locked');
   st.demo=true;st.user=null;st.nick='zkouška';
   const g=(qs.get('g')||'wood_sword_2_u,wood_shield_1,cloth_pants_2,cloth_gloves_3,cloth_pack_2,repair_hat,earth_heart_1,founder_cape,arena_boots,basic_sword_g,boss_sword,wood_sword_3_r,arena_shield,wood_shield_4_r,cloth_pants_1_u,cloth_pack_1').split(',');
   st.items=Object.fromEntries(g.filter(k=>ITEMS[k]).map(k=>[k,true]));st.equip=null;st.counts={herbs:3,meds:1,grain:5,bread:2};st.money=245;st.dia=0;
   st.hp=999;refreshGear();st.hp=st.hpMax;st.dead=false;$('demo').hidden=false;$('edBtn').hidden=!canEdit();$('who').textContent='zkušební postava';gateEl.hidden=true;hud();
 }
 const loadJs=src=>new Promise((ok,bad)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.append(s)});
+const preRelease=()=>ONSITE&&now()<DUNGEON_FROM; // do pátku 4. 12. 12:00 na webu jen admin, žádná zkušební hra
+const demoBtn=()=>preRelease()?[]:[['Hrát na zkoušku',startDemo]];
 async function boot(){
   refreshGear();
-  if(qs.has('demo')||!ONSITE){startDemo();return}
-  const need=()=>gate('Nejdřív se přihlas','Do krypty můžou jen přihlášení hráči, protože se tu ukládají životy a inventář. Přihlas se na planetě přes Google a vrať se sem.',[['Přihlásit se na planetě',()=>location.href='./'],['Hrát na zkoušku',startDemo]]);
+  if(!ONSITE||(qs.has('demo')&&!preRelease())){startDemo();mapBoot();return}
+  document.body.classList.add('locked');
+  const need=()=>gate(preRelease()?'Krypta je zatím zavřená':'Nejdřív se přihlas',preRelease()?'Otevře se <b>v pátek 4. 12. ve 12:00</b>.':'Do krypty můžou jen přihlášení hráči, protože se tu ukládají životy a inventář. Přihlas se na planetě přes Google a vrať se sem.',[['Na planetu',()=>location.href='./'],...demoBtn()]);
   let at=0;try{at=+localStorage.getItem(LOGIN_AT)||0}catch(_){}
   if(!at||Date.now()-at>SESSION_MS){need();return}
   gate('Načítám tvou postavu…','Chvilku strpení.',[]);
@@ -846,7 +851,7 @@ async function boot(){
     if(!u){need();return}
     st.user=u;const a=await api('GET','accounts/'+u.uid);
     if(!a||!a.nick){st.user=null;gate('Vyber si postavu','Na planetě si nejdřív vyber svou postavu (nick). Pak můžeš do krypty.',[['Na planetu',()=>location.href='./']]);return}
-    if(now()<DUNGEON_FROM&&a.nick!==ADMIN){st.user=null;gate('Krypta je zatím zavřená','Otevře se <b>v pátek 4. 12. ve 12:00</b>. Do té doby si ji můžeš projít nanečisto.',[['Na planetu',()=>location.href='./'],['Hrát na zkoušku',startDemo]]);return}
+    if(now()<DUNGEON_FROM&&a.nick!==ADMIN){st.user=null;gate('Krypta je zatím zavřená','Otevře se <b>v pátek 4. 12. ve 12:00</b>.',[['Na planetu',()=>location.href='./']]);return}
     st.nick=a.nick;st.demo=false;$('who').textContent='@'+a.nick;
     const k=liveKey(a.nick),P=['items','equip','fight','health','buys','gifts','sold','money','diamonds','herbs','meds','grain','bread'].map(p=>p+'/'+k);P.push('dig');
     const [items,equip,fight,health,buys,gifts,sold,money,dia,herbs,meds,grain,bread,dig]=await Promise.all(P.map(p=>api('GET',p)));
@@ -858,9 +863,9 @@ async function boot(){
     st.hp=999;refreshGear();st.health=hlEff(health,now());
     if(st.health.dead){const left=Math.max(1,Math.ceil((st.health.dAt+REVIVE_MS-now())/60000));
       gate('Jsi mrtvý 💀',`Tvoje postava leží u hrobu. Oživí tě jiný hráč, nebo se sám probudíš asi za <b>${left>=60?Math.floor(left/60)+' h '+left%60+' min':left+' min'}</b>.`,[['Na planetu',()=>location.href='./']]);return}
-    st.hp=Math.min(st.hpMax,Math.max(1,st.health.hp));hpSaved=Math.round(st.hp);gateEl.hidden=true;hud();$('edBtn').hidden=!canEdit();
+    st.hp=Math.min(st.hpMax,Math.max(1,st.health.hp));hpSaved=Math.round(st.hp);gateEl.hidden=true;document.body.classList.remove('locked');hud();$('edBtn').hidden=!canEdit();mapBoot();
     if(st.health.sick)toast('🤒 Jsi nemocný. Antibiotika najdeš v inventáři (I).');
-  }catch(e){console.warn(e);gate('Něco se pokazilo','Nepodařilo se načíst tvou postavu. Zkus to znovu z planety.',[['Na planetu',()=>location.href='./'],['Hrát na zkoušku',startDemo]])}
+  }catch(e){console.warn(e);gate('Něco se pokazilo','Nepodařilo se načíst tvou postavu. Zkus to znovu z planety.',[['Na planetu',()=>location.href='./'],...demoBtn()])}
 }
 
 /* ---------- boj ---------- */
@@ -1101,11 +1106,11 @@ $('edBtn').onclick=edToggle;$('edSave').onclick=edSave;$('edUndo').onclick=edUnd
 $('edCopy').onclick=()=>{const s=JSON.stringify(mapData());try{navigator.clipboard.writeText(s).then(()=>edMsg('📋 Záloha krypty je ve schránce.'),()=>edMsg('Kopírování tady nejde.'))}catch(_){edMsg('Kopírování tady nejde.')}};
 async function mapBoot(){ // načte uloženou kryptu (veřejné čtení), jinak výchozí rozmístění
   let m=null;
-  try{const r=await fetch(`${LIVE_DB}/dungeon/map.json`,{cache:'no-store'});if(r.ok)m=await r.json()}catch(_){}
+  try{if(st.user)m=await api('GET','dungeon/map');else{const r=await fetch(`${LIVE_DB}/dungeon/map.json`,{cache:'no-store'});if(r.ok)m=await r.json()}}catch(_){}
   if(!(m&&Array.isArray(m.items))&&!ONSITE){try{m=JSON.parse(localStorage.getItem('krypta-mapa')||'null')}catch(_){m=null}}
   if(m&&Array.isArray(m.items))loadMap(m);
 }
-loadMap(DEFAULT_MAP);mapBoot();
+loadMap(DEFAULT_MAP);
 
 /* ---------- interakce ---------- */
 let busy=false;
