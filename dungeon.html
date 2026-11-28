@@ -211,9 +211,11 @@ const CH={x0:3.2,z0:-15,z1:-4},BR={x:8.3,w:1.7};
 const circles=[],rects=[];
 const AREAS=[{x0:-13.5,x1:13.5,z0:-23.3,z1:11.5,h:12.5}]; // podlahy, kde se dá chodit (místnosti, chodby, dveře)
 const GROUND=[]; // vyvýšená místa (stupně), kam se dá vyjít
+const LOCKS=[];let EDITING=false; // zamčené dveře (při stavění jdou projít)
 const groundAt=(x,z)=>{let y=0;for(const g of GROUND)if(x>=g.x0&&x<=g.x1&&z>=g.z0&&z<=g.z1&&g.y>y)y=g.y;return y};
 function free(x,z){
   if(!AREAS.some(a=>x>=a.x0&&x<=a.x1&&z>=a.z0&&z<=a.z1))return false;
+  if(!EDITING)for(const L of LOCKS)if(L.locked&&Math.abs(x-L.gx)<DW/2+.2&&Math.abs(z-L.z)<.8)return false;
   if(typeof solidHit==='function'&&solidHit(x,z))return false;
   if(x>CH.x0-.3&&z>CH.z0-.3&&z<CH.z1+.3&&Math.abs(x-BR.x)>BR.w/2-.28)return false;
   for(const c of circles)if((x-c.x)**2+(z-c.z)**2<c.r*c.r)return false;
@@ -326,6 +328,19 @@ rects.push({x:3,z:-162.65,w:.85,d:.5}); // trůn
   box(1.75,.12,.3,au,3,3.65,-162.95);add(new THREE.Mesh(new THREE.SphereGeometry(.18,12,8),boneM),3,3.9,-162.95);}
 for(const [x,z] of[[-1,-157],[7,-157],[-1,-141],[7,-141]])brazier(x,z);
 torch(-9.95,3.5,-146,Math.PI/2);torch(-9.95,3.5,-156,Math.PI/2);torch(15.95,3.5,-146,-Math.PI/2);torch(15.95,3.5,-156,-Math.PI/2);
+/* ---------- místnosti a zamčené dveře: klíč padá z posledního nepřítele v místnosti ---------- */
+const ROOMS=[{n:'Vstupní síň',x0:-14,x1:14,z0:-24,z1:12},{n:'Pohřebnice',x0:0,x1:17,z0:-52,z1:-34},{n:'Dlouhá síň',x0:-3,x1:9,z0:-101,z1:-62},
+  {n:'Strážnice',x0:-6,x1:12,z0:-128,z1:-111},{n:'Trůnní sál',x0:-10,x1:16,z0:-164,z1:-138}];
+const roomOf=(x,z)=>ROOMS.findIndex(r=>x>=r.x0&&x<=r.x1&&z>=r.z0&&z<=r.z1);
+const goldM=M({color:0xffc84a,emissive:0xd08a10,emissiveIntensity:1.3,metalness:.8,roughness:.25});
+for(const [room,gx,z] of[[0,8.6,-24.5],[1,3,-52.5],[2,3,-101.5],[3,9,-128.5]]){
+  const piv=add(new THREE.Group(),gx-DW/2+.05,0,z),w=DW-.1;
+  box(w,DH-.05,.16,woodM,w/2,(DH-.05)/2,0,piv);
+  for(const y of[.6,2,3.4])box(w,.12,.2,ironM,w/2,y,0,piv);
+  box(.34,.44,.24,goldM,w-.4,1.6,0,piv);
+  for(const zz of[-.15,.15])add(new THREE.Mesh(new THREE.TorusGeometry(.1,.02,6,14),ironM),w-.4,1.25,zz,piv);
+  LOCKS.push({room,gx,z,piv,locked:true,dropped:false,to:ROOMS[room+1].n});
+}
 
 
 /* ---------- portál s houbami ---------- */
@@ -691,7 +706,7 @@ const liveKey=id=>id.replace(/\./g,'-');
 const DUNGEON_FROM=Date.UTC(2026,11,4,11),ADMIN='lubikosuch'; // pátek 4. 12. 2026 12:00 Praha; do té doby jen admin
 const qs=new URLSearchParams(location.search);
 const ONSITE=/zemefolloweru\.cz$/.test(location.hostname);
-const st={user:null,nick:'',demo:true,items:{},equip:null,buys:{},gifts:{},sold:{},fightF:1,heart:null,money:0,dia:0,
+const st={keys:new Set(),user:null,nick:'',demo:true,items:{},equip:null,buys:{},gifts:{},sold:{},fightF:1,heart:null,money:0,dia:0,
   counts:{herbs:0,meds:0,grain:0,bread:0},health:null,hp:100,hpMax:100,gear:{},dead:false,deadT:0,kills:0};
 let skew=0;const now=()=>Date.now()+skew;
 function hlEff(h,t){ // stejný výpočet jako ve hře
@@ -752,7 +767,7 @@ blob.rotation.x=-Math.PI/2;
 const toastEl=$('toast');let toastT;
 function toast(s){toastEl.textContent=s;toastEl.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>toastEl.classList.remove('on'),2800)}
 function hud(){const v=Math.max(0,Math.round(st.hp));$('hpBar').style.width=clamp(v/st.hpMax*100,0,100)+'%';$('hpTxt').textContent=`${v} / ${st.hpMax} HP`+(st.health&&st.health.sick?' · 🤒':'');
-  $('kills').textContent='Poražení kostlivci: '+st.kills}
+  $('kills').textContent='Poražení kostlivci: '+st.kills+(st.keys.size?` · 🗝️ klíč ×${st.keys.size}`:'')}
 const pops=[];
 function pop(pos,text,color){const el=document.createElement('div');el.className='pop';el.textContent=text;el.style.color=color;$('pops').append(el);pops.push({el,p:pos.clone(),t:0})}
 let hurtT=0,shake=0;
@@ -899,7 +914,7 @@ function doHits(c){
     e.hp-=n;e.flash=.18;any=true;
     if(e.state!=='wind'){e.stag=.35;const kx=e.g.position.x+dx/(d||1)*c.kb,kz=e.g.position.z+dz/(d||1)*c.kb;if(free(kx,kz))e.g.position.set(kx,0,kz)}
     pop(e.g.position.clone().setY(2),'-'+n,atk.i===2?'#ffd34d':'#ffffff');drawBar(e);
-    if(e.hp<=0){e.dead=.001;st.kills++;hud();toast('💀 '+e.d.name+' padl!')}
+    if(e.hp<=0){e.dead=.001;st.kills++;hud();toast('💀 '+e.d.name+' padl!');roomKey(e)}
   }
   if(any)shake=Math.max(shake,atk.i===2?.35:.15);
 }
@@ -943,14 +958,14 @@ function spawnEnemy(type,x,z){
   bar.scale.set(.9,.14,1);bar.position.y=2.05;h.g.add(bar);
   h.g.position.set(x,0,z);scene.add(h.g);
   const e={d,type,h,g:h.g,mat,home:{x,z},hp:d.hp,max:d.hp,state:'idle',t:0,cd:0,stag:0,flash:0,dead:0,wx:x,wz:z,wt:0,spd:0,barC,barT,bar};
-  drawBar(e);enemies.push(e);return e;
+  e.room=roomOf(x,z);drawBar(e);enemies.push(e);return e;
 }
 function enemyStep(e,dt,t){
   const g=e.g,d=e.d,p=hero.g.position;
   e.flash=Math.max(0,e.flash-dt);e.mat.emissiveIntensity=e.flash>0?1.2:0;
   if(e.dead){e.dead+=dt;g.rotation.x=-Math.min(1.45,e.dead*4);g.position.y=e.dead>2?-(e.dead-2)*.6:0;
     if(e.dead>3)g.visible=false;
-    if(e.dead>(d.respawn||30)&&Math.hypot(p.x-e.home.x,p.z-e.home.z)>8){e.dead=0;e.hp=e.max;g.visible=true;g.rotation.x=0;g.position.set(e.home.x,0,e.home.z);e.state='idle';drawBar(e)}
+    if(e.dead>(d.respawn||30)&&roomCleared(e.room)&&Math.hypot(p.x-e.home.x,p.z-e.home.z)>8){e.dead=0;e.hp=e.max;g.visible=true;g.rotation.x=0;g.position.set(e.home.x,0,e.home.z);e.state='idle';drawBar(e)}
     return}
   const dx=p.x-g.position.x,dz=p.z-g.position.z,dist_=Math.hypot(dx,dz),fromHome=Math.hypot(g.position.x-e.home.x,g.position.z-e.home.z);
   e.cd-=dt;let want=0,tx=null,tz=null;
@@ -1021,11 +1036,37 @@ function removeItem(it){
   if(it.enemy){scene.remove(it.enemy.g);const k=enemies.indexOf(it.enemy);if(k>=0)enemies.splice(k,1)}
   if(it.torch){const k=torches.indexOf(it.torch);if(k>=0)torches.splice(k,1)}
 }
+const drops=[];
+const roomCleared=r=>!LOCKS.some(L=>L.room===r&&!L.dropped); // dokud klíč nevypadl, mrtví se v místnosti neoživují
+function roomKey(e){
+  const L=LOCKS.find(l=>l.room===e.room);if(!L||!L.locked||L.dropped)return;
+  if(enemies.some(o=>o!==e&&o.room===e.room&&!o.dead))return;
+  L.dropped=true;dropKey(L,e.g.position.x,e.g.position.z);
+}
+function dropKey(L,x,z){ // zlatý klíč se září a světlem
+  const g=add(new THREE.Group(),x,groundAt(x,z),z),k=add(new THREE.Group(),0,.7,0,g);
+  add(new THREE.Mesh(new THREE.TorusGeometry(.12,.035,8,20),goldM),0,.2,0,k);
+  add(new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.45,8),goldM),0,-.12,0,k);
+  for(const y of[-.28,-.18])add(new THREE.Mesh(new THREE.BoxGeometry(.1,.05,.03),goldM),.06,y,0,k);
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:softT,color:0xffc84a,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));glow.scale.set(1.8,1.8,1);glow.position.y=.7;g.add(glow);
+  const beam=add(new THREE.Mesh(new THREE.CylinderGeometry(.08,.5,4,16,1,true),new THREE.MeshBasicMaterial({color:0xffd060,transparent:true,opacity:.18,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide})),0,2,0,g);
+  const lt={s:glow,p:new THREE.Vector3(x,g.position.y+1,z),ph:0,k:1,nof:1,col:0xffc84a,big:1};torches.push(lt);
+  drops.push({g,k,L,lt});toast(`🗝️ Vypadl klíč od dveří: ${L.to}!`);
+}
+function unlockDoor(L){
+  if(!L.locked)return;
+  if(!st.keys.has(L.room)){toast(L.dropped?'🔒 Zamčeno. Klíč leží někde v místnosti, najdi ho.':'🔒 Zamčeno. Klíč vypadne z posledního nepřítele v této místnosti.');return}
+  st.keys.delete(L.room);L.locked=false;hud();toast(`🔓 Odemčeno! Cesta dál: ${L.to}`);
+}
+function refreshLocks(){ // místnost bez příšer = dveře otevřené (aby se nikdo nezasekl)
+  for(const L of LOCKS)if(L.locked&&!L.dropped&&!enemies.some(e=>e.room===L.room)){L.locked=false;L.dropped=true}
+}
 function loadMap(m){
   while(mapItems.length)removeItem(mapItems[mapItems.length-1]);
   const arr=m&&Array.isArray(m.items)?m.items:[];
   for(const r of arr.slice(0,600)){if(!r)continue;const t=String(r.t||''),x=+r.x,z=+r.z;if(!isFinite(x)||!isFinite(z))continue;
-    placeItem({t,x:clamp(x,-40,40),z:clamp(z,-120,30),r:+r.r||0,s:clamp(+r.s||1,.3,4)})}
+    placeItem({t,x:clamp(x,-40,40),z:clamp(z,-200,30),r:+r.r||0,s:clamp(+r.s||1,.3,4)})}
+  refreshLocks();
 }
 const mapData=()=>({v:1,items:mapItems.map(i=>({t:i.t,x:+i.x.toFixed(2),z:+i.z.toFixed(2),r:+i.r.toFixed(3),s:+i.s.toFixed(2)}))});
 const DEFAULT_MAP={v:1,items:[
@@ -1067,7 +1108,7 @@ function edSelect(k){
 }
 function edToggle(){
   if(!canEdit())return;
-  ed.on=!ed.on;edEl.hidden=!ed.on;$('edBtn').classList.toggle('on',ed.on);
+  ed.on=!ed.on;EDITING=ed.on;edEl.hidden=!ed.on;$('edBtn').classList.toggle('on',ed.on);if(!ed.on)refreshLocks();
   if(ed.on){unlockMouse();atk.i=-1;st.block=false;edCatalog();edHint();if(!ed.ring){ed.ring=add(new THREE.Mesh(new THREE.RingGeometry(.55,.7,32),new THREE.MeshBasicMaterial({color:0x7ff2dc,transparent:true,opacity:.8,depthWrite:false})));ed.ring.rotation.x=-Math.PI/2}}
   else{edSelect(null);if(ed.ring)ed.ring.visible=false;if(ed.dirty)toast('Pozor: změny v kryptě nejsou uložené.')}
 }
@@ -1123,6 +1164,7 @@ const spots=[
   {x:-13,z:-14,txt:'Prozkoumat mříž',act(){toast('Ve tmě za mříží něco zachrastilo…')}},
   {x:-8,z:-22,txt:'Prohlédnout sochu',act(){toast('Na podstavci: „Strážce krypty“.')}},
 ];
+for(const L of LOCKS)spots.push({x:L.gx,z:L.z+1.7,L,get txt(){return st.keys.has(L.room)?'Odemknout dveře klíčem 🗝️':'Zamčené dveře 🔒'},act(){unlockDoor(L)}});
 let near=null;const promptEl=$('prompt');
 promptEl.onclick=()=>{near&&near.act();cv.focus()};
 
@@ -1252,8 +1294,11 @@ function loop(){
   if(shake>0){shake=Math.max(0,shake-dt*1.8);cam.position.x+=(Math.random()-.5)*shake*.4;cam.position.y+=(Math.random()-.5)*shake*.3}
   hurtT=Math.max(0,hurtT-dt);$('hurt').style.opacity=hurtT;
   if(t-poolT>.25){poolT=t;torches.sort((a,b)=>a.p.distanceToSquared(p)-b.p.distanceToSquared(p))}
-  for(const f of torches){f.k=.85+.15*Math.sin(t*13+f.ph)*Math.sin(t*7.3+f.ph*2);const z_=f.size||(f.big?1.4:.6);f.s.scale.set(z_*.92*f.k,z_*1.33*f.k,1)}
-  LPOOL.forEach((l,i)=>{const f=torches[i];if(!f){l.intensity=0;return}l.position.copy(f.p);l.intensity=(f.big?2.6:1.7)*f.k});
+  for(const L of LOCKS)L.piv.rotation.y+=((L.locked?0:1.65)-L.piv.rotation.y)*Math.min(1,dt*2.5);
+  for(let i=drops.length-1;i>=0;i--){const d=drops[i];d.k.rotation.y+=dt*2;d.k.position.y=.7+Math.sin(t*3)*.12;
+    if(!st.dead&&!EDITING&&Math.hypot(p.x-d.g.position.x,p.z-d.g.position.z)<1.2){scene.remove(d.g);torches.splice(torches.indexOf(d.lt),1);drops.splice(i,1);st.keys.add(d.L.room);hud();toast(`🗝️ Máš klíč! Odemkni dveře: ${d.L.to}`)}}
+  for(const f of torches){if(f.nof){f.k=.9+.1*Math.sin(t*4);continue}f.k=.85+.15*Math.sin(t*13+f.ph)*Math.sin(t*7.3+f.ph*2);const z_=f.size||(f.big?1.4:.6);f.s.scale.set(z_*.92*f.k,z_*1.33*f.k,1)}
+  LPOOL.forEach((l,i)=>{const f=torches[i];if(!f){l.intensity=0;return}l.position.copy(f.p);l.color.setHex(f.col||0xff8a3c);l.intensity=(f.big?2.6:1.7)*f.k});
   portalMat.uniforms.uT.value=t;waterMat.uniforms.uT.value=t;
   for(const b of banners)b.p.rotation.x=Math.sin(t*.8+b.ph)*.04;
   for(let i=0;i<DN;i++){dpos[i*3+1]+=dt*.08;dpos[i*3]+=Math.sin(t*.5+i)*dt*.05;if(dpos[i*3+1]>11)dpos[i*3+1]=0}
@@ -1263,8 +1308,9 @@ function loop(){
     o.el.style.left=((pv.x+1)/2*innerWidth)+'px';o.el.style.top=((1-pv.y)/2*innerHeight-o.t*50)+'px';o.el.style.opacity=Math.max(0,1-o.t/.9);
     if(o.t>.9||pv.z>1){o.el.remove();pops.splice(i,1)}}
   let best=null,bd=4.4;
-  if(!st.dead)for(const s of spots){const d=(p.x-s.x)**2+(p.z-s.z)**2;if(d<bd){bd=d;best=s}}
-  if(best!==near){near=best;promptEl.hidden=!near;if(near)promptEl.textContent=(touch?'':'F – ')+near.txt}
+  if(!st.dead)for(const s of spots){if(s.L&&!s.L.locked)continue;const d=(p.x-s.x)**2+(p.z-s.z)**2;if(d<bd){bd=d;best=s}}
+  if(best!==near){near=best;promptEl.hidden=!near}
+  if(near){const tx=(touch?'':'F – ')+near.txt;if(promptEl.textContent!==tx)promptEl.textContent=tx}
   renderer.render(scene,cam);
   requestAnimationFrame(loop);
 }
