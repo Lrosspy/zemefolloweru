@@ -109,13 +109,13 @@ const SHIELDS={wood_shield_1:{b:[.10,.13,.17]},wood_shield_2:{b:[.10,.13,.17],hp
 const PACKS={cloth_pack_3:{hp:[5,8,12]}};
 const shieldStat=(g,k)=>{if(g.shield==='arena_shield')return k==='b'?.25:0;const x=SHIELDS[baseOf(g.shield)];return x&&x[k]?x[k][tierOf(g.shield)]:0};
 const packHp=g=>{const x=PACKS[baseOf(g.backpack)];return x?x.hp[tierOf(g.backpack)]:0};
-const hpMaxOf=g=>100+(g.banner==='founder_cape'?50:0)+(g.boots==='arena_boots'?30:0)+(CLOTH_HP[g.pants]||0)+(CLOTH_HP[g.gloves]||0)+shieldStat(g,'hp')+packHp(g);
+const hpMaxOf=g=>Math.min(250,(g.armor==='golem_vest'?100:0)+100+(g.banner==='founder_cape'?50:0)+(g.boots==='arena_boots'?30:0)+(CLOTH_HP[g.pants]||0)+(CLOTH_HP[g.gloves]||0)+shieldStat(g,'hp')+packHp(g));
 const ATK={quick:{mul:.6,hit:.85,sta:8},normal:{mul:1,hit:.7,sta:16},power:{mul:1.7,hit:.45,sta:30}};
 const MOVE={step:{d:1,sta:4},run:{d:3,sta:12},back:{d:-1,sta:4},jump:{d:-1,sta:10}};
 function monsterOf(f){const tier=Math.floor(f/10);return {hp:tier?105+5*tier:100,dmg:15+5*tier}} // 1–9: 100/15 · 10–19: 110/20 · každých dalších 10 pater +5/+5
 function playerDmg(gear){return Math.round(HAND*(W8[gear.weapon]||1)+(TAL[gear.talisman]||0)+(ATKG[gear.gloves]||0))}
 const fighter=(pos,hp,max,dmg,smax=100)=>({pos,hp,max,dmg,sta:smax,smax,jump:false,rage:false,hit:0});
-function newFight(f,hp,hpMax,gear){const m=monsterOf(f),p=fighter(0,hp,hpMax,playerDmg(gear),100+(STA[gear.pants]||0)+shieldStat(gear,'sta'));p.hit=HIT[gear.weapon]||0;const mon=fighter(TRACK,m.hp,m.hp,m.dmg);mon.hit=-(DEF[gear.gloves]||0)-shieldStat(gear,'def');return {f,p,m:mon,crowd:0,block:shieldStat(gear,'b'),over:null}}
+function newFight(f,hp,hpMax,gear){const m=monsterOf(f),p=fighter(0,hp,hpMax,playerDmg(gear),100+(STA[gear.pants]||0)+shieldStat(gear,'sta'));p.hit=HIT[gear.weapon]||0;if(gear.armor==='golem_vest'){p.crit=.2;p.dodge=.1}const mon=fighter(TRACK,m.hp,m.hp,m.dmg);mon.hit=-(DEF[gear.gloves]||0)-shieldStat(gear,'def');return {f,p,m:mon,crowd:0,block:shieldStat(gear,'b'),over:null}}
 const dist=S=>S.m.pos-S.p.pos;
 const atkDmg=(A,a,boost)=>Math.round(A.dmg*ATK[a].mul*(boost?1.5:1));
 function canDo(S,who,a){
@@ -149,8 +149,9 @@ function doAct(S,who,a,rnd){
     if(boost)S.crowd=0;
     if(foe.jump&&!boost){ev.push({who:o,kind:'evade'});if(who==='p')cr(-5)}
     else if(!boost&&rnd()>chance){ev.push({who:o,kind:'dodge'});cr(who==='p'?-5:5)}
+    else if(who==='m'&&foe.dodge&&rnd()<foe.dodge){ev.push({who:o,kind:'dodge'});cr(5)}
     else if(who==='m'&&S.block&&rnd()<S.block){ev.push({who:o,kind:'block'});cr(10)}
-    else{const n=Math.min(atkDmg(me,a,boost),foe.hp);foe.hp-=n;ev.push({who:o,kind:'hit',n,boost});
+    else{const n=Math.min(atkDmg(me,a,boost)*(me.crit&&rnd()<me.crit?2:1),foe.hp);foe.hp-=n;ev.push({who:o,kind:'hit',n,boost});
       if(who==='p')cr(a==='power'?20:a==='normal'?12:8);
       if(foe.hp<=0)S.over=who==='p'?'win':'lose'}
   }
@@ -472,7 +473,7 @@ const load=src=>new Promise((ok,bad)=>{const s=document.createElement('script');
 function gate(title,text,link){modal(title,text,[link===false?null:btn('gold',link||'Zpět na planetu',null)].filter(Boolean));st.busy=true;hud()}
 function wearOf(items,equip,floor,extra){ // stejně jako ve hře: uložené vybavení, jinak to, co máš
   const own=[...Object.keys(items||{}),...(extra||[])];if(floor>10)own.push('arena_shield');if(floor>50)own.push('arena_boots');
-  const SLOT={boss_sword:'weapon',basic_sword:'weapon',basic_sword_g:'weapon',earth_heart_1:'talisman',earth_heart_2:'talisman',earth_heart_3:'talisman',founder_cape:'banner',arena_shield:'shield',wood_sword_1:'weapon',wood_sword_2:'weapon',wood_sword_3:'weapon',cloth_pants_1:'pants',cloth_pants_2:'pants',cloth_pants_3:'pants',cloth_gloves_1:'gloves',cloth_gloves_2:'gloves',cloth_gloves_3:'gloves',wood_shield_1:'shield',wood_shield_2:'shield',wood_shield_3:'shield',wood_shield_4:'shield',cloth_pack_1:'backpack',cloth_pack_2:'backpack',cloth_pack_3:'backpack',arena_boots:'boots'};
+  const SLOT={boss_sword:'weapon',basic_sword:'weapon',basic_sword_g:'weapon',earth_heart_1:'talisman',earth_heart_2:'talisman',earth_heart_3:'talisman',founder_cape:'banner',golem_vest:'armor',arena_shield:'shield',wood_sword_1:'weapon',wood_sword_2:'weapon',wood_sword_3:'weapon',cloth_pants_1:'pants',cloth_pants_2:'pants',cloth_pants_3:'pants',cloth_gloves_1:'gloves',cloth_gloves_2:'gloves',cloth_gloves_3:'gloves',wood_shield_1:'shield',wood_shield_2:'shield',wood_shield_3:'shield',wood_shield_4:'shield',cloth_pack_1:'backpack',cloth_pack_2:'backpack',cloth_pack_3:'backpack',arena_boots:'boots'};
   const slotOf=it=>SLOT[it]||SLOT[String(it).replace(/_[ur]$/,'')];
   const g={};if(equip&&typeof equip==='object'){for(const [s,it] of Object.entries(equip))if(slotOf(it)===s&&own.includes(it))g[s]=it}
   else for(const it of own){const s=slotOf(it);if(s&&!g[s])g[s]=it}
@@ -497,9 +498,9 @@ async function start(){
     if(now()<ARENA_FROM&&a.nick!==ADMIN){st.user=null;gate('Aréna je zavřená','Brána do podsvětí se otevře <b>ve středu 25. 11. ve 12:00</b>.');return}
     st.nick=a.nick;$('pName').textContent='@'+a.nick;
     const k=liveKey(a.nick);
-    const [items,equip,fight,health,buys,gifts,dig]=await Promise.all(['items/'+k,'equip/'+k,'fight/'+k,'health/'+k,'buys/'+k,'gifts/'+k,'dig'].map(P=>api('GET',P)));
+    const [items,equip,fight,health,buys,gifts,dig,dwin]=await Promise.all(['items/'+k,'equip/'+k,'fight/'+k,'health/'+k,'buys/'+k,'gifts/'+k,'dig','dungeonwin/'+k].map(P=>api('GET',P)));
     const extra=Object.keys(buys||{}).filter(x=>x!=='last'); // koupené v obchodě
-    if(gifts&&gifts.launch)extra.push('basic_sword_g');if(a.nick==='___1kelly1___')extra.push('boss_sword');
+    if(gifts&&gifts.launch)extra.push('basic_sword_g');if(dwin)extra.push('golem_vest');if(a.nick==='___1kelly1___')extra.push('boss_sword');
     if(dig&&now()>1795388399000){const top=Object.entries(dig).filter(([,v])=>v&&+v.c>0).sort((x,y)=>(+y[1].c-+x[1].c)||((+x[1].t||0)-(+y[1].t||0))).slice(0,3).map(([n])=>n),i=top.indexOf(k);if(i>=0)extra.push('earth_heart_'+(i+1))}
     st.floor=Math.max(1,+(fight&&fight.f)||1);st.gear=wearOf(items,equip,st.floor,extra);
     st.hpMax=hpMaxOf(st.gear);

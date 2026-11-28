@@ -4155,7 +4155,7 @@ const wearsShield=id=>{try{return !!id&&invWears(id,'arena_shield')}catch(_){ret
 const dblRoll=()=>{try{return !!meId&&((inv.equip||{})[invKey(meId)]||{}).boots==='arena_boots'&&arenaFloor(meId)>50&&Math.random()<ITEMS.arena_boots.dbl}catch(_){return false}};
 const dblToast=()=>setTimeout(()=>toast('👢 Boty podsvětí: dvojnásobná odměna!'),1600);
 const clothHp=id=>{try{const st=invState(id);return ['pants','gloves','shield','backpack'].reduce((a,sl)=>a+((ITEMS[st[sl]]||{}).hp||0),0)}catch(_){return 0}};
-const hpMaxOf=id=>100+(wearsCape(id)?ITEMS[CAPE].hp:0)+(wearsBoots(id)?ITEMS.arena_boots.hp:0)+clothHp(id);
+const hpMaxOf=id=>Math.min(250,100+(wearsCape(id)?ITEMS[CAPE].hp:0)+(wearsBoots(id)?ITEMS.arena_boots.hp:0)+clothHp(id)+((()=>{try{return !!id&&invWears(id,'golem_vest')}catch(_){return false}})()?100:0));
 function hpMaxSync(){if(!meId)return;const m=hpMaxOf(meId);if(hp.max===m&&hp.cur<=m)return;hp.max=m;if(hp.cur>m){hp.cur=m;if(hp.loaded)hlSave()}hpUi()}
 function capeMesh(){
   const g=new THREE.Group();g.name='founderCape';
@@ -4320,13 +4320,14 @@ function shopSellShow(k){
   if(!it){box.textContent='Prázdný slot.';sellArm=null;return}
   const t=document.createElement('b');t.textContent=it.name+' · '+RARITY[it.rarity].name;box.append(t);
   if(!isGear(k)){const d=document.createElement('span');d.textContent='Byliny, léky a jídlo obchod nevykupuje.';box.append(d);sellArm=null;return}
+  if(k==='golem_vest'){const d=document.createElement('span');d.textContent='Lávovou golemovou vestu obchod nevykupuje.';box.append(d);sellArm=null;return}
   const d=document.createElement('span');d.textContent=`Výkupní cena: ${sellRange(k)} (náhodně). Prodaná věc zmizí z inventáře.`;box.append(d);
   const btn=document.createElement('button');btn.type='button';const armed=sellArm===k;btn.className=armed?'warn':'';
   btn.textContent=sellBusy?'Prodávám…':armed?'Opravdu prodat? Klikni znovu':`Prodat (${sellRange(k)})`;btn.disabled=sellBusy;
   btn.onclick=()=>{if(sellArm!==k){sellArm=k;shopSellShow(k);return}shopSell(k)};box.append(btn);
 }
 async function shopSell(k){
-  if(sellBusy||!acct.user||!meId||!shopOn()||!isGear(k)||!invOwned(meId).includes(k))return;
+  if(sellBusy||!acct.user||!meId||!shopOn()||!isGear(k)||k==='golem_vest'||!invOwned(meId).includes(k))return;
   const it=ITEMS[k],[a,b,c]=SELL[it.rarity]||SELL.common,p=a+Math.floor(Math.random()*(b-a+1)),key=liveKey(meId);sellBusy=true;shopSellShow(k);
   let ok=false,cur=null;const path=c==='d'?'diamonds':'money';
   try{const r=await fetch(LIVE_DB+'/'+path+'/'+key+'.json',{cache:'no-store'});if(r.ok)cur=+(await r.json())||0}catch(_){}
@@ -4436,6 +4437,7 @@ const ITEMS={
   founder_cape:{name:'Plášť zakladatele',slot:'banner',icon:'🧥',img:'img/plast-zakladatele.png',rarity:'legend',hp:50,work:.9,desc:'Zlatý plášť s nápisem Zakladatel planety followerů. Když ho máš na sobě: +50 HP (max 150) a všechny práce (zalévání, farma, lékárna) o 10 % rychleji. Vidí ho všichni na tvých zádech.'},
   arena_shield:{name:'Štít podsvětí',slot:'shield',icon:'🛡️',img:'img/stit-areny.png',rarity:'epic',block:.25,desc:'Padá z příšery na 10. patře arény. Když ho máš na sobě: 25 % šance, že zablokuješ úder příšery a nedostaneš žádné poškození.'},
   arena_boots:{name:'Boty podsvětí',slot:'boots',icon:'🥾',img:'img/boty-areny.png',rarity:'legend',hp:30,dbl:.1,desc:'Padají z příšery na 50. patře arény. Když je máš na sobě: +30 HP a 10 % šance na dvojnásobnou odměnu u bylin, antibiotik, obilí a chleba.'},
+  golem_vest:{name:'Lávová golemová vesta',slot:'armor',icon:'🦺',img:'img/lavova-vesta.png',rarity:'legend',hp:100,crit:.2,dodge:.1,stats:'+100 HP · +20 % kritický zásah · +10 % úhyb',desc:'Hlavní výhra Krypty pod planetou: padá v truhle z poraženého Magmového golema (spolu se 100 stříbrnými). Když ji máš na sobě: +100 HP, 20 % šance na kritický zásah (dvojnásobné poškození) a 10 % šance, že úderu uhneš. V obchodě se koupit ani prodat nedá.'},
   wood_sword_1:{name:'Dřevěný cvičák',slot:'weapon',icon:'🗡️',img:'img/drevo-mec-1.png',rarity:'common',dmg:1.3,price:20,stats:'Útok 13 (pěsti 10)',desc:'Hrubě otesaný dřevěný meč na trénink. Pořád lepší než pěsti: útok 13 v aréně a 1,3× DMG v klikačkách na příšery.'},
   wood_sword_2:{name:'Dřevěný meč s provazem',slot:'weapon',icon:'🗡️',img:'img/drevo-mec-2.png',rarity:'common',dmg:1.3,hit:.05,price:20,stats:'Útok 13 · +5 % šance zásahu',desc:'Rukojeť omotaná provazem, meč pevně drží v ruce. Útok 13 a v aréně +5 % šance, že trefíš. 1,3× DMG v klikačkách.'},
   wood_sword_3:{name:'Zubatá dřevěná šavle',slot:'weapon',icon:'🗡️',img:'img/drevo-mec-3.png',rarity:'common',dmg:1.4,hit:-.05,price:20,stats:'Útok 14 · −5 % šance zásahu',desc:'Těžká šavle s koženou rukojetí. Bije víc (útok 14), ale je nevyvážená: v aréně −5 % šance zásahu. 1,4× DMG v klikačkách.'},
@@ -4493,6 +4495,7 @@ function invOwned(id){
   if(((inv.gifts||{})[liveKey(id)]||{}).hat&&!own.includes('repair_hat'))own.push('repair_hat');
   {const h=heartOf(id);if(h&&!own.includes(h))own.push(h)}
   for(const d of arenaDrops(id))if(!own.includes(d))own.push(d);
+  if((inv.dungeonwin||{})[liveKey(id)]&&!own.includes('golem_vest'))own.push('golem_vest'); // výhra z Krypty (Magmový golem)
   for(const b of Object.keys((inv.buys||{})[liveKey(id)]||{}))if(ITEMS[b]&&!own.includes(b))own.push(b); // koupené v obchodě (/buys)
   const sd=soldOf(id);return own.filter(k=>!(sd[k]&&isGear(k))); // prodané v obchodě (/sold) už hráč nemá
 }
@@ -4511,7 +4514,7 @@ function invRefreshFigs(id){
 }
 let invTry=0;
 async function invLoad(){ // a failed read (network hiccup) must never look like an empty inventory: keep old data and retry
-  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread','dig','fight','buys','sold'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread','dig','fight','buys','sold'];
+  const keys=['items','equip','money','herbs','diamonds','meds','gifts','grain','bread','dig','fight','buys','sold','dungeonwin'],dst=['items','equip','money','herbs','dia','meds','gifts','grain','bread','dig','fight','buys','sold','dungeonwin'];
   const res=await Promise.all(keys.map(k=>fetch(LIVE_DB+'/'+k+'.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json().then(v=>({ok:true,v})):{ok:false}).catch(()=>({ok:false}))));
   let bad=0;res.forEach((r,i)=>{if(r.ok)inv[dst[i]]=r.v||{};else{bad++;inv[dst[i]]=inv[dst[i]]||{}}});
   if(!bad){inv.loaded=true;invTry=0}else setTimeout(invLoad,Math.min(30000,2000*++invTry));

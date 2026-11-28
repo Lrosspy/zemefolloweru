@@ -577,7 +577,8 @@ const ITEMS={
   earth_heart_3:{name:'Srdce země',slot:'talisman',icon:'💚',img:'img/srdce-zeme-3.png',rarity:'uncommon',dmgAdd:1},
   founder_cape:{name:'Plášť zakladatele',slot:'banner',icon:'🧥',img:'img/plast-zakladatele.png',rarity:'legend',hp:50},
   arena_shield:{name:'Štít podsvětí',slot:'shield',icon:'🛡️',img:'img/stit-areny.png',rarity:'epic',block:.25},
-  arena_boots:{name:'Boty podsvětí',slot:'boots',icon:'🥾',img:'img/boty-areny.png',rarity:'legend',hp:30}};
+  arena_boots:{name:'Boty podsvětí',slot:'boots',icon:'🥾',img:'img/boty-areny.png',rarity:'legend',hp:30},
+  golem_vest:{name:'Lávová golemová vesta',slot:'armor',icon:'🦺',img:'img/lavova-vesta.png',rarity:'legend',hp:100,crit:.2,dodge:.1}};
 const TIERED={ // šedá / zelená (_u) / modrá (_r)
   wood_sword_1:['Dřevěný cvičák','weapon','🗡️','drevo-mec-1',[{dmg:1.3},{dmg:1.4},{dmg:1.6}]],
   wood_sword_2:['Dřevěný meč s provazem','weapon','🗡️','drevo-mec-2',[{dmg:1.3,hit:.05},{dmg:1.4,hit:.08},{dmg:1.6,hit:.12}]],
@@ -598,7 +599,7 @@ const TIERED={ // šedá / zelená (_u) / modrá (_r)
 for(const [k,[name,slot,icon,img,t]] of Object.entries(TIERED))t.forEach((u,n)=>{ITEMS[k+['','_u','_r'][n]]={name,slot,icon,img:'img/'+img+'.png',rarity:['common','uncommon','rare'][n],...u}});
 const tierOf=id=>/_r$/.test(id||'')?2:/_u$/.test(id||'')?1:0,baseOf=id=>String(id||'').replace(/_[ur]$/,'');
 const statTxt=it=>[it.slot==='weapon'?`Útok ${Math.round(it.dmg*10)}`:'',it.dmgAdd?`+${String(it.dmgAdd).replace('.',',')} útok`:'',it.hit?`${it.hit>0?'+':'−'}${Math.round(Math.abs(it.hit)*100)} % zásah`:'',
-  it.block?`${Math.round(it.block*100)} % blok`:'',it.slots?`+${it.slots} políček`:'',it.hp?`+${it.hp} HP`:'',it.atk?`+${it.atk} útok`:'',it.def?`nepřítel trefí o ${Math.round(it.def*100)} % méně`:'',
+  it.block?`${Math.round(it.block*100)} % blok`:'',it.crit?`+${Math.round(it.crit*100)} % kritický zásah`:'',it.dodge?`+${Math.round(it.dodge*100)} % úhyb`:'',it.slots?`+${it.slots} políček`:'',it.hp?`+${it.hp} HP`:'',it.atk?`+${it.atk} útok`:'',it.def?`nepřítel trefí o ${Math.round(it.def*100)} % méně`:'',
   it.use==='eat'?'+20 HP':'',it.use==='heal'?'vyléčí všechny životy':''].filter(Boolean).join(' · ')||'bez bonusu';
 const SLOTS=[['talisman','Talisman','🧿'],['helmet','Helma','⛑️'],['necklace','Náhrdelník','📿'],['weapon','Zbraň','🗡️'],['armor','Brnění / vesta','🦺'],['shield','Štít','🛡️'],
   ['gloves','Rukavice','🧤'],['pants','Kalhoty','👖'],['bracelet','Náramek','⌚'],['backpack','Batoh','🎒'],['boots','Boty','🥾'],['banner','Banner','🚩']];
@@ -691,7 +692,11 @@ function dressHero(h,gear){
     const hm=M({color:rcol(gear.talisman),emissive:rcol(gear.talisman),emissiveIntensity:1.1});
     for(const s of[-1,1])A(h.at.neck,new THREE.SphereGeometry(.024,10,8),hm,s*.018,.4,.2);A(h.at.neck,new THREE.ConeGeometry(.034,.05,10),hm,0,.37,.2).rotation.z=Math.PI}
   if(gear.necklace)A(h.at.neck,new THREE.TorusGeometry(.12,.016,6,18),tint(gear.necklace),0,.52,.02).rotation.x=Math.PI/2+.35;
-  if(gear.armor)A(h.at.chest,new THREE.CylinderGeometry(.215,.18,.4,14),M({color:0x9aa0a8,metalness:.75,roughness:.35,emissive:rcol(gear.armor),emissiveIntensity:.15}),0,.28);
+  if(gear.armor==='golem_vest'){const ch=h.at.chest,lv=M({color:0xff7a1a,emissive:0xff5a00,emissiveIntensity:2.2}),rk=M({color:0x3a3330,roughness:.95,flatShading:true});
+    A(ch,new THREE.CylinderGeometry(.214,.176,.42,14),lv,0,.26);
+    for(const [x,y,z,r] of[[-.08,.36,.17,.09],[.08,.36,.17,.09],[0,.2,.18,.085],[-.11,.12,.15,.08],[.11,.12,.15,.08],[-.17,.3,.08,.08],[.17,.3,.08,.08],[-.08,.32,-.17,.09],[.08,.32,-.17,.09],[0,.14,-.17,.09]]){const m=A(ch,new THREE.DodecahedronGeometry(r,0),rk,x,y,z);m.scale.set(1,1,.5);m.lookAt(m.position.clone().multiplyScalar(3))}
+    for(const s_ of[-1,1]){A(ch,new THREE.DodecahedronGeometry(.1,0),rk,s_*.26,.5,0).scale.set(1.3,.6,1.3);const sp=A(ch,new THREE.ConeGeometry(.03,.13,5),lv,s_*.31,.58,0);sp.rotation.z=-s_*.7}}
+  else if(gear.armor)A(h.at.chest,new THREE.CylinderGeometry(.215,.18,.4,14),M({color:0x9aa0a8,metalness:.75,roughness:.35,emissive:rcol(gear.armor),emissiveIntensity:.15}),0,.28);
   if(gear.bracelet)A(h.at.wristR,new THREE.TorusGeometry(.065,.014,6,14),tint(gear.bracelet),0,.04).rotation.x=Math.PI/2;
   // zbraň, štít, batoh, plášť
   if(gear.weapon)h.at.handR.add(makeWeapon(gear.weapon));
@@ -743,6 +748,7 @@ function owned(){
   for(const b of Object.keys(st.buys||{}))if(ITEMS[b])o.add(b);
   if(st.gifts.launch)o.add('basic_sword_g');if(st.gifts.hat)o.add('repair_hat');
   if(st.nick==='___1kelly1___')o.add('boss_sword');if(st.heart)o.add(st.heart);
+  if(st.dwin)o.add('golem_vest');
   if(st.fightF>10)o.add('arena_shield');if(st.fightF>50)o.add('arena_boots');
   for(const [k,c] of [['herb','herbs'],['meds','meds'],['grain','grain'],['bread','bread']])if(st.counts[c]>0)o.add(k);
   return [...o].filter(k=>!(st.sold[k]&&ITEMS[k].slot!=='bag'));
@@ -878,8 +884,8 @@ async function boot(){
     st.isAdmin=adminMail(u)||String(a.nick).toLowerCase()===ADMIN;
     if(now()<DUNGEON_FROM&&!st.isAdmin){st.user=null;gate('Krypta je zatím zavřená','Otevře se <b>v pátek 4. 12. ve 12:00</b>.',[['Na planetu',()=>location.href='./']]);return}
     st.nick=a.nick;st.demo=false;$('who').textContent='@'+a.nick;
-    const k=liveKey(a.nick),P=['items','equip','fight','health','buys','gifts','sold','money','diamonds','herbs','meds','grain','bread'].map(p=>p+'/'+k);P.push('dig');
-    const [items,equip,fight,health,buys,gifts,sold,money,dia,herbs,meds,grain,bread,dig]=await Promise.all(P.map(p=>api('GET',p)));
+    const k=liveKey(a.nick),P=['items','equip','fight','health','buys','gifts','sold','money','diamonds','herbs','meds','grain','bread','dungeonwin'].map(p=>p+'/'+k);P.push('dig');
+    const [items,equip,fight,health,buys,gifts,sold,money,dia,herbs,meds,grain,bread,dwin,dig]=await Promise.all(P.map(p=>api('GET',p)));st.dwin=!!dwin;
     st.items=items||{};st.equip=equip&&typeof equip==='object'?equip:null;st.fightF=Math.max(1,+(fight&&fight.f)||1);
     st.buys={...(buys||{})};delete st.buys.last;st.gifts=gifts||{};st.sold={...(sold||{})};delete st.sold.last;
     st.money=Math.max(0,Math.floor(+money||0));st.dia=Math.max(0,Math.floor(+dia||0));
@@ -920,11 +926,11 @@ function doHits(c){
   for(const e of enemies){
     if(e.dead)continue;const dx=e.g.position.x-p.x,dz=e.g.position.z-p.z,d=Math.hypot(dx,dz);
     if(d-(e.rad||.4)+.4>c.reach||(d>.9+(e.rad||.4)&&(dx*fx+dz*fz)/d<.3))continue;
-    const n=Math.max(1,Math.round(base*c.mul*(.9+Math.random()*.2)));
+    const crit=Math.random()<((ITEMS[st.gear.armor]||{}).crit||0),n=Math.max(1,Math.round(base*c.mul*(.9+Math.random()*.2)*(crit?2:1)));
     e.hp-=n;e.flash=.18;any=true;
     if(e.state!=='wind'){e.stag=.35;const kx=e.g.position.x+dx/(d||1)*c.kb,kz=e.g.position.z+dz/(d||1)*c.kb;if(free(kx,kz))e.g.position.set(kx,0,kz)}
-    pop(e.g.position.clone().setY(2),'-'+n,atk.i===2?'#ffd34d':'#ffffff');drawBar(e);
-    if(e.hp<=0){e.dead=.001;if(e.d.boss){shake=.8;toast('👑 '+e.d.name+' je poražen!')}st.kills++;hud();toast('💀 '+e.d.name+' padl!');roomKey(e)}
+    pop(e.g.position.clone().setY(2),(crit?'KRIT! ':'')+'-'+n,crit?'#ff7a1a':atk.i===2?'#ffd34d':'#ffffff');drawBar(e);
+    if(e.hp<=0){e.dead=.001;if(e.d.boss){shake=.8;toast('👑 '+e.d.name+' je poražen! Vypadla truhla.');bossChest(e.g.position.x,e.g.position.z)}st.kills++;hud();toast('💀 '+e.d.name+' padl!');roomKey(e)}
   }
   if(any)shake=Math.max(shake,atk.i===2?.35:.15);
 }
@@ -939,6 +945,7 @@ function hurtPlayer(n,e){
       n=Math.ceil(n/2);pop(ps.clone().setY(2.4),'Kryješ se zbraní','#cfd6e0');
     }
   }
+  if(Math.random()<((ITEMS[g.armor]||{}).dodge||0)){pop(ps,'Úhyb!','#ffb070');return}
   if(Math.random()<def){pop(ps,'Vedle!','#9fd8ff');return}
   if(blockAmt<=.5&&Math.random()<bl){pop(ps,'🛡️ Blok!','#7fc8ff');shake=Math.max(shake,.1);return}
   st.hp=Math.max(0,st.hp-n);hurtT=.6;shake=Math.max(shake,.25);pop(ps,'-'+n,'#ff5a4a');hud();
@@ -1240,6 +1247,30 @@ function toggleFly(){
   toast('🚶 Létání vypnuto.');
 }
 $('flyBtn').onclick=toggleFly;
+// truhla z poraženého bosse: poprvé Lávová golemová vesta + 100 stříbrných (/dungeonwin/<nick>, zapisuje se jednou)
+let bChest=null;
+function bossChest(x,z){
+  if(bChest){scene.remove(bChest.g);const k=torches.indexOf(bChest.lt);if(k>=0)torches.splice(k,1);const j=spots.indexOf(bChest.spot);if(j>=0)spots.splice(j,1)}
+  const g=add(new THREE.Group(),x,groundAt(x,z),z);g.scale.setScalar(1.4);
+  P_(g,new THREE.BoxGeometry(.95,.55,.6),woodM,0,.275);for(const xx of[-.35,.35])P_(g,new THREE.BoxGeometry(.06,.57,.62),goldM,xx,.28);
+  const lid=add(new THREE.Group(),0,.55,-.3,g);P_(lid,new THREE.CylinderGeometry(.3,.3,.95,14,1,false,0,Math.PI),woodM,0,0,.3).rotation.z=Math.PI/2;
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:softT,color:0xffc84a,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false}));glow.scale.set(2.2,2.2,1);glow.position.y=.6;g.add(glow);
+  const lt={s:glow,p:new THREE.Vector3(x,1.5,z),ph:0,k:1,nof:1,col:0xffc84a,big:1};torches.push(lt);
+  bChest={g,lid,lt,opened:false};
+  bChest.spot={x,z:z+1.2,get txt(){return bChest&&bChest.opened?'Truhla golema (prázdná)':'Otevřít truhlu golema 🎁'},act(){openBossChest()}};spots.push(bChest.spot);
+}
+async function openBossChest(){
+  const c=bChest;if(!c||c.opened)return;c.opened=true;c.lid.rotation.x=-1.25;
+  if(st.dwin){toast('Truhla je prázdná. Lávovou golemovou vestu už máš.');return}
+  if(!st.demo&&st.user){
+    const k=liveKey(st.nick),m=await api('GET','money/'+k),cur=Math.max(0,Math.floor(+m||0));
+    const ok=await api('PATCH','',{['dungeonwin/'+k]:{t:{'.sv':'timestamp'}},['money/'+k]:cur+100});
+    if(!ok){c.opened=false;c.lid.rotation.x=0;toast('Truhlu se nepovedlo otevřít. Zkus to znovu.');return}
+    st.money=cur+100;
+  }else st.money+=100;
+  st.dwin=true;refreshGear();
+  gate('⭐ Lávová golemová vesta','<img src="img/lavova-vesta.png" alt="" style="width:150px;display:block;margin:6px auto" onerror="this.remove()"><b style="color:#ffc300">Legendární</b> · +100 HP · +20 % šance na kritický zásah · +10 % šance na úhyb<br>a k tomu <b>+100 stříbrných</b>.<br>Vestu najdeš v inventáři (I). V obchodě se koupit nedá.',[['Super!',()=>{gateEl.hidden=true;cv.focus()}]]);
+}
 let near=null;const promptEl=$('prompt');
 promptEl.onclick=()=>{near&&near.act();cv.focus()};
 
