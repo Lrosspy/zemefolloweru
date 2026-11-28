@@ -858,19 +858,25 @@ async function boot(){
   refreshGear();
   if(!ONSITE||(qs.has('demo')&&!preRelease())){startDemo();mapBoot();return}
   document.body.classList.add('locked');
-  const need=()=>gate(preRelease()?'Krypta je zatím zavřená':'Nejdřív se přihlas',preRelease()?'Otevře se <b>v pátek 4. 12. ve 12:00</b>.':'Do krypty můžou jen přihlášení hráči, protože se tu ukládají životy a inventář. Přihlas se na planetě přes Google a vrať se sem.',[['Na planetu',()=>location.href='./'],...demoBtn()]);
-  let at=0;try{at=+localStorage.getItem(LOGIN_AT)||0}catch(_){}
-  if(!at||Date.now()-at>SESSION_MS){need();return}
+  // přihlášení přímo v kryptě (Google) – admin si tak zapne stavění a létání i po vypršení přihlášení na planetě
+  const signIn=()=>{try{firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()).then(()=>{try{localStorage.setItem(LOGIN_AT,String(Date.now()))}catch(_){}location.reload()},e=>toast('Přihlášení se nepovedlo: '+(e&&e.code||'zkus to znovu')))}catch(_){toast('Přihlášení tady nejde, přihlas se na planetě.')}};
+  const need=()=>gate(preRelease()?'Krypta je zatím zavřená':'Nejdřív se přihlas',(preRelease()?'Otevře se <b>v pátek 4. 12. ve 12:00</b>.':'Do krypty můžou jen přihlášení hráči, protože se tu ukládají životy a inventář.')+' Jsi admin? Přihlas se svým Google účtem.',[['🔑 Přihlásit se přes Google',signIn],['Na planetu',()=>location.href='./'],...demoBtn()]);
   gate('Načítám tvou postavu…','Chvilku strpení.',[]);
+  let u=null;
   try{
     const B='https://www.gstatic.com/firebasejs/10.12.2/';
     await loadJs(B+'firebase-app-compat.js');await loadJs(B+'firebase-auth-compat.js');
     if(!firebase.apps.length)firebase.initializeApp({apiKey:FB_API_KEY,authDomain:'planetafolloweru.firebaseapp.com',databaseURL:LIVE_DB,projectId:'planetafolloweru'});
-    const u=await new Promise(ok=>{const off=firebase.auth().onAuthStateChanged(x=>{off();ok(x)})});
-    if(!u){need();return}
+    u=await new Promise(ok=>{const off=firebase.auth().onAuthStateChanged(x=>{off();ok(x)})});
+  }catch(e){console.warn(e);gate('Něco se pokazilo','Nepodařilo se načíst přihlášení. Zkus to znovu z planety.',[['Na planetu',()=>location.href='./']]);return}
+  const adminMail=x=>!!x&&x.emailVerified&&x.email==='sepijakzubiks@gmail.com';
+  let at=0;try{at=+localStorage.getItem(LOGIN_AT)||0}catch(_){}
+  if(!u||(!adminMail(u)&&(!at||Date.now()-at>SESSION_MS))){need();return} // hráči: 1 h jako na planetě; admin zůstává přihlášený
+  try{
     st.user=u;const a=await api('GET','accounts/'+u.uid);
     if(!a||!a.nick){st.user=null;gate('Vyber si postavu','Na planetě si nejdřív vyber svou postavu (nick). Pak můžeš do krypty.',[['Na planetu',()=>location.href='./']]);return}
-    if(now()<DUNGEON_FROM&&a.nick!==ADMIN){st.user=null;gate('Krypta je zatím zavřená','Otevře se <b>v pátek 4. 12. ve 12:00</b>.',[['Na planetu',()=>location.href='./']]);return}
+    st.isAdmin=adminMail(u)||String(a.nick).toLowerCase()===ADMIN;
+    if(now()<DUNGEON_FROM&&!st.isAdmin){st.user=null;gate('Krypta je zatím zavřená','Otevře se <b>v pátek 4. 12. ve 12:00</b>.',[['Na planetu',()=>location.href='./']]);return}
     st.nick=a.nick;st.demo=false;$('who').textContent='@'+a.nick;
     const k=liveKey(a.nick),P=['items','equip','fight','health','buys','gifts','sold','money','diamonds','herbs','meds','grain','bread'].map(p=>p+'/'+k);P.push('dig');
     const [items,equip,fight,health,buys,gifts,sold,money,dia,herbs,meds,grain,bread,dig]=await Promise.all(P.map(p=>api('GET',p)));
@@ -882,7 +888,7 @@ async function boot(){
     st.hp=999;refreshGear();st.health=hlEff(health,now());
     if(st.health.dead){const left=Math.max(1,Math.ceil((st.health.dAt+REVIVE_MS-now())/60000));
       gate('Jsi mrtvý 💀',`Tvoje postava leží u hrobu. Oživí tě jiný hráč, nebo se sám probudíš asi za <b>${left>=60?Math.floor(left/60)+' h '+left%60+' min':left+' min'}</b>.`,[['Na planetu',()=>location.href='./']]);return}
-    st.hp=Math.min(st.hpMax,Math.max(1,st.health.hp));hpSaved=Math.round(st.hp);gateEl.hidden=true;document.body.classList.remove('locked');hud();$('edBtn').hidden=!canEdit();$('flyBtn').hidden=!canEdit();mapBoot();
+    st.hp=Math.min(st.hpMax,Math.max(1,st.health.hp));hpSaved=Math.round(st.hp);gateEl.hidden=true;if(st.isAdmin){$('who').textContent='@'+st.nick+' · 👑 admin';setTimeout(()=>toast('👑 Admin: B = stavění, V = létání'),600)}document.body.classList.remove('locked');hud();$('edBtn').hidden=!canEdit();$('flyBtn').hidden=!canEdit();mapBoot();
     if(st.health.sick)toast('🤒 Jsi nemocný. Antibiotika najdeš v inventáři (I).');
   }catch(e){console.warn(e);gate('Něco se pokazilo','Nepodařilo se načíst tvou postavu. Zkus to znovu z planety.',[['Na planetu',()=>location.href='./'],...demoBtn()])}
 }
@@ -1144,8 +1150,8 @@ function solidHit(x,z){ // kolize s položenými věcmi (otočený obdélník)
 /* ---------- stavění (admin; v náhledu kdokoli, ukládá se jen do prohlížeče) ---------- */
 const ed={on:false,sel:null,rot:0,scale:1,ghost:null,ring:null,hist:[],dirty:false,mx:-1,my:-1};
 const edEl=$('ed'),edInfo=$('edInfo'),ray=new THREE.Raycaster(),gPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0),gHit=new THREE.Vector3(),ndc=new THREE.Vector2();
-const canEdit=()=>!ONSITE||(!st.demo&&st.nick===ADMIN);
-const canSaveOnline=()=>ONSITE&&!st.demo&&st.nick===ADMIN;
+const canEdit=()=>!ONSITE||(!st.demo&&!!st.isAdmin);
+const canSaveOnline=()=>ONSITE&&!st.demo&&!!st.isAdmin;
 const inArea=(x,z)=>AREAS.some(a=>x>=a.x0-.3&&x<=a.x1+.3&&z>=a.z0-.3&&z<=a.z1+.3);
 function edMsg(s){edInfo.textContent=s}
 function edHint(){const n=ed.sel?(ed.sel.startsWith('m:')?'👾 '+(MON[ed.sel.slice(2)]||{}).name:PROPS[ed.sel].name):null;
